@@ -1,0 +1,68 @@
+<launch>
+ <arg name="odom_topic" default ="/gazebo/forklift_controllers/odom"/>
+ <arg name="cmd_vel_topic" default ="/cmd_vel"/>
+ <arg name="profile" default="RX20"/>
+
+ <node pkg="pallet_docking_xsquare" type="docking_planner" name="docking_planner" output = "screen" >
+   <!-- <param name="path_frame" value="base_link"/> -->
+   <param name="path_frame" value="base_link_p"/>
+   <!-- <param name="path_frame" value="odom"/> -->
+
+  <!-- Docking location inside_container or outside_container -->
+   <param name="docking_area" value="OUTSIDE"/>
+
+  <!-- Pallet detection param -->
+   <param name="detection_timeout" value="20.0"/>
+   <param name="pallet_cov" value="0.001"/>
+
+  <!-- Goal parameters -->
+   <param name="dis_approach_offset" value="0.8"/>  
+   <param name="dis_docking_offset" value="-0.55"/>
+
+   <!-- <param name="dis_approach_offset" value="1.8"/>  
+   <param name="dis_docking_offset" value="0.6"/> -->
+
+  <!-- Starting boundary -->
+   <param name="starting_vel" value="0.2"/>
+   <param name="starting_acc" value="0.0"/>
+
+  <!-- Ending boundary -->
+   <param name="stopping_vel" value="0.2"/>
+   <param name="stopping_acc" value="0"/>
+   
+  <!-- Max boundary -->
+   <param name="max_yaw_rate" value="2.5"/>
+   <param name="max_path_curvature" value="100.0"/>
+   <param name="max_ax" value="1.0"/>
+   <param name="max_ay" value="0.2"/>
+   <param name="max_acc" value="0.5"/>
+   <param name="max_jerk" value="0.2"/>
+
+  <!-- Time condition -->
+   <param name="min_t" value="1.0"/>
+   <param name="max_t" value="10.0"/>
+   <param name="dt" value="0.1"/>
+
+  <!-- Goal tolerance -->
+   <param name="distance_tolerance" value="0.1"/>  <!-- meter -->
+   <param name="angle_tolerance" value="0.02"/>     <!-- radian -->  
+   <param name="x_tolerance" value="0.02"/> <!-- meter -->    
+   <param name="y_tolerance" value="0.02"/> <!-- meter -->   
+
+  <!-- Fake goal -->
+   <param name="use_fake_goal" value="true"/> <!-- radian --> 
+   <param name="fake_goal_x" value="-1.5"/>  <!-- meter -->
+   <param name="fake_goal_y" value="0.7"/>     <!-- meter -->  
+   <param name="fake_goal_yaw" value="-0.2"/> <!-- radian -->    
+
+  <!-- PID control for sideshift control -->
+    <param name="kp" value="12.0"/>
+    <param name="ki" value="2.5"/>
+    <param name="kd" value="0.0"/>
+    <param name="error_tolerance_" value="0.005"/>
+
+    <remap from="/cmd_vel" to = "$(arg cmd_vel_topic)"/>
+    <remap from="/gazebo/forklift_controllers/odom" to = "$(arg odom_topic)"/>
+ </node>
+
+</launch>
