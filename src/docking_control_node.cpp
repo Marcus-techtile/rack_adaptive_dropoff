@@ -96,11 +96,14 @@ private:
 
     /* Limit angular rate */
     double max_angular_vel_;
+
+    std::string path_frame_;
     
 public:
     DockingControl(ros::NodeHandle &paramGet)
     {
         /* Get Param */
+        paramGet.param<std::string>("path_frame", path_frame_, "base_link_p");
         paramGet.param("/forklift_params/wheel_base", l_wheelbase_, 1.311);
         // ROS_INFO("Robot model wheel base (%f)", l_wheelbase_);
         paramGet.param<int>("look_ahead", look_ahead_, 10);
@@ -235,13 +238,13 @@ public:
 
             /* Convert global path "odom" to local path "base_link" */ 
             local_ref_path_.poses.clear();
-            local_ref_path_.header.frame_id = "base_link";
+            // local_ref_path_.header.frame_id = "base_link_p";
             for (int i = 0; i < ref_path_.poses.size(); i++)
             {
                 ref_path_.poses.at(i).header.stamp = ros::Time(0);
                 try
                 {
-                   local_ref_path_.poses.push_back(tf_buffer_c.transform(ref_path_.poses.at(i), "base_link", ros::Duration(1)));
+                   local_ref_path_.poses.push_back(tf_buffer_c.transform(ref_path_.poses.at(i), path_frame_, ros::Duration(1)));
                 }
                 catch (tf::LookupException ex)
                 {
@@ -320,6 +323,8 @@ public:
             lpf_output_v_ += (ref_velocity_ - lpf_output_v_) * e_pow_v_;
             final_ref_vel_ = lpf_output_v_;
 
+            // final_ref_vel_ = ref_velocity_;
+
             
             // Limit the velocity to limit the angular velocity
             if (steering_ != 0)
@@ -328,10 +333,12 @@ public:
                 // ROS_INFO("MAX_LINEAR_VEL: %f", max_vel_limit);
                 if (abs(final_ref_vel_) >= max_vel_limit) final_ref_vel_ = max_vel_limit * (final_ref_vel_/abs(final_ref_vel_));
             }
-            if (abs(final_ref_vel_) < 0.03) final_ref_vel_ = std::copysign(0.03, final_ref_vel_);
+            // if (abs(final_ref_vel_) < 0.03) final_ref_vel_ = std::copysign(0.03, final_ref_vel_);
+
+             if (abs(final_ref_vel_) < 0.03) final_ref_vel_ = 0.03;
 
             ROS_INFO("REF PATH LK X: %f", local_ref_path_.poses.at(lk_index).pose.position.x);
-            if (local_ref_path_.poses.at(lk_index).pose.position.x < 0 && final_ref_vel_ > 0) final_ref_vel_ = -final_ref_vel_;
+            // if (local_ref_path_.poses.at(lk_index).pose.position.x < 0 && final_ref_vel_ > 0) final_ref_vel_ = -final_ref_vel_;
 
             // double gain = 1;
             // if (abs(steering_angle_) > 1.4 && abs(steering_angle_ - (-steering_sub_)) > 0.1) ref_velocity_ = 0.00;
@@ -364,6 +371,15 @@ public:
 
             ROS_INFO("Velocity output: %f", final_ref_vel_);
             ROS_INFO("steering_angle: %f", steering_);
+
+            if(isnan(steering_) || isnan(final_ref_vel_))
+            {
+                ROS_ERROR("Nan number !");
+                controller_on_.data = false;
+                pub_stop_ = false;
+                return;
+            }
+
             cmd_vel_.linear.x = final_ref_vel_;
             // cmd_vel_.angular.z = steering_angle_;
             cmd_vel_.angular.z = steering_;

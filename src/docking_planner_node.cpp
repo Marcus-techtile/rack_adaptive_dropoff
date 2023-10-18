@@ -3,7 +3,7 @@
 DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh)
 {
     /* Get Param */
-    nh.param<std::string>("path_frame", path_frame_, "base_link");
+    nh.param<std::string>("path_frame", path_frame_, "base_link_p");
     nh.param<std::string>("docking_area", docking_area_, "INSIDE");
     nh.param<double>("dis_approach_offset", dis_approach_offset_, 1.5);
     nh.param<double>("dis_docking_offset", dis_docking_offset_, 0.5);
@@ -32,7 +32,7 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
 
     /* Subscriber */
     sub_cmd_vel = nh_.subscribe<geometry_msgs::Twist>("/cmd_vel", 1, &DockingManager::cmdCallback, this);
-    sub_pallet_pose_ = nh_.subscribe<geometry_msgs::PoseStamped>("pallet_detection_relay/pallet_pose", 1, &DockingManager::palletPoseCallback, this);
+    sub_pallet_pose_ = nh_.subscribe<geometry_msgs::PoseStamped>("/pallet_detection_relay/pallet_pose", 1, &DockingManager::palletPoseCallback, this);
 
     sub_docking_server_result_ = nh.subscribe<pallet_dock_msgs::PalletDockingActionResult>("/pallet_dock_action_server/pallet_docking/result", 1, &DockingManager::dockingServerResultCallback, this);
 
@@ -58,9 +58,13 @@ void DockingManager::cmdCallback(const geometry_msgs::Twist::ConstPtr& msg)
 
 void DockingManager::palletPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
-    if (get_pallet_pose_)
+    if (get_pallet_pose_ && !use_fake_goal_)
     {
         pallet_pose_ = *msg;
+        double r, p, yaw;
+        quaternionToRPY(pallet_pose_.pose.orientation, r, p, yaw);
+        yaw = yaw - M_PI;
+        pallet_pose_.pose.orientation = rpyToQuaternion(r, p, yaw);
         if (!pallet_pose_.header.frame_id.empty())
         {
             get_pallet_pose_ = false;
@@ -101,14 +105,14 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
 
 void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStamped pallet_pose)
 {
-    pallet_pose.header.stamp = ros::Time::now();
+    pallet_pose.header.stamp = ros::Time(0);
     geometry_msgs::PoseStamped local_pallet_pose;
     
     try
     {
         local_pallet_pose = docking_tf_buffer.transform(pallet_pose, path_frame_, ros::Duration(1));
     }
-    catch (tf::LookupException ex)
+    catch (tf2::TransformException ex)
     {
         ROS_ERROR("%s", ex.what());
     }
@@ -231,7 +235,7 @@ void DockingManager::checkGoalReach()
     {
         if (error_sq > distance_tolerance_)
         {
-            ROS_WARN("Approaching failed !");
+            ROS_WARN("Failed!!! !");
             ROS_INFO("Docking Error [x , y, yaw]: %f (m), %f (m), %f (rad)", error_x, error_y, error_yaw);
             check_inside_goal_range_ = false;
             goal_failed_ = true;
@@ -270,6 +274,11 @@ void DockingManager::initDocking()
     count_goal_failed_ = 0;
 }
 
+void DockingManager::resetPlanAndControl()
+{
+
+}
+
 void DockingManager::dockingFSM()
 {
     if (!start_docking_FSM) return;
@@ -298,16 +307,16 @@ void DockingManager::dockingFSM()
 
                 if (use_fake_goal_)
                 {
-                    fake_goal.header.frame_id = "base_link";
-                    fake_goal.header.stamp = ros::Time::now();
+                    fake_goal.header.frame_id = path_frame_;
+                    fake_goal.header.stamp = ros::Time::now() + ros::Duration(5);
                     fake_goal.pose.position.x = fake_goal_x_;
                     fake_goal.pose.position.y = fake_goal_y_;
                     fake_goal.pose.orientation = rpyToQuaternion(0.0, 0.0, fake_goal_yaw_);
                     try
                     {
-                        pallet_pose_ = pose_tf_buffer.transform(fake_goal, "odom", ros::Duration(1));
+                        pallet_pose_ = pose_tf_buffer.transform(fake_goal, "odom", ros::Duration(5));
                     }
-                    catch (tf::LookupException ex)
+                    catch (tf2::TransformException ex)
                     {
                         ROS_ERROR("%s",ex.what());
                     }
@@ -372,11 +381,11 @@ void DockingManager::dockingFSM()
             if (!goal_avai_) break;
             checkGoalReach();
             
-            if(move_reverse_)
-            {
-                if (quintic_planner.starting_vel_ > 0) quintic_planner.starting_vel_ = -quintic_planner.starting_vel_;
-                if (quintic_planner.stopping_vel_ > 0) quintic_planner.stopping_vel_ = -quintic_planner.stopping_vel_;
-            }
+            // if(move_reverse_)
+            // {
+            //     if (quintic_planner.starting_vel_ > 0) quintic_planner.starting_vel_ = -quintic_planner.starting_vel_;
+            //     if (quintic_planner.stopping_vel_ > 0) quintic_planner.stopping_vel_ = -quintic_planner.stopping_vel_;
+            // }
             quintic_planner.setParams(0.0, 0.0, 0.0, quintic_planner.starting_vel_, quintic_planner.starting_acc_,
                                     goal_pose_.x, goal_pose_.y, goal_pose_.z,
                                     quintic_planner.stopping_vel_, quintic_planner.stopping_acc_);
@@ -450,14 +459,22 @@ void DockingManager::dockingFSM()
             quintic_planner.resetPlanner();
             goal_failed_ = false;
 
-            if (move_reverse_) cmd_fw.linear.x = 0.1;
-            else cmd_fw.linear.x = -0.1;
+            if (move_reverse_) cmd_fw.linear.x = 0.0;
+            else cmd_fw.linear.x = -0.0;
             starting_time_recover = ros::Time::now().toSec();
-            while(abs(ros::Time::now().toSec() - starting_time_recover) < 7.0) pub_cmd_vel.publish(cmd_fw);
-            cmd_fw.linear.x = 0;
-            pub_cmd_vel.publish(cmd_fw);
-            current_state_ = GEN_PATH_AND_PUB_CONTROL;
-            
+            if (count_cmd_back_vel <= 100)
+            {
+                count_cmd_back_vel++;
+                pub_cmd_vel.publish(cmd_fw);
+            } 
+            else 
+            {
+                count_cmd_back_vel = 0;
+                cmd_fw.linear.x = 0;
+                pub_cmd_vel.publish(cmd_fw);
+                // current_state_ = GEN_PATH_AND_PUB_CONTROL;
+                current_state_ = END;
+            }
             break;
         case END:
             docking_state.data = "END";

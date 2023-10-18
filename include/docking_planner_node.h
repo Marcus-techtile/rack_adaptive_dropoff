@@ -143,6 +143,7 @@ public:
     ~ DockingManager();
 
     void initDocking();
+    void resetPlanAndControl();
     void dockingFSM();
 
 };

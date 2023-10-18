@@ -36,7 +36,7 @@ void PurePursuitController::setOdom(nav_msgs::Odometry odom)
     double cut_off = 0.1;
     double lpf_gain = 1 - exp(-0.025 * 2 * M_PI * cut_off);
     lpf_output_ += (raw_cur_vel_ - lpf_output_) * lpf_gain;
-    cur_vel_ = lpf_output_;
+    cur_vel_ = abs(lpf_output_);
 }
 
 void PurePursuitController::setRefPath(nav_msgs::Path path)
@@ -141,6 +141,8 @@ void PurePursuitController::calControl()
     }   
 
     look_ahead_distance_ = sqrt(point_lkh.x*point_lkh.x + point_lkh.y*point_lkh.y);
+    if (abs(look_ahead_distance_) < min_look_ahead_dis_) look_ahead_distance_ = min_look_ahead_dis_;
+    if (abs(look_ahead_distance_) > max_look_ahead_dis_) look_ahead_distance_ = max_look_ahead_dis_;
 
     ROS_INFO("PP Look ahead point distance: %f", look_ahead_distance_);
     ROS_INFO("PP Look ahead point: %d", point_index_);
@@ -154,7 +156,11 @@ void PurePursuitController::calControl()
     lateral_heading_error_.data = point_lkh.y;
     
     if (distance_to_goal <= goal_correct_yaw_)
+    {
         quaternionToRPY(path_.poses.at(path_.poses.size()-1).pose.orientation, roll_tmp, pitch_tmp, alpha_);
+        look_ahead_distance_ = goal_correct_yaw_;
+    }
+        
     
     if (ref_vel_ < 0) alpha_ = -alpha_;  
 
