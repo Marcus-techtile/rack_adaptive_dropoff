@@ -126,6 +126,8 @@ void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStampe
         quaternionToRPY(local_pallet_pose.pose.orientation, r_tmp, p_tmp, y_tmp);
         // ROS_INFO("Relative yaw: %f", y_tmp*180/M_PI);
 
+        local_pallet_pose.pose.position.y  = local_pallet_pose.pose.position.y; //offset for ifm cam
+
         local_static_goal_pose_.pose.position.x = local_pallet_pose.pose.position.x - 
                                                         distance_pallet*cos(y_tmp);
         
@@ -138,10 +140,6 @@ void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStampe
         local_goal_y = local_pallet_pose.pose.position.y;
     }
 
-    if (approach_done_) local_goal_y = 0;       // Need to test more
-    //////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////
-    
     if (docking_area_ == "INSIDE") 
     {
         if (abs(local_goal_y) > 0.2)
@@ -155,7 +153,11 @@ void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStampe
             goal_sideshift_ = local_goal_y;
         }
     } 
-    else local_static_goal_pose_.pose.position.y = local_goal_y; 
+    else local_static_goal_pose_.pose.position.y = local_goal_y + 0.03; 
+
+    // if (approach_done_) local_static_goal_pose_.pose.position.y = 0;       // Need to test more
+    //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
             
     local_static_goal_pose_.pose.orientation = local_pallet_pose.pose.orientation;
     
@@ -217,7 +219,7 @@ void DockingManager::checkGoalReach()
     double error_sq = sqrt(error_x*error_x + error_y*error_y);
     if (approach_done_)
     {
-        angle_tolerance_ = 0.1;     // For temporary to make the pocket docking more stable
+        angle_tolerance_ = 0.03;     // For temporary to make the pocket docking more stable
     }
     if (error_sq <= distance_tolerance_)
     {
@@ -276,7 +278,10 @@ void DockingManager::initDocking()
 
 void DockingManager::resetPlanAndControl()
 {
-
+    controller_on_.data = false;
+    pub_controller_on_.publish(controller_on_);
+    quintic_planner.resetPlanner();
+    goal_setup_ = false;
 }
 
 void DockingManager::dockingFSM()
@@ -354,6 +359,8 @@ void DockingManager::dockingFSM()
             {
                 goal_distance = dis_approach_offset_;
                 current_state_ = SET_GOAL;
+                count_cmd_back_vel = 0;
+                
             }
             else 
             {
@@ -370,10 +377,37 @@ void DockingManager::dockingFSM()
             break;
         case SET_GOAL:
             docking_state.data = "SET_GOAL";
-            goalSetup(goal_distance, pallet_pose_);
+
+            if (!goal_setup_)
+            {
+                goalSetup(goal_distance, pallet_pose_);
+                check_goal_distance_ = abs(local_static_goal_pose_.pose.position.x);
+            } 
             if (local_static_goal_pose_.pose.position.x < 0) move_reverse_ = true;
             else move_reverse_ = false;
-            if (goal_setup_) current_state_ = GEN_PATH_AND_PUB_CONTROL;
+
+            if (check_goal_distance_ < 1.2 && !approach_done_)  // Move back to increase the distance
+            {
+                goalSetup(goal_distance, pallet_pose_);
+                if (abs(local_static_goal_pose_.pose.position.x) < 1.2)
+                {
+                    ROS_INFO("MOVE BACKWARD. THE MOVEMENT DISTANCE IS TOO SHORT !!!");
+                    // count_cmd_back_vel++;
+                    cmd_fw.linear.x = -0.1;
+                    cmd_fw.angular.z = 0.0;
+                    pub_cmd_vel.publish(cmd_fw);
+                    break;
+                }
+                else
+                {
+                    ROS_INFO("Movement distance: %f", abs(local_static_goal_pose_.pose.position.x));
+                }
+            }
+            if (goal_setup_)
+            {
+                current_state_ = GEN_PATH_AND_PUB_CONTROL;
+                goal_setup_ = false;
+            } 
             break;
         case GEN_PATH_AND_PUB_CONTROL:
             docking_state.data = "GEN_PATH_AND_PUB_CONTROL";
@@ -416,16 +450,17 @@ void DockingManager::dockingFSM()
             } 
             if (goal_reach_)
             {
+                goal_reach_ = false;
                 ROS_INFO("Goal reach !!!");
                 if (!approach_done_) approach_done_ = true;
                 else docking_done_ = true;
                 current_state_ = STOP;
-                goal_reach_ = false;
                 quintic_planner.resetPlanner();
                 count_goal_failed_ = 0;
             } 
             if (goal_failed_)
             {
+                goal_failed_ = false;
                 count_goal_failed_++;
                 if (count_goal_failed_ == 3)
                 {
@@ -441,8 +476,7 @@ void DockingManager::dockingFSM()
         case STOP:
             docking_state.data = "STOP";
             // Stop the controller
-            controller_on_.data = false;
-            pub_controller_on_.publish(controller_on_);
+            resetPlanAndControl();
             if (docking_done_) current_state_ = END;
             else 
             {
@@ -454,10 +488,8 @@ void DockingManager::dockingFSM()
         case RECOVER:
             docking_state.data = "RECOVER";
             // Stop the controller
-            controller_on_.data = false;
-            pub_controller_on_.publish(controller_on_);
-            quintic_planner.resetPlanner();
-            goal_failed_ = false;
+            resetPlanAndControl();
+            
 
             if (move_reverse_) cmd_fw.linear.x = 0.0;
             else cmd_fw.linear.x = -0.0;

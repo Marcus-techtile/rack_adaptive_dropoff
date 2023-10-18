@@ -191,10 +191,13 @@ public:
         approaching_done_.data = msg->data;
     }
 
-    void backwardMove()
+    void resetController()
     {
-        cmd_vel_.linear.x = -0.2;
-        cmd_vel_.angular.z = 0.0;
+        pure_pursuit_control.resetPP();
+        ref_path_.poses.clear();
+        ref_path_avai_ = false;
+        cmd_vel_.linear.x = 0.0;
+        cmd_vel_.angular.z = 0;
         pub_cmd_vel_.publish(cmd_vel_);
     }
 
@@ -204,10 +207,7 @@ public:
         {
             if (!pub_stop_)
             {
-                pure_pursuit_control.resetPP();
-                cmd_vel_.linear.x = 0.0;
-                cmd_vel_.angular.z = 0;
-                pub_cmd_vel_.publish(cmd_vel_);
+                resetController();
                 pub_stop_ = true;
             }
             // ROS_INFO("Controller is turned off!");
@@ -366,7 +366,7 @@ public:
 
             if (approaching_done_.data) 
             {
-                if (abs(steering_) >= 0.1) steering_ = 0.1*(abs(steering_)/steering_);
+                if (abs(steering_) >= 0.2) steering_ = 0.2*(abs(steering_)/steering_);
             } 
 
             ROS_INFO("Velocity output: %f", final_ref_vel_);

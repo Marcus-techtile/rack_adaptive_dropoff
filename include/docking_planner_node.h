@@ -80,6 +80,8 @@ private:
     geometry_msgs::PoseStamped  local_goal_pose_;
     double goal_sideshift_;
 
+    double check_goal_distance_;
+
     /* Tolerance (in local frame) */
     double distance_tolerance_{0.05};       // absolute tolerance of distance = sqrt(x^2+y^2)
     double angle_tolerance_{5*180/M_PI};    // absolute tolerance of yaw

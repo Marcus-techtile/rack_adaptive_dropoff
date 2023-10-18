@@ -4,8 +4,8 @@
  <arg name="profile" default="RX20"/>
 
  <node pkg="pallet_docking_xsquare" type="docking_planner" name="docking_planner" output = "screen" >
-   <param name="path_frame" value="base_link"/>
-   <!-- <param name="path_frame" value="base_link_p"/> -->
+   <!-- <param name="path_frame" value="base_link"/> -->
+   <param name="path_frame" value="base_link_p"/>
    <!-- <param name="path_frame" value="odom"/> -->
 
   <!-- Docking location inside_container or outside_container -->
@@ -46,13 +46,13 @@
   <!-- Goal tolerance -->
    <param name="distance_tolerance" value="0.1"/>  <!-- meter -->
    <param name="angle_tolerance" value="0.03"/>     <!-- radian -->  
-   <param name="x_tolerance" value="0.02"/> <!-- meter -->    
-   <param name="y_tolerance" value="0.02"/> <!-- meter -->   
+   <param name="x_tolerance" value="0.035"/> <!-- meter -->    
+   <param name="y_tolerance" value="0.035"/> <!-- meter -->   
 
   <!-- Fake goal -->
-   <param name="use_fake_goal" value="true"/> <!-- radian --> 
-   <param name="fake_goal_x" value="1.5"/>  <!-- meter -->
-   <param name="fake_goal_y" value="-0.3"/>     <!-- meter -->  
+   <param name="use_fake_goal" value="false"/> <!-- radian --> 
+   <param name="fake_goal_x" value="1.3"/>  <!-- meter -->
+   <param name="fake_goal_y" value="-0.1"/>     <!-- meter -->  
    <param name="fake_goal_yaw" value="0"/> <!-- radian -->    
 
   <!-- PID control for sideshift control -->
