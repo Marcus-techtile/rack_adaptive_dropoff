@@ -5,6 +5,8 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     /* Get Param */
     nh.param<std::string>("path_frame", path_frame_, "base_link_p");
     nh.param<std::string>("docking_area", docking_area_, "INSIDE");
+
+    nh.param<double>("approaching_min_dis", approaching_min_dis_, 1.2);
     nh.param<double>("dis_approach_offset", dis_approach_offset_, 1.5);
     nh.param<double>("dis_docking_offset", dis_docking_offset_, 0.5);
 
@@ -381,15 +383,19 @@ void DockingManager::dockingFSM()
             if (!goal_setup_)
             {
                 goalSetup(goal_distance, pallet_pose_);
-                check_goal_distance_ = abs(local_static_goal_pose_.pose.position.x);
+                double r_tm, p_tm, yaw_tm;
+                quaternionToRPY(local_static_goal_pose_.pose.orientation, r_tm, p_tm, yaw_tm);
+                check_goal_distance_ = abs(local_static_goal_pose_.pose.position.x*cos(yaw_tm));
             } 
             if (local_static_goal_pose_.pose.position.x < 0) move_reverse_ = true;
             else move_reverse_ = false;
 
-            if (check_goal_distance_ < 1.2 && !approach_done_)  // Move back to increase the distance
+            if (check_goal_distance_ < approaching_min_dis_ && !approach_done_)  // Move back to increase the distance
             {
                 goalSetup(goal_distance, pallet_pose_);
-                if (abs(local_static_goal_pose_.pose.position.x) < 1.2)
+                double r_tm, p_tm, yaw_tm;
+                quaternionToRPY(local_static_goal_pose_.pose.orientation, r_tm, p_tm, yaw_tm);
+                if (abs(local_static_goal_pose_.pose.position.x*cos(yaw_tm)) < approaching_min_dis_)
                 {
                     ROS_INFO("MOVE BACKWARD. THE MOVEMENT DISTANCE IS TOO SHORT !!!");
                     // count_cmd_back_vel++;
@@ -400,7 +406,7 @@ void DockingManager::dockingFSM()
                 }
                 else
                 {
-                    ROS_INFO("Movement distance: %f", abs(local_static_goal_pose_.pose.position.x));
+                    ROS_INFO("Perpendicular distance to the approaching goal: %f", abs(local_static_goal_pose_.pose.position.x*cos(yaw_tm)));
                 }
             }
             if (goal_setup_)
