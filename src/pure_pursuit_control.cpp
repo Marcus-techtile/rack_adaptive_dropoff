@@ -154,6 +154,8 @@ void PurePursuitController::calControl()
     else quaternionToRPY(path_.poses.at(point_index_).pose.orientation, roll_tmp, pitch_tmp, alpha_);
 
     lateral_heading_error_.data = point_lkh.y;
+    // lateral_heading_error_.data = path_.poses.at(closest_point_).pose.position.y;
+    lateral_error_.data = path_.poses.at(closest_point_).pose.position.y;
     
     if (distance_to_goal <= goal_correct_yaw_)
     {

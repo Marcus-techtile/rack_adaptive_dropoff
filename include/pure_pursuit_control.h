@@ -65,6 +65,6 @@ public:
 
     int point_index_, pre_point_index_;         // public for visualization
     int max_lk_reverse_point_;
-    std_msgs::Float32 lateral_heading_error_;
+    std_msgs::Float32 lateral_heading_error_, lateral_error_;
     double cur_vel_, raw_cur_vel_;
 };

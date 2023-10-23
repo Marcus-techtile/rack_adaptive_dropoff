@@ -272,9 +272,9 @@ public:
             ROS_INFO ("Min index for lookahead: %d", closest_index);
 
             // PurePursuit control
-            std_msgs::Float32 debug_vel;
-            debug_vel.data = pure_pursuit_control.cur_vel_;
-            pub_debug_.publish(debug_vel);
+            std_msgs::Float32 debug_p;
+            debug_p.data = pure_pursuit_control.lateral_error_.data;
+            pub_debug_.publish(debug_p);
             pure_pursuit_control.setOdom(odom_sub_);
             pure_pursuit_control.setRefPath(local_ref_path_);
             pure_pursuit_control.setRefVel(final_ref_vel_);
@@ -288,12 +288,14 @@ public:
 
             /* VELOCITY calculate */
             int lk_index;
+            double fuzzy_lk_dis = fuzzy_lookahead_dis_;
             double max_dist = sqrt(local_ref_path_.poses.at(local_ref_path_.poses.size()-1).pose.position.x*local_ref_path_.poses.at(local_ref_path_.poses.size()-1).pose.position.x
                                 + local_ref_path_.poses.at(local_ref_path_.poses.size()-1).pose.position.y*local_ref_path_.poses.at(local_ref_path_.poses.size()-1).pose.position.y);
-            if (fuzzy_lookahead_dis_ > max_dist) fuzzy_lookahead_dis_ = max_dist;
+            
+            if (fuzzy_lk_dis > max_dist) fuzzy_lk_dis = max_dist;
             for (lk_index = closest_index; lk_index < local_ref_path_.poses.size(); lk_index++)
             {
-                if (abs(fuzzy_lookahead_dis_) <= sqrt(local_ref_path_.poses.at(lk_index).pose.position.x*local_ref_path_.poses.at(lk_index).pose.position.x
+                if (abs(fuzzy_lk_dis) <= sqrt(local_ref_path_.poses.at(lk_index).pose.position.x*local_ref_path_.poses.at(lk_index).pose.position.x
                                             + local_ref_path_.poses.at(lk_index).pose.position.y*local_ref_path_.poses.at(lk_index).pose.position.y)) break;  
             }
 
@@ -308,9 +310,10 @@ public:
             e_pow_d_ = 1 - exp(-0.025 * 2 * M_PI * cutoff_frequency_d);
             lpf_output_d_ += (lk_dis - lpf_output_d_) * e_pow_d_;
 
+            ROS_INFO("Fuzzy max_dist: %f", max_dist);
             // double lk_dis = abs(local_ref_path_.poses.at(lk_index).pose.position.x);
-            ROS_INFO("Fuzzy lk distance: %f", fuzzy_lookahead_dis_);
-            fuzzy_controller.inputSolveGoal(abs(fuzzy_lookahead_dis_));
+            ROS_INFO("Fuzzy lk distance: %f", fuzzy_lk_dis);
+            fuzzy_controller.inputSolveGoal(abs(fuzzy_lk_dis));
             // fuzzy_controller.inputsolveSteering(steering_angle_ - (-steering_sub_));
             // fuzzy_controller.inputsolveSteering(steering_);
             fuzzy_controller.inputsolveSteering(0.0);
@@ -367,6 +370,7 @@ public:
             if (approaching_done_.data) 
             {
                 if (abs(steering_) >= 0.2) steering_ = 0.2*(abs(steering_)/steering_);
+                if (abs(final_ref_vel_) >= 0.1) final_ref_vel_ = 0.1;
             } 
 
             ROS_INFO("Velocity output: %f", final_ref_vel_);
