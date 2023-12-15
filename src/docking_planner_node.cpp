@@ -155,7 +155,7 @@ void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStampe
             goal_sideshift_ = local_goal_y;
         }
     } 
-    else local_static_goal_pose_.pose.position.y = local_goal_y + 0.03; 
+    else local_static_goal_pose_.pose.position.y = local_goal_y; 
 
     // if (approach_done_) local_static_goal_pose_.pose.position.y = 0;       // Need to test more
     //////////////////////////////////////////////////////////////////////////
