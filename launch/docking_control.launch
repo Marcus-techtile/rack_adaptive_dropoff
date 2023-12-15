@@ -13,9 +13,9 @@
    <param name="max_look_ahead_dis" value="2.5"/> 
    <param name="max_steering" value="1.57"/>     
    <param name="min_steering" value="-1.57"/>  
-   <param name="kp" value="3.0"/>     
+   <param name="kp" value="2.0"/>     
    <param name="ki" value="0.0"/> 
-   <param name="goal_correct_yaw" value="0.1"/>  
+   <param name="goal_correct_yaw" value="0.15"/>  
    <param name="max_angular_vel" value="0.3"/> 
    <param name="use_point_interpolate" value="true"/> 
 
