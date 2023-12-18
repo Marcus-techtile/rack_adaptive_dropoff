@@ -223,7 +223,7 @@ void DockingManager::checkGoalReach()
     {
         angle_tolerance_ = 0.03;     // For temporary to make the pocket docking more stable
     }
-    if (error_sq <= distance_tolerance_)
+    if (error_sq <= distance_tolerance_) 
     {
         check_inside_goal_range_ = true;
         if (abs(error_yaw) < angle_tolerance_ && abs(error_x) < x_tolerance_ && abs(error_y) < y_tolerance_)
@@ -237,8 +237,10 @@ void DockingManager::checkGoalReach()
 
     if (check_inside_goal_range_)
     {
-        if (error_sq > distance_tolerance_)
+        if (error_sq > distance_tolerance_) count_outside_goal_range_++;
+        if (count_outside_goal_range_ > 5)      // Prevent jumping in and out goal range
         {
+            count_outside_goal_range_ = 0;
             ROS_WARN("Failed!!! !");
             ROS_INFO("Docking Error [x , y, yaw]: %f (m), %f (m), %f (rad)", error_x, error_y, error_yaw);
             check_inside_goal_range_ = false;
@@ -276,6 +278,8 @@ void DockingManager::initDocking()
 
     count_path_gen_fail_ = 0;
     count_goal_failed_ = 0;
+
+    count_outside_goal_range_ = 0;
 }
 
 void DockingManager::resetPlanAndControl()
@@ -284,6 +288,7 @@ void DockingManager::resetPlanAndControl()
     pub_controller_on_.publish(controller_on_);
     quintic_planner.resetPlanner();
     goal_setup_ = false;
+    count_outside_goal_range_ = 0;
 }
 
 void DockingManager::dockingFSM()

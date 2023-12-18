@@ -88,6 +88,7 @@ private:
     double angle_tolerance_{5*180/M_PI};    // absolute tolerance of yaw
     double x_tolerance_{0.1}, y_tolerance_{0.1};              // absolute tolerance of x
     bool check_inside_goal_range_{false};
+    int count_outside_goal_range_;
 
     int count_path_gen_fail_{0};
     int count_goal_failed_{0};
