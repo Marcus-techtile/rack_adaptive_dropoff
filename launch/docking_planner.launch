@@ -48,7 +48,7 @@
    <param name="distance_tolerance" value="0.1"/>  <!-- meter -->
    <param name="angle_tolerance" value="0.02"/>     <!-- radian -->  
    <param name="x_tolerance" value="0.035"/> <!-- meter -->    
-   <param name="y_tolerance" value="0.02"/> <!-- meter -->   
+   <param name="y_tolerance" value="0.03"/> <!-- meter -->   
 
   <!-- Fake goal -->
    <param name="use_fake_goal" value="false"/> <!-- radian --> 
