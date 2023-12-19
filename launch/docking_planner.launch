@@ -19,7 +19,7 @@
   <!-- Goal parameters -->
    <param name="approaching_min_dis" value="1.0"/>  
    <param name="dis_approach_offset" value="0.8"/>  
-   <param name="dis_docking_offset" value="-0.57"/>
+   <param name="dis_docking_offset" value="-0.57"/> <!-- -0.6 -->
 
    <!-- <param name="dis_approach_offset" value="1.8"/>  
    <param name="dis_docking_offset" value="0.6"/> -->
