@@ -109,10 +109,10 @@ void PurePursuitController::calControl()
         if (abs(look_ahead_distance_) <= sqrt(path_.poses.at(point_index_).pose.position.x*path_.poses.at(point_index_).pose.position.x
                                     + path_.poses.at(point_index_).pose.position.y*path_.poses.at(point_index_).pose.position.y)) break;  
     }
-    if (ref_vel_ < 0)
-    {
-        if (point_index_ > max_lk_reverse_point_) point_index_ = max_lk_reverse_point_;
-    } 
+    // if (ref_vel_ < 0)
+    // {
+    //     if (point_index_ > max_lk_reverse_point_) point_index_ = max_lk_reverse_point_;
+    // } 
     if (point_index_ >= path_.poses.size()) point_index_ = path_.poses.size() - 1;
 
     // Interpolate the point which has the distance = lookahead_distance

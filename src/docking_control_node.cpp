@@ -320,7 +320,13 @@ public:
             fuzzy_controller.inputResults();
             // ref_velocity_ = fuzzy_controller.cal_fuzzy_output();
             ref_velocity_ = fuzzy_controller.cal_fuzzy_output() * cos(steering_);
-             
+            
+            if (local_ref_path_.poses.at(lk_index).pose.position.x < 0)
+            {
+                if (ref_velocity_ > 0) ref_velocity_ = -ref_velocity_;
+                // steering_ = -steering_;
+            }
+
             double cutoff_frequency_v = 0.2;
             e_pow_v_ = 1 - exp(-0.025 * 2 * M_PI * cutoff_frequency_v);
             lpf_output_v_ += (ref_velocity_ - lpf_output_v_) * e_pow_v_;
@@ -336,9 +342,9 @@ public:
                 // ROS_INFO("MAX_LINEAR_VEL: %f", max_vel_limit);
                 if (abs(final_ref_vel_) >= max_vel_limit) final_ref_vel_ = max_vel_limit * (final_ref_vel_/abs(final_ref_vel_));
             }
-            // if (abs(final_ref_vel_) < 0.03) final_ref_vel_ = std::copysign(0.03, final_ref_vel_);
+            if (abs(final_ref_vel_) < 0.03) final_ref_vel_ = std::copysign(0.03, final_ref_vel_);
 
-             if (abs(final_ref_vel_) < 0.03) final_ref_vel_ = 0.03;
+            //  if (abs(final_ref_vel_) < 0.03) final_ref_vel_ = 0.03;
 
             ROS_INFO("REF PATH LK X: %f", local_ref_path_.poses.at(lk_index).pose.position.x);
             // if (local_ref_path_.poses.at(lk_index).pose.position.x < 0 && final_ref_vel_ > 0) final_ref_vel_ = -final_ref_vel_;
@@ -367,10 +373,10 @@ public:
             //     ref_velocity_ = -ref_velocity_;
             // } 
 
-            if (approaching_done_.data) 
+            if (approaching_done_.data && final_ref_vel_ >= 0) 
             {
                 if (abs(steering_) >= 0.2) steering_ = 0.2*(abs(steering_)/steering_);
-                if (abs(final_ref_vel_) >= 0.1) final_ref_vel_ = 0.1;
+                if (abs(final_ref_vel_) >= 0.1) final_ref_vel_ = 0.1 * (final_ref_vel_/abs(final_ref_vel_));
             } 
 
             ROS_INFO("Velocity output: %f", final_ref_vel_);

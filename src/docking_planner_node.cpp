@@ -91,6 +91,7 @@ void DockingManager::dockingServerResultCallback(const pallet_dock_msgs::PalletD
 void DockingManager::moveBackCallback(const std_msgs::Bool::ConstPtr &msg)
 {
     move_back_cmd_ = *msg;
+    ROS_INFO("MOVEBACK MODE IS TRIGGERED: %d", move_back_cmd_.data);
 }
 
 bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
@@ -155,8 +156,6 @@ void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStampe
             local_static_goal_pose_.pose.position.x = local_pallet_pose.pose.position.x;
             local_goal_y = local_pallet_pose.pose.position.y;
         }
-        local_static_goal_pose_.pose.position.x = local_pallet_pose.pose.position.x;
-        local_goal_y = local_pallet_pose.pose.position.y;
     }
     local_static_goal_pose_.pose.position.y = local_goal_y; 
 
