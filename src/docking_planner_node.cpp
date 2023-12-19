@@ -238,7 +238,7 @@ void DockingManager::checkGoalReach()
     if (check_inside_goal_range_)
     {
         if (error_sq > distance_tolerance_) count_outside_goal_range_++;
-        if (count_outside_goal_range_ > 5)      // Prevent jumping in and out goal range
+        if (count_outside_goal_range_ > 20)      // Prevent jumping in and out goal range
         {
             count_outside_goal_range_ = 0;
             ROS_WARN("Failed!!! !");
