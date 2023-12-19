@@ -33,6 +33,7 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     pub_fake_goal_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("/pallet_docking/fake_goal_pose", 1);
 
     /* Subscriber */
+    sub_odom_ = nh_.subscribe<nav_msgs::Odometry>("/gazebo/forklift_controllers/odom", 1, &DockingManager::odomCallback, this);
     sub_cmd_vel = nh_.subscribe<geometry_msgs::Twist>("/cmd_vel", 1, &DockingManager::cmdCallback, this);
     sub_pallet_pose_ = nh_.subscribe<geometry_msgs::PoseStamped>("/pallet_detection_relay/pallet_pose", 1, &DockingManager::palletPoseCallback, this);
     sub_move_back_ = nh_.subscribe<std_msgs::Bool>("/pallet_docking/move_back", 1, &DockingManager::moveBackCallback, this);
@@ -51,6 +52,7 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     // Init the Docking
     initDocking();
     move_back_cmd_.data = false;
+    preengage_position_.header.frame_id = "odom";
 }
 
 DockingManager::~ DockingManager(){}
@@ -88,10 +90,29 @@ void DockingManager::dockingServerResultCallback(const pallet_dock_msgs::PalletD
     }
 }
 
+void DockingManager::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_odom)
+{
+    odom_sub_ = *msg_odom;
+    // odom_sub_.pose = msg_odom->pose;
+    // odom_sub_.twist = msg_odom->twist;
+}
+
 void DockingManager::moveBackCallback(const std_msgs::Bool::ConstPtr &msg)
 {
     move_back_cmd_ = *msg;
     ROS_INFO("MOVEBACK MODE IS TRIGGERED: %d", move_back_cmd_.data);
+
+    if (move_back_cmd_.data)
+    {
+        initDocking();
+        resetPlanAndControl();
+        get_pallet_pose_ = false;
+        pallet_pose_avai_ = true;
+
+        pallet_pose_ = preengage_position_;
+        start_docking_FSM = true;
+    }
+    
 }
 
 bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
@@ -99,9 +120,13 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
     if(req.data)
     {
         initDocking();
-        start_docking_FSM = true;
         res.success = true;
         res.message = "Start docking!";
+        preengage_position_.header.frame_id = odom_sub_.header.frame_id;
+        preengage_position_.pose.position = odom_sub_.pose.pose.position;
+        preengage_position_.pose.orientation = odom_sub_.pose.pose.orientation;
+        move_back_cmd_.data = false;
+        start_docking_FSM = true;
     }
     else
     {
@@ -109,6 +134,7 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
         start_docking_FSM = false;
         res.success = true;
         res.message = "Stop docking!";
+        move_back_cmd_.data = false;
     }
     return true;
 }
@@ -319,7 +345,7 @@ void DockingManager::dockingFSM()
                 get_pallet_pose_ = true;
                 starting_detection_time_ = ros::Time::now();
 
-                if (use_fake_goal_)
+                if (use_fake_goal_ && !move_back_cmd_.data)
                 {
                     fake_goal.header.frame_id = path_frame_;
                     fake_goal.header.stamp = ros::Time::now() + ros::Duration(5);
@@ -432,6 +458,11 @@ void DockingManager::dockingFSM()
             {
                 if (quintic_planner.starting_vel_ > 0) quintic_planner.starting_vel_ = -quintic_planner.starting_vel_;
                 if (quintic_planner.stopping_vel_ > 0) quintic_planner.stopping_vel_ = -quintic_planner.stopping_vel_;
+            }
+            else
+            {
+                if (quintic_planner.starting_vel_ < 0) quintic_planner.starting_vel_ = -quintic_planner.starting_vel_;
+                if (quintic_planner.stopping_vel_ < 0) quintic_planner.stopping_vel_ = -quintic_planner.stopping_vel_;
             }
             quintic_planner.setParams(0.0, 0.0, 0.0, quintic_planner.starting_vel_, quintic_planner.starting_acc_,
                                     goal_pose_.x, goal_pose_.y, goal_pose_.z,

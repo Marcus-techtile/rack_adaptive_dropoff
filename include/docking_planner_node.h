@@ -37,16 +37,23 @@ private:
     ros::Subscriber sub_pallet_pose_;
     ros::Subscriber sub_pallet_pose_ready_;
     ros::Subscriber sub_move_back_;
+    ros::Subscriber sub_odom_;
     
         // Pallet docking action server
     ros::Subscriber sub_docking_server_result_;
     pallet_dock_msgs::PalletDockingActionResult docking_server_result_;
+
+        // pre-engage position
+    geometry_msgs::PoseStamped preengage_position_;
 
         // Pallet pose
     geometry_msgs::PoseStamped pallet_pose_;
     std_msgs::Bool pallet_pose_ready_;
     ros::Time starting_detection_time_;
     double detection_timeout_;
+
+        // Odom
+        nav_msgs::Odometry odom_sub_;
 
     /* Docking Service*/
     ros::ServiceServer service_;
@@ -142,6 +149,7 @@ private:
     void palletPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
     void dockingServerResultCallback(const pallet_dock_msgs::PalletDockingActionResult::ConstPtr& msg);
     void moveBackCallback(const std_msgs::Bool::ConstPtr& msg);
+    void odomCallback(const nav_msgs::Odometry::ConstPtr& msg_odom);
 
     void goalSetup(double distance_pallet, geometry_msgs::PoseStamped pallet_pose);
     void updateGoal();
