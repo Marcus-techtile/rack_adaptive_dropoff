@@ -393,7 +393,7 @@ public:
 
             /* Visualize lookahead point */
             visualization_msgs::Marker points;
-            points.header.frame_id =  "base_link";
+            points.header.frame_id =  path_frame_;
             points.header.stamp = ros::Time::now();
             points.action = visualization_msgs::Marker::ADD;
             points.pose.orientation.w = 1.0;

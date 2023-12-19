@@ -17,9 +17,9 @@
    <param name="pallet_cov" value="0.001"/>
 
   <!-- Goal parameters -->
-   <param name="approaching_min_dis" value="1.2"/>  
+   <param name="approaching_min_dis" value="1.0"/>  
    <param name="dis_approach_offset" value="0.8"/>  
-   <param name="dis_docking_offset" value="-0.65"/>
+   <param name="dis_docking_offset" value="-0.57"/>
 
    <!-- <param name="dis_approach_offset" value="1.8"/>  
    <param name="dis_docking_offset" value="0.6"/> -->
