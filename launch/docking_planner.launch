@@ -1,6 +1,7 @@
 <launch>
  <arg name="odom_topic" default ="/gazebo/forklift_controllers/odom"/>
  <arg name="cmd_vel_topic" default ="/cmd_vel"/>
+ <arg name="pallet_topic" default ="/pallet_detection_relay2/pallet_pose"/>
  <arg name="profile" default="RX20"/>
 
  <node pkg="pallet_docking_xsquare" type="docking_planner" name="docking_planner" output = "screen" >
@@ -64,6 +65,7 @@
 
     <remap from="/cmd_vel" to = "$(arg cmd_vel_topic)"/>
     <remap from="/gazebo/forklift_controllers/odom" to = "$(arg odom_topic)"/>
+    <remap from="/pallet_detection_relay/pallet_pose" to = "$(arg pallet_topic)"/>
  </node>
 
 </launch>
