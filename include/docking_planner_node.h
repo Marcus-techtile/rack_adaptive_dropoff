@@ -36,6 +36,7 @@ private:
     ros::Subscriber sub_cmd_vel;
     ros::Subscriber sub_pallet_pose_;
     ros::Subscriber sub_pallet_pose_ready_;
+    ros::Subscriber sub_move_back_;
     
         // Pallet docking action server
     ros::Subscriber sub_docking_server_result_;
@@ -132,12 +133,15 @@ private:
     double fake_goal_x_, fake_goal_y_, fake_goal_yaw_;
     bool use_fake_goal_;
 
+    /* move back */
+    std_msgs::Bool move_back_cmd_;
+
     /* Callback function */
     void cmdCallback(const geometry_msgs::Twist::ConstPtr& msg);
     bool dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
     void palletPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
     void dockingServerResultCallback(const pallet_dock_msgs::PalletDockingActionResult::ConstPtr& msg);
-    
+    void moveBackCallback(const std_msgs::Bool::ConstPtr& msg);
 
     void goalSetup(double distance_pallet, geometry_msgs::PoseStamped pallet_pose);
     void updateGoal();

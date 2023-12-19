@@ -35,6 +35,7 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     /* Subscriber */
     sub_cmd_vel = nh_.subscribe<geometry_msgs::Twist>("/cmd_vel", 1, &DockingManager::cmdCallback, this);
     sub_pallet_pose_ = nh_.subscribe<geometry_msgs::PoseStamped>("/pallet_detection_relay/pallet_pose", 1, &DockingManager::palletPoseCallback, this);
+    sub_move_back_ = nh_.subscribe<std_msgs::Bool>("/pallet_docking/move_back", 1, &DockingManager::moveBackCallback, this);
 
     sub_docking_server_result_ = nh.subscribe<pallet_dock_msgs::PalletDockingActionResult>("/pallet_dock_action_server/pallet_docking/result", 1, &DockingManager::dockingServerResultCallback, this);
 
@@ -49,6 +50,7 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
 
     // Init the Docking
     initDocking();
+    move_back_cmd_.data = false;
 }
 
 DockingManager::~ DockingManager(){}
@@ -84,6 +86,11 @@ void DockingManager::dockingServerResultCallback(const pallet_dock_msgs::PalletD
         initDocking();
         ROS_WARN("Failure Result from Docking action server! Stop the FSM!");
     }
+}
+
+void DockingManager::moveBackCallback(const std_msgs::Bool::ConstPtr &msg)
+{
+    move_back_cmd_ = *msg;
 }
 
 bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
@@ -138,24 +145,20 @@ void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStampe
     }
     else
     {
-        local_static_goal_pose_.pose.position.x = local_pallet_pose.pose.position.x;
-        local_goal_y = local_pallet_pose.pose.position.y;
-    }
-
-    if (docking_area_ == "INSIDE") 
-    {
-        if (abs(local_goal_y) > 0.2)
+        if (!approach_done_)
         {
-            goal_sideshift_ = abs(local_goal_y)/local_goal_y * 0.2;
-            local_static_goal_pose_.pose.position.y = local_goal_y - goal_sideshift_;
+            local_static_goal_pose_.pose.position.x = -distance_pallet;
+            local_goal_y = 0.0;
         }
         else
         {
-            local_static_goal_pose_.pose.position.y = 0;
-            goal_sideshift_ = local_goal_y;
+            local_static_goal_pose_.pose.position.x = local_pallet_pose.pose.position.x;
+            local_goal_y = local_pallet_pose.pose.position.y;
         }
-    } 
-    else local_static_goal_pose_.pose.position.y = local_goal_y; 
+        local_static_goal_pose_.pose.position.x = local_pallet_pose.pose.position.x;
+        local_goal_y = local_pallet_pose.pose.position.y;
+    }
+    local_static_goal_pose_.pose.position.y = local_goal_y; 
 
     // if (approach_done_) local_static_goal_pose_.pose.position.y = 0;       // Need to test more
     //////////////////////////////////////////////////////////////////////////
@@ -395,7 +398,7 @@ void DockingManager::dockingFSM()
             if (local_static_goal_pose_.pose.position.x < 0) move_reverse_ = true;
             else move_reverse_ = false;
 
-            if (check_goal_distance_ < approaching_min_dis_ && !approach_done_)  // Move back to increase the distance
+            if (check_goal_distance_ < approaching_min_dis_ && !approach_done_ && !move_back_cmd_.data)  // Move back to increase the distance
             {
                 goalSetup(goal_distance, pallet_pose_);
                 double r_tm, p_tm, yaw_tm;
@@ -426,11 +429,11 @@ void DockingManager::dockingFSM()
             if (!goal_avai_) break;
             checkGoalReach();
             
-            // if(move_reverse_)
-            // {
-            //     if (quintic_planner.starting_vel_ > 0) quintic_planner.starting_vel_ = -quintic_planner.starting_vel_;
-            //     if (quintic_planner.stopping_vel_ > 0) quintic_planner.stopping_vel_ = -quintic_planner.stopping_vel_;
-            // }
+            if (move_back_cmd_.data)
+            {
+                if (quintic_planner.starting_vel_ > 0) quintic_planner.starting_vel_ = -quintic_planner.starting_vel_;
+                if (quintic_planner.stopping_vel_ > 0) quintic_planner.stopping_vel_ = -quintic_planner.stopping_vel_;
+            }
             quintic_planner.setParams(0.0, 0.0, 0.0, quintic_planner.starting_vel_, quintic_planner.starting_acc_,
                                     goal_pose_.x, goal_pose_.y, goal_pose_.z,
                                     quintic_planner.stopping_vel_, quintic_planner.stopping_acc_);
