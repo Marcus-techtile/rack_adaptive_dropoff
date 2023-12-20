@@ -82,6 +82,7 @@ private:
     bool move_reverse_{false};
     double dis_approach_offset_ = 1.5; // Offset from pallet to goal
     double dis_docking_offset_ = 0.5;
+    double moveback_straight_distance_;
     geometry_msgs::Vector3 goal_pose_;      // pose of the goal, vector3 type x:x; y:y, z:yaw
     geometry_msgs::PoseStamped global_goal_pose_;
     geometry_msgs::PoseStamped  local_static_goal_pose_;   //local goal to facilitate computing global goal

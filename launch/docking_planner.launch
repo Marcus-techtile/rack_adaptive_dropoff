@@ -20,6 +20,7 @@
    <param name="approaching_min_dis" value="1.0"/>  
    <param name="dis_approach_offset" value="0.8"/>  
    <param name="dis_docking_offset" value="-0.57"/> <!-- -0.6 -->
+   <param name="moveback_straight_distance" value="1.1"/>
 
    <!-- <param name="dis_approach_offset" value="1.8"/>  
    <param name="dis_docking_offset" value="0.6"/> -->
@@ -53,9 +54,9 @@
 
   <!-- Fake goal -->
    <param name="use_fake_goal" value="false"/> <!-- radian --> 
-   <param name="fake_goal_x" value="1.3"/>  <!-- meter -->
-   <param name="fake_goal_y" value="-0.1"/>     <!-- meter -->  
-   <param name="fake_goal_yaw" value="0"/> <!-- radian -->    
+   <param name="fake_goal_x" value="1.2"/>  <!-- meter -->
+   <param name="fake_goal_y" value="-0.00"/>     <!-- meter -->  
+   <param name="fake_goal_yaw" value="0.25"/> <!-- radian -->    
 
   <!-- PID control for sideshift control -->
     <param name="kp" value="12.0"/>

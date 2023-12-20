@@ -9,6 +9,7 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     nh.param<double>("approaching_min_dis", approaching_min_dis_, 1.2);
     nh.param<double>("dis_approach_offset", dis_approach_offset_, 1.5);
     nh.param<double>("dis_docking_offset", dis_docking_offset_, 0.5);
+    nh.param<double>("moveback_straight_distance", moveback_straight_distance_, 1.0);
 
     nh.param<double>("distance_tolerance", distance_tolerance_, 0.08);
     nh.param<double>("angle_tolerance", angle_tolerance_, 5*180/M_PI);
@@ -124,7 +125,14 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
         res.message = "Start docking!";
         preengage_position_.header.frame_id = odom_sub_.header.frame_id;
         preengage_position_.pose.position = odom_sub_.pose.pose.position;
-        preengage_position_.pose.orientation = odom_sub_.pose.pose.orientation;
+
+        // preengage_position_.pose.orientation = odom_sub_.pose.pose.orientation;
+
+        double r_tmp, p_tmp, y_tmp;
+        quaternionToRPY(odom_sub_.pose.pose.orientation, r_tmp, p_tmp, y_tmp);
+        y_tmp = y_tmp - M_PI;
+        preengage_position_.pose.orientation = rpyToQuaternion(r_tmp, y_tmp, y_tmp);
+        
         move_back_cmd_.data = false;
         start_docking_FSM = true;
     }
@@ -169,18 +177,21 @@ void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStampe
         
         local_goal_y = local_pallet_pose.pose.position.y - 
                                                         distance_pallet*sin(y_tmp);
+        local_static_goal_pose_.pose.orientation = local_pallet_pose.pose.orientation;
     }
     else
     {
         if (!approach_done_)
         {
-            local_static_goal_pose_.pose.position.x = -distance_pallet;
+            local_static_goal_pose_.pose.position.x = -moveback_straight_distance_;
             local_goal_y = 0.0;
+            local_static_goal_pose_.pose.orientation = rpyToQuaternion(0.0, 0.0, 0.0);
         }
         else
         {
             local_static_goal_pose_.pose.position.x = local_pallet_pose.pose.position.x;
             local_goal_y = local_pallet_pose.pose.position.y;
+            local_static_goal_pose_.pose.orientation = local_pallet_pose.pose.orientation;
         }
     }
     local_static_goal_pose_.pose.position.y = local_goal_y; 
@@ -189,7 +200,6 @@ void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStampe
     //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
             
-    local_static_goal_pose_.pose.orientation = local_pallet_pose.pose.orientation;
     
     /* Convert the goal to global frame */
     local_static_goal_pose_.header.stamp = ros::Time(0);;
