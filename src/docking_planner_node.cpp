@@ -121,6 +121,7 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
     if(req.data)
     {
         initDocking();
+        resetPlanAndControl();
         res.success = true;
         res.message = "Start docking!";
         preengage_position_.header.frame_id = odom_sub_.header.frame_id;
@@ -139,6 +140,7 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
     else
     {
         initDocking();
+        resetPlanAndControl();
         start_docking_FSM = false;
         res.success = true;
         res.message = "Stop docking!";
@@ -290,7 +292,7 @@ void DockingManager::checkGoalReach()
 
 void DockingManager::initDocking()
 {
-    current_state_ = IDLE;
+    current_pallet_docking_state_ = IDLE;
     docking_state.data = "IDLE";
     pub_docking_state.publish(docking_state);
     
@@ -331,7 +333,14 @@ void DockingManager::resetPlanAndControl()
 
 void DockingManager::dockingFSM()
 {
-    if (!start_docking_FSM) return;
+    if (!start_pallet_docking_ && start_returning_) return;
+    else if (start_pallet_docking_ && start_returning_)
+    {
+        ROS_WARN("BAD DOCKING STATE! Both pallet docking and returning is turned on!");
+        return;
+    }
+    else if (start_pallet_docking_ && !start_returning_) move_back_cmd_.data = false;        //docking
+    else move_back_cmd_.data = true;             // returning. move back
 
     if (old_docking_state.data != docking_state.data)
     {
@@ -341,10 +350,10 @@ void DockingManager::dockingFSM()
     old_docking_state = docking_state;
     
     geometry_msgs::PoseStamped fake_goal;
-    switch(current_state_)
+    switch(current_pallet_docking_state_)
     {   case IDLE:
             docking_state.data = "IDLE";
-            if (start_docking_FSM) current_state_ = GET_PALLET_POSE;
+            if (start_docking_FSM) current_pallet_docking_state_ = GET_PALLET_POSE;
             else 
             break;
         case GET_PALLET_POSE:
@@ -382,7 +391,7 @@ void DockingManager::dockingFSM()
                 ///// TODO: check 2 pallet poses from approach and dock to determine the pose for dock
                 ////////////
                 ////////////
-                current_state_ = APPROACHING;
+                current_pallet_docking_state_ = APPROACHING;
                 pallet_pose_avai_ = false;
                 get_pallet_pose_ = false;  // get pallet pose
                 break;
@@ -392,7 +401,7 @@ void DockingManager::dockingFSM()
                 if ((ros::Time::now() - starting_detection_time_).toSec() > detection_timeout_)
                 {
                     failure_code_ = 1;
-                    current_state_ = FAILURE;
+                    current_pallet_docking_state_ = FAILURE;
                     break;
                 }
                 break;
@@ -403,7 +412,7 @@ void DockingManager::dockingFSM()
             if (!approach_done_)
             {
                 goal_distance = dis_approach_offset_;
-                current_state_ = SET_GOAL;
+                current_pallet_docking_state_ = SET_GOAL;
                 count_cmd_back_vel = 0;
                 
             }
@@ -411,14 +420,14 @@ void DockingManager::dockingFSM()
             {
                 approaching_done.data = true;
                 if (docking_area_ == "INSIDE")
-                    current_state_ = SIDESHIFT_CONTROL;
-                else current_state_ = DOCKING;
+                    current_pallet_docking_state_ = SIDESHIFT_CONTROL;
+                else current_pallet_docking_state_ = DOCKING;
             }
             break;
         case DOCKING:
             docking_state.data = "DOCKING";
             goal_distance = dis_docking_offset_;
-            current_state_ = SET_GOAL;
+            current_pallet_docking_state_ = SET_GOAL;
             break;
         case SET_GOAL:
             docking_state.data = "SET_GOAL";
@@ -454,7 +463,7 @@ void DockingManager::dockingFSM()
             }
             if (goal_setup_)
             {
-                current_state_ = GEN_PATH_AND_PUB_CONTROL;
+                current_pallet_docking_state_ = GEN_PATH_AND_PUB_CONTROL;
                 goal_setup_ = false;
             } 
             break;
@@ -487,10 +496,10 @@ void DockingManager::dockingFSM()
                 if (count_path_gen_fail_ == 3) 
                 {
                     failure_code_ = 2;
-                    current_state_ = FAILURE;
+                    current_pallet_docking_state_ = FAILURE;
                     break;
                 }
-                current_state_ = RECOVER;
+                current_pallet_docking_state_ = RECOVER;
             } 
             else    // path feasible
             {   
@@ -508,7 +517,7 @@ void DockingManager::dockingFSM()
                 ROS_INFO("Goal reach !!!");
                 if (!approach_done_) approach_done_ = true;
                 else docking_done_ = true;
-                current_state_ = STOP;
+                current_pallet_docking_state_ = STOP;
                 quintic_planner.resetPlanner();
                 count_goal_failed_ = 0;
             } 
@@ -519,23 +528,23 @@ void DockingManager::dockingFSM()
                 if (count_goal_failed_ == 3)
                 {
                     failure_code_ = 3;
-                    current_state_ = FAILURE;
+                    current_pallet_docking_state_ = FAILURE;
                     break;
                 }
                 ROS_INFO("Goal failed. Try to recover !!!");
                 quintic_planner.resetPlanner();
-                current_state_ = RECOVER;
+                current_pallet_docking_state_ = RECOVER;
             } 
             break;
         case STOP:
             docking_state.data = "STOP";
             // Stop the controller
             resetPlanAndControl();
-            if (docking_done_) current_state_ = END;
+            if (docking_done_) current_pallet_docking_state_ = END;
             else 
             {
                 // docking_state = quintic_planner.GET_PALLET_POSE;
-                current_state_ = APPROACHING;
+                current_pallet_docking_state_ = APPROACHING;
                 ros::Duration(1.0).sleep();
             }
             break;
@@ -558,8 +567,8 @@ void DockingManager::dockingFSM()
                 count_cmd_back_vel = 0;
                 cmd_fw.linear.x = 0;
                 pub_cmd_vel.publish(cmd_fw);
-                // current_state_ = GEN_PATH_AND_PUB_CONTROL;
-                current_state_ = END;
+                // current_pallet_docking_state_ = GEN_PATH_AND_PUB_CONTROL;
+                current_pallet_docking_state_ = END;
             }
             break;
         case END:
@@ -577,6 +586,54 @@ void DockingManager::dockingFSM()
     pub_approaching_done.publish(approaching_done);
 }
 
+void DockingManager::fulldockingFSM()
+{
+    switch (current_full_docking_state_)
+    {
+    case FULL_IDLE:
+        if (start_docking_FSM) current_full_docking_state_ = PALLET_DOCKING;
+        break;
+    case PALLET_DOCKING:
+        start_pallet_docking_ = true;
+        if (current_pallet_docking_state_ == FAILURE) 
+            current_full_docking_state_ = FULL_DOCKING_FAILURE;
+        if (current_pallet_docking_state_ == END && docking_done.data)
+        {
+            start_pallet_docking_ = false;              // turn off pallet docking
+            current_full_docking_state_ = PALLET_LIFTING;
+            initDocking();
+            resetPlanAndControl();
+        }  
+        break;
+    case PALLET_LIFTING:
+        // pub fork control action goal and check result
+        break;
+    case RETURNING:
+        get_pallet_pose_ = false;
+        pallet_pose_avai_ = true;
+        pallet_pose_ = preengage_position_;         //set goal for the returning goal
+        start_returning_ = true;
+        if (current_pallet_docking_state_ == FAILURE) 
+            current_full_docking_state_ = FULL_DOCKING_FAILURE;
+        if (current_pallet_docking_state_ == END && docking_done.data)
+        {
+            start_returning_ = false;              // turn off pallet docking
+            current_full_docking_state_ = FULL_DOCKING_END;
+            initDocking();
+            resetPlanAndControl();
+        }
+        break;
+    case FULL_DOCKING_END:
+        ROS_INFO("FULL DOCKING COMPLETED !");
+        current_full_docking_state_ = FULL_IDLE;
+        break;
+    case FULL_DOCKING_FAILURE:
+        ROS_INFO("FULL DOCKING FAILED !");
+        break;
+    default:
+        break;
+    }
+}
 
 int main(int argc, char** argv)
 {

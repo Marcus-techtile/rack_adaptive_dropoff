@@ -105,6 +105,16 @@ private:
     /* Docking location */
     std::string docking_area_;
 
+    /* FULL Docking state definition */
+    enum full_docking_state_ {FULL_IDLE, PALLET_DOCKING, PALLET_LIFTING, RETURNING, FULL_DOCKING_END, 
+                                FULL_DOCKING_FAILURE};
+    bool start_pallet_docking_{false};
+    bool start_returning_{false};
+    bool pallet_docking_done_{false};
+    bool fork_liftup_done_{false};
+    bool returning_done_{false};
+    full_docking_state_ current_full_docking_state_;
+
     /* Docking State Control */
     bool start_docking_FSM{false};
     enum docking_state {IDLE, GET_PALLET_POSE, APPROACHING, DOCKING, 
@@ -119,7 +129,7 @@ private:
     bool goal_reach_{false};         // transition from GEN_PATH to STOP
     bool goal_failed_{false};        // transition from GEN_PATH to RECOVER
 
-    docking_state current_state_, old_state_;
+    docking_state current_pallet_docking_state_, old_state_;
     std_msgs::String docking_state, old_docking_state;  //publish to topic
 
     /* Failure cases */
@@ -162,5 +172,6 @@ public:
     void initDocking();
     void resetPlanAndControl();
     void dockingFSM();
+    void fulldockingFSM();
 
 };
