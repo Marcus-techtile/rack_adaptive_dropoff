@@ -114,6 +114,7 @@ private:
     bool fork_liftup_done_{false};
     bool returning_done_{false};
     full_docking_state_ current_full_docking_state_;
+    std_msgs::String full_docking_state_data, old_full_docking_state_data;
 
     /* Docking State Control */
     bool start_docking_FSM{false};
@@ -172,6 +173,8 @@ public:
     void initDocking();
     void resetPlanAndControl();
     void dockingFSM();
+
+    void initFullDocking();
     void fulldockingFSM();
 
 };
