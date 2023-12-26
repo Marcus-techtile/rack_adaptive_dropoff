@@ -1,11 +1,11 @@
 <launch>
-
+ <arg name="use_simulation" default="true"/>
  <arg name="odom_topic" default ="/gazebo/forklift_controllers/odom"/>
  <arg name="cmd_vel_topic" default ="/cmd_vel_raw"/>
 
  <node pkg="pallet_docking_xsquare" type="docking_control" name="docking_control" output = "screen" >
-   <!-- <param name="path_frame" value="base_link"/> -->
-   <param name="path_frame" value="base_link_p"/>
+   <param name="path_frame" value="base_link" if="$(arg use_simulation)"/>
+   <param name="path_frame" value="base_link_p" unless="$(arg use_simulation)"/>
     
     <!-- Pure Pursuit parameters -->
    <param name="look_ahead_time" value="1.6"/>   

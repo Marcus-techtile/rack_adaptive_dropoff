@@ -155,6 +155,8 @@ private:
     /* move back */
     std_msgs::Bool move_back_cmd_;
 
+    bool use_simulation_test_;
+
     /* Callback function */
     void cmdCallback(const geometry_msgs::Twist::ConstPtr& msg);
     bool dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);

@@ -22,6 +22,8 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     nh.param<double>("fake_goal_y", fake_goal_y_, 0.1);
     nh.param<double>("fake_goal_yaw", fake_goal_yaw_, 0.1);
     nh.param<bool>("use_fake_goal", use_fake_goal_, false);
+
+    nh.param<bool>("use_simulation_test", use_simulation_test_, false);
     
 
     /* Publisher */
@@ -127,12 +129,15 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
         preengage_position_.header.frame_id = odom_sub_.header.frame_id;
         preengage_position_.pose.position = odom_sub_.pose.pose.position;
 
-        // preengage_position_.pose.orientation = odom_sub_.pose.pose.orientation;
-
-        double r_tmp, p_tmp, y_tmp;
-        quaternionToRPY(odom_sub_.pose.pose.orientation, r_tmp, p_tmp, y_tmp);
-        y_tmp = y_tmp - M_PI;
-        preengage_position_.pose.orientation = rpyToQuaternion(r_tmp, y_tmp, y_tmp);
+        if (use_simulation_test_)
+            preengage_position_.pose.orientation = odom_sub_.pose.pose.orientation;
+        else
+        {
+            double r_tmp, p_tmp, y_tmp;
+            quaternionToRPY(odom_sub_.pose.pose.orientation, r_tmp, p_tmp, y_tmp);
+            y_tmp = y_tmp - M_PI;
+            preengage_position_.pose.orientation = rpyToQuaternion(r_tmp, y_tmp, y_tmp);
+        }
         
         move_back_cmd_.data = false;
         start_docking_FSM = true;

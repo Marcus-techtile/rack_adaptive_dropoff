@@ -1,12 +1,16 @@
 <launch>
+ <arg name="use_simulation" default="true"/>
+
  <arg name="odom_topic" default ="/gazebo/forklift_controllers/odom"/>
  <arg name="cmd_vel_topic" default ="/cmd_vel"/>
  <arg name="pallet_topic" default ="/pallet_detection_relay2/pallet_pose"/>
  <arg name="profile" default="RX20"/>
 
  <node pkg="pallet_docking_xsquare" type="docking_planner" name="docking_planner" output = "screen" >
-   <!-- <param name="path_frame" value="base_link"/> -->
-   <param name="path_frame" value="base_link_p"/>
+   <param name="use_simulation_test" value="$(arg use_simulation)"/>
+
+   <param name="path_frame" value="base_link" if="$(arg use_simulation)"/>
+   <param name="path_frame" value="base_link_p" unless="$(arg use_simulation)"/>
    <!-- <param name="path_frame" value="odom"/> -->
 
   <!-- Docking location inside_container or outside_container -->
@@ -53,10 +57,11 @@
    <param name="y_tolerance" value="0.03"/> <!-- meter -->   
 
   <!-- Fake goal -->
-   <param name="use_fake_goal" value="false"/> <!-- radian --> 
+   <param name="use_fake_goal" value="true" if="$(arg use_simulation)"/> 
+   <param name="use_fake_goal" value="false" unless="$(arg use_simulation)"/> 
    <param name="fake_goal_x" value="1.2"/>  <!-- meter -->
-   <param name="fake_goal_y" value="-0.00"/>     <!-- meter -->  
-   <param name="fake_goal_yaw" value="0.25"/> <!-- radian -->    
+   <param name="fake_goal_y" value="-0.1"/>     <!-- meter -->  
+   <param name="fake_goal_yaw" value="0.0"/> <!-- radian -->    
 
   <!-- PID control for sideshift control -->
     <param name="kp" value="12.0"/>
