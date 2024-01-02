@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   tf2_ros
   dynamic_reconfigure
+  forklift_msgs
 )
 
 generate_dynamic_reconfigure_options(
@@ -37,10 +38,13 @@ target_link_libraries(utils_lib ${catkin_LIBRARIES})
 add_executable(docking_planner src/quintic_planner.cpp src/docking_planner_node.cpp)
 target_link_libraries(docking_planner ${catkin_LIBRARIES} utils_lib)
 add_dependencies(docking_planner ${PROJECT_NAME}_gencfg)
+add_dependencies(docking_planner ${catkin_EXPORTED_TARGETS})
 
 add_executable(docking_control src/docking_control_node.cpp src/fuzzy_control.cpp src/pure_pursuit_control.cpp)
 target_link_libraries(docking_control ${catkin_LIBRARIES} utils_lib)
 add_dependencies(docking_control ${PROJECT_NAME}_gencfg)
+
+
 
 # add_executable(sideshift_control src/sideshift_control.cpp)
 # target_link_libraries(sideshift_control ${catkin_LIBRARIES})
