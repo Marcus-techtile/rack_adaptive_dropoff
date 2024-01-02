@@ -101,6 +101,10 @@ private:
     double check_goal_distance_;
     double approaching_min_dis_; //minimum necessary distance (perpendicular distance) to start approaching. Less than it, the forklift will move backward to increase the distance
 
+    // goal for pallet lifting
+    double liftmast_high_goal_;
+    double liftmast_high_max_vel_;
+
     /* Tolerance (in local frame) */
     double distance_tolerance_{0.05};       // absolute tolerance of distance = sqrt(x^2+y^2)
     double angle_tolerance_{5*180/M_PI};    // absolute tolerance of yaw

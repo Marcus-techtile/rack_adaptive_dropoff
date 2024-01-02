@@ -23,6 +23,9 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     nh.param<double>("fake_goal_yaw", fake_goal_yaw_, 0.1);
     nh.param<bool>("use_fake_goal", use_fake_goal_, false);
 
+    nh.param<double>("liftmast_high_goal", liftmast_high_goal_, 0.3);
+    nh.param<double>("liftmast_high_max_vel", liftmast_high_max_vel_, 0.2);
+
     nh.param<bool>("use_simulation_test", use_simulation_test_, false);
     
 
@@ -625,8 +628,8 @@ void DockingManager::fulldockingFSM()
         // pub fork control action goal and check result
         
         liftmast_goal.lift.enable = true;
-        liftmast_goal.lift.target_pos = 0.3;
-        liftmast_goal.lift.max_v = 0.2;
+        liftmast_goal.lift.target_pos = liftmast_high_goal_;
+        liftmast_goal.lift.max_v = liftmast_high_max_vel_;
         fork_ac_->sendGoal(liftmast_goal);
         if(fork_ac_->waitForResult())
         {
