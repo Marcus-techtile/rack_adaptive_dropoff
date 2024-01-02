@@ -46,6 +46,12 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     /* Service*/
     service_ = nh_.advertiseService("/pallet_docking_service", &DockingManager::dockingServiceCb, this);
 
+    fork_ac_ = std::make_shared<actionlib::SimpleActionClient<forklift_msgs::CmdLiftMastAction>>("/gazebo/cmd_liftmast", true);
+    ROS_INFO("Wait for liftmast control server...");
+    fork_ac_->waitForServer();
+    ROS_INFO("Server is ok");
+    
+
     /*Define failure cases */
     failure_map_[0] = "CANNOT_CALL_DETECTION_SERVICE";
     failure_map_[1] = "CANNOT_DETECT_PALLET";
@@ -122,6 +128,7 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
 {
     if(req.data)
     {
+        initFullDocking();
         initDocking();
         resetPlanAndControl();
         res.success = true;
@@ -144,6 +151,7 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
     }
     else
     {
+        initFullDocking();
         initDocking();
         resetPlanAndControl();
         start_docking_FSM = false;
@@ -360,12 +368,11 @@ void DockingManager::dockingFSM()
     switch(current_pallet_docking_state_)
     {   case IDLE:
             docking_state.data = "IDLE";
-            if (start_docking_FSM) current_pallet_docking_state_ = GET_PALLET_POSE;
+            if (start_pallet_docking_ || start_returning_) current_pallet_docking_state_ = GET_PALLET_POSE;
             else 
             break;
         case GET_PALLET_POSE:
             docking_state.data = "GET_PALLET_POSE";
-            ROS_INFO("getting pallet pose...");
             if (!get_pallet_pose_) 
             {
                 get_pallet_pose_ = true;
@@ -576,7 +583,6 @@ void DockingManager::initFullDocking()
     current_full_docking_state_ = FULL_IDLE;
     full_docking_state_data.data = "FULL_IDLE";
     start_docking_FSM = false;
-
 }
 
 void DockingManager::fulldockingFSM()
@@ -611,12 +617,30 @@ void DockingManager::fulldockingFSM()
             current_full_docking_state_ = PALLET_LIFTING;
             initDocking();
             resetPlanAndControl();
-        }  
+            ros::Duration(1.0).sleep();
+        } 
         break;
     case PALLET_LIFTING:
         full_docking_state_data.data = "PALLET_LIFTING";
         // pub fork control action goal and check result
-        current_full_docking_state_ = RETURNING;
+        
+        liftmast_goal.lift.enable = true;
+        liftmast_goal.lift.target_pos = 0.3;
+        liftmast_goal.lift.max_v = 0.2;
+        fork_ac_->sendGoal(liftmast_goal);
+        if(fork_ac_->waitForResult())
+        {
+            ROS_INFO("Pallet Lifting succeed");
+            current_full_docking_state_ = RETURNING;
+            ros::Duration(1.0).sleep();
+        }
+        else
+        {
+            ROS_INFO("Pallet Lifting failed");
+            current_full_docking_state_ = FULL_DOCKING_FAILURE;
+            ros::Duration(1.0).sleep();
+        }
+        
         break;
     case RETURNING:
         full_docking_state_data.data = "RETURNING";
@@ -632,6 +656,7 @@ void DockingManager::fulldockingFSM()
             current_full_docking_state_ = FULL_DOCKING_END;
             initDocking();
             resetPlanAndControl();
+            ros::Duration(1.0).sleep();
         }
         break;
     case FULL_DOCKING_END:

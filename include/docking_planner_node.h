@@ -17,6 +17,11 @@
 #include <std_srvs/Trigger.h>
 
 #include "pallet_dock_msgs/PalletDockingAction.h"
+#include "forklift_msgs/CmdLiftMastActionGoal.h"
+#include "forklift_msgs/CmdLiftMastAction.h"
+
+#include <actionlib/client/simple_action_client.h>
+#include <actionlib/client/terminal_state.h>
 
 class DockingManager
 {
@@ -60,6 +65,10 @@ private:
     
     /* Pallet detection client service */
     ros::ServiceClient pallet_detect_srv_client_;
+
+    /* Fork action */
+    std::shared_ptr<actionlib::SimpleActionClient<forklift_msgs::CmdLiftMastAction>> fork_ac_;
+    forklift_msgs::CmdLiftMastGoal liftmast_goal;
 
     /* Subscriber variables */
     geometry_msgs::Twist cmd_vel_sub;
