@@ -17,6 +17,8 @@
 #include <std_srvs/Trigger.h>
 
 #include "pallet_dock_msgs/PalletDockingAction.h"
+#include "pallet_dock_msgs/LiftPositionAction.h"
+#include "pallet_dock_msgs/LiftPositionActionGoal.h"
 #include "forklift_msgs/CmdLiftMastActionGoal.h"
 #include "forklift_msgs/CmdLiftMastAction.h"
 
@@ -67,8 +69,13 @@ private:
     ros::ServiceClient pallet_detect_srv_client_;
 
     /* Fork action */
+    //// For simulation 
     std::shared_ptr<actionlib::SimpleActionClient<forklift_msgs::CmdLiftMastAction>> fork_ac_;
     forklift_msgs::CmdLiftMastGoal liftmast_goal;
+    std::string liftmast_action_;
+    //// For EXV5
+    std::shared_ptr<actionlib::SimpleActionClient<pallet_dock_msgs::LiftPositionAction>> fork_ac_exv_;
+    pallet_dock_msgs::LiftPositionGoal lift_mast_goal_exv;
 
     /* Subscriber variables */
     geometry_msgs::Twist cmd_vel_sub;

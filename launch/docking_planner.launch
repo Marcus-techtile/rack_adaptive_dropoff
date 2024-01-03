@@ -4,6 +4,8 @@
  <arg name="odom_topic" default ="/gazebo/forklift_controllers/odom"/>
  <arg name="cmd_vel_topic" default ="/cmd_vel"/>
  <arg name="pallet_topic" default ="/pallet_detection_relay2/pallet_pose"/>
+ <arg name="liftmast_action_robot" default="/exv_hw/robot_controller/change_fork_position"/>
+ <arg name="liftmast_action_simulation" default="/gazebo/cmd_liftmast"/>
  <arg name="profile" default="RX20"/>
 
  <node pkg="pallet_docking_xsquare" type="docking_planner" name="docking_planner" output = "screen" >
@@ -11,10 +13,13 @@
 
    <param name="path_frame" value="base_link" if="$(arg use_simulation)"/>
    <param name="path_frame" value="base_link_p" unless="$(arg use_simulation)"/>
-   <!-- <param name="path_frame" value="odom"/> -->
 
   <!-- Docking location inside_container or outside_container -->
    <param name="docking_area" value="OUTSIDE"/>
+
+  <!-- liftmast action  -->
+  <param name="liftmast_action" value="$(arg liftmast_action_simulation)" if="$(arg use_simulation)"/>
+  <param name="liftmast_action" value="$(arg liftmast_action_robot)" unless="$(arg use_simulation)"/>
 
   <!-- Pallet detection param -->
    <param name="detection_timeout" value="200.0"/>
@@ -26,7 +31,7 @@
    <param name="dis_docking_offset" value="-0.57"/> <!-- -0.6 -->
    <param name="moveback_straight_distance" value="1.1"/>
 
-   <param name="liftmast_high_goal" value="0.3"/>
+   <param name="liftmast_high_goal" value="0.45"/>
    <param name="liftmast_high_max_vel" value="0.1"/>
 
 
@@ -63,8 +68,8 @@
   <!-- Fake goal -->
    <param name="use_fake_goal" value="true" if="$(arg use_simulation)"/> 
    <param name="use_fake_goal" value="false" unless="$(arg use_simulation)"/> 
-   <param name="fake_goal_x" value="1.2"/>  <!-- meter -->
-   <param name="fake_goal_y" value="-0.1"/>     <!-- meter -->  
+   <param name="fake_goal_x" value="2.0"/>  <!-- meter -->
+   <param name="fake_goal_y" value="-0.08"/>     <!-- meter -->  
    <param name="fake_goal_yaw" value="0.05"/> <!-- radian -->    
 
   <!-- PID control for sideshift control -->

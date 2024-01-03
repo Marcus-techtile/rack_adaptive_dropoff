@@ -4,6 +4,7 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
 {
     /* Get Param */
     nh.param<std::string>("path_frame", path_frame_, "base_link_p");
+    nh.param<std::string>("liftmast_action", liftmast_action_, "/gazebo/cmd_liftmast");
     nh.param<std::string>("docking_area", docking_area_, "INSIDE");
 
     nh.param<double>("approaching_min_dis", approaching_min_dis_, 1.2);
@@ -49,7 +50,7 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     /* Service*/
     service_ = nh_.advertiseService("/pallet_docking_service", &DockingManager::dockingServiceCb, this);
 
-    fork_ac_ = std::make_shared<actionlib::SimpleActionClient<forklift_msgs::CmdLiftMastAction>>("/gazebo/cmd_liftmast", true);
+    fork_ac_ = std::make_shared<actionlib::SimpleActionClient<forklift_msgs::CmdLiftMastAction>>(liftmast_action_, true);
     ROS_INFO("Wait for liftmast control server...");
     fork_ac_->waitForServer();
     ROS_INFO("Server is ok");
@@ -627,22 +628,45 @@ void DockingManager::fulldockingFSM()
         full_docking_state_data.data = "PALLET_LIFTING";
         // pub fork control action goal and check result
         
-        liftmast_goal.lift.enable = true;
-        liftmast_goal.lift.target_pos = liftmast_high_goal_;
-        liftmast_goal.lift.max_v = liftmast_high_max_vel_;
-        fork_ac_->sendGoal(liftmast_goal);
-        if(fork_ac_->waitForResult())
+        if (use_simulation_test_)
         {
-            ROS_INFO("Pallet Lifting succeed");
-            current_full_docking_state_ = RETURNING;
-            ros::Duration(1.0).sleep();
+            liftmast_goal.lift.enable = true;
+            liftmast_goal.lift.target_pos = liftmast_high_goal_;
+            liftmast_goal.lift.max_v = liftmast_high_max_vel_;
+            fork_ac_->sendGoal(liftmast_goal);
+            if (fork_ac_->waitForResult())
+            {
+                ROS_INFO("Pallet Lifting succeed");
+                current_full_docking_state_ = RETURNING;
+                ros::Duration(1.0).sleep();
+            }
+            else
+            {
+                ROS_INFO("Pallet Lifting failed");
+                current_full_docking_state_ = FULL_DOCKING_FAILURE;
+                ros::Duration(1.0).sleep();
+            }
         }
         else
         {
-            ROS_INFO("Pallet Lifting failed");
-            current_full_docking_state_ = FULL_DOCKING_FAILURE;
-            ros::Duration(1.0).sleep();
+            lift_mast_goal_exv.mode = 0;
+            lift_mast_goal_exv.position = liftmast_high_goal_;
+            lift_mast_goal_exv.max_velocity = liftmast_high_max_vel_;
+            fork_ac_exv_->sendGoal(lift_mast_goal_exv);
+            if (fork_ac_exv_->waitForResult())
+            {
+                ROS_INFO("Pallet Lifting succeed");
+                current_full_docking_state_ = RETURNING;
+                ros::Duration(1.0).sleep();
+            }
+            else
+            {
+                ROS_INFO("Pallet Lifting failed");
+                current_full_docking_state_ = FULL_DOCKING_FAILURE;
+                ros::Duration(1.0).sleep();
+            }
         }
+
         
         break;
     case RETURNING:
