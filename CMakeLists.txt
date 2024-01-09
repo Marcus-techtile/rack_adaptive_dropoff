@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_ros
   dynamic_reconfigure
   forklift_msgs
+  pallet_dock_msgs
 )
 
 generate_dynamic_reconfigure_options(
