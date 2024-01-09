@@ -31,7 +31,7 @@
    <param name="dis_docking_offset" value="-0.57"/> <!-- -0.6 -->
    <param name="moveback_straight_distance" value="1.1"/>
 
-   <param name="liftmast_high_goal" value="0.45"/>
+   <param name="liftmast_high_goal" value="0.55"/>
    <param name="liftmast_high_max_vel" value="0.1"/>
 
 

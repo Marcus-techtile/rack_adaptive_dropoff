@@ -419,12 +419,12 @@ void DockingManager::dockingFSM()
                 ///// TODO: check 2 pallet poses from approach and dock to determine the pose for dock
                 ////////////
                 ////////////
-                if (pallet_pose_.header.frame_id.empty())      // bad detection
-                {
-                    failure_code_ = 1;
-                    current_pallet_docking_state_ = FAILURE;
-                    break;
-                }
+                // if (pallet_pose_.header.frame_id.empty())      // bad detection
+                // {
+                //     failure_code_ = 1;
+                //     current_pallet_docking_state_ = FAILURE;
+                //     break;
+                // }
 
                 current_pallet_docking_state_ = APPROACHING;
                 pallet_pose_avai_ = false;
