@@ -50,9 +50,19 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     /* Service*/
     service_ = nh_.advertiseService("/pallet_docking_service", &DockingManager::dockingServiceCb, this);
 
-    fork_ac_ = std::make_shared<actionlib::SimpleActionClient<forklift_msgs::CmdLiftMastAction>>(liftmast_action_, true);
     ROS_INFO("Wait for liftmast control server...");
-    fork_ac_->waitForServer();
+    if (use_simulation_test_)
+    {
+        fork_ac_ = std::make_shared<actionlib::SimpleActionClient<forklift_msgs::CmdLiftMastAction>>(liftmast_action_, true);
+        fork_ac_->waitForServer();
+    }
+
+    else
+    {
+        fork_ac_exv_ = std::make_shared<actionlib::SimpleActionClient<pallet_dock_msgs::LiftPositionAction>>(liftmast_action_, true);
+        fork_ac_exv_->waitForServer();
+    }
+        
     ROS_INFO("Server is ok");
     
 
