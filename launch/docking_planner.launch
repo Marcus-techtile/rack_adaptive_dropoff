@@ -1,5 +1,5 @@
 <launch>
- <arg name="use_simulation" default="true"/>
+ <arg name="use_simulation" default="false"/>
 
  <arg name="odom_topic" default ="/gazebo/forklift_controllers/odom"/>
  <arg name="cmd_vel_topic" default ="/cmd_vel"/>
@@ -66,7 +66,7 @@
    <param name="y_tolerance" value="0.03"/> <!-- meter -->   
 
   <!-- Fake goal -->
-   <param name="use_fake_goal" value="true" if="$(arg use_simulation)"/> 
+   <param name="use_fake_goal" value="false" if="$(arg use_simulation)"/> 
    <param name="use_fake_goal" value="false" unless="$(arg use_simulation)"/> 
    <param name="fake_goal_x" value="2.0"/>  <!-- meter -->
    <param name="fake_goal_y" value="-0.08"/>     <!-- meter -->  

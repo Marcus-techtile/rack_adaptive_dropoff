@@ -409,6 +409,13 @@ void DockingManager::dockingFSM()
                 ///// TODO: check 2 pallet poses from approach and dock to determine the pose for dock
                 ////////////
                 ////////////
+                if (!pallet_pose_.header.frame_id.empty())      // bad detection
+                {
+                    failure_code_ = 1;
+                    current_pallet_docking_state_ = FAILURE;
+                    break;
+                }
+
                 current_pallet_docking_state_ = APPROACHING;
                 pallet_pose_avai_ = false;
                 get_pallet_pose_ = false;  // get pallet pose
@@ -649,9 +656,9 @@ void DockingManager::fulldockingFSM()
         }
         else
         {
-            lift_mast_goal_exv.mode = 0;
-            lift_mast_goal_exv.position = liftmast_high_goal_;
-            lift_mast_goal_exv.max_velocity = liftmast_high_max_vel_;
+            lift_mast_goal_exv.target_fork_position = liftmast_high_goal_;
+            lift_mast_goal_exv.is_slow_speed = true;
+            // lift_mast_goal_exv.max_velocity = liftmast_high_max_vel_;
             fork_ac_exv_->sendGoal(lift_mast_goal_exv);
             if (fork_ac_exv_->waitForResult())
             {
@@ -666,8 +673,6 @@ void DockingManager::fulldockingFSM()
                 ros::Duration(1.0).sleep();
             }
         }
-
-        
         break;
     case RETURNING:
         full_docking_state_data.data = "RETURNING";
