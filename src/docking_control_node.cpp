@@ -299,32 +299,18 @@ public:
                                             + local_ref_path_.poses.at(lk_index).pose.position.y*local_ref_path_.poses.at(lk_index).pose.position.y)) break;  
             }
 
-            lk_index = closest_index + 7;
-            if (ref_path_.poses.size() - 1 < lk_index) lk_index = ref_path_.poses.size() - 1;
 
-            ROS_INFO("Fuzzy lk index: %d", lk_index);
-            double lk_dis = sqrt(local_ref_path_.poses.at(lk_index).pose.position.x*local_ref_path_.poses.at(lk_index).pose.position.x
-                                + local_ref_path_.poses.at(lk_index).pose.position.y*local_ref_path_.poses.at(lk_index).pose.position.y);
-
-            double cutoff_frequency_d = 0.2;
-            e_pow_d_ = 1 - exp(-0.025 * 2 * M_PI * cutoff_frequency_d);
-            lpf_output_d_ += (lk_dis - lpf_output_d_) * e_pow_d_;
-
-            ROS_INFO("Fuzzy max_dist: %f", max_dist);
+            // ROS_INFO("Fuzzy max_dist: %f", max_dist);
             // double lk_dis = abs(local_ref_path_.poses.at(lk_index).pose.position.x);
             ROS_INFO("Fuzzy lk distance: %f", fuzzy_lk_dis);
             fuzzy_controller.inputSolveGoal(abs(fuzzy_lk_dis));
-            // fuzzy_controller.inputsolveSteering(steering_angle_ - (-steering_sub_));
-            // fuzzy_controller.inputsolveSteering(steering_);
             fuzzy_controller.inputsolveSteering(0.0);
             fuzzy_controller.inputResults();
-            // ref_velocity_ = fuzzy_controller.cal_fuzzy_output();
             ref_velocity_ = fuzzy_controller.cal_fuzzy_output() * cos(steering_);
             
             if (local_ref_path_.poses.at(lk_index).pose.position.x < 0)
             {
                 if (ref_velocity_ > 0) ref_velocity_ = -ref_velocity_;
-                // steering_ = -steering_;
             }
 
             double cutoff_frequency_v = 0.2;
@@ -344,36 +330,11 @@ public:
             }
             if (abs(final_ref_vel_) < 0.03) final_ref_vel_ = std::copysign(0.03, final_ref_vel_);
 
-            //  if (abs(final_ref_vel_) < 0.03) final_ref_vel_ = 0.03;
 
             ROS_INFO("REF PATH LK X: %f", local_ref_path_.poses.at(lk_index).pose.position.x);
-            // if (local_ref_path_.poses.at(lk_index).pose.position.x < 0 && final_ref_vel_ > 0) final_ref_vel_ = -final_ref_vel_;
 
-            // double gain = 1;
-            // if (abs(steering_angle_) > 1.4 && abs(steering_angle_ - (-steering_sub_)) > 0.1) ref_velocity_ = 0.00;
-            // if (abs(steering_angle_) > 1.4 && abs(steering_angle_ - (-steering_sub_)) <= 0.1) ref_velocity_ = 0.03;
-
-            // if (abs(steering_angle_) > 0.8 && abs(steering_angle_) <= 1.4) gain = 0.3;
-            // if (abs(steering_angle_) > 0.4 && abs(steering_angle_) <= 0.8) gain = 0.6;
-            // ref_velocity_ = ref_velocity_*gain;
-
-            // ROS_INFO("STEERING ERROR: %f", abs(steering_angle_ - (-steering_sub_)));
-
-            // if (abs(ref_velocity_ - last_ref_vel_) > velocity_rate_limit_)
-            // {
-            //     if (ref_velocity_ > last_ref_vel_) ref_velocity_ = last_ref_vel_ + velocity_rate_limit_;
-            //     else ref_velocity_ = last_ref_vel_ - velocity_rate_limit_;
-            // }
-            // last_ref_vel_ = ref_velocity_;
-
-            // ROS_INFO("x reverse: %f", ref_path_.poses.at(2).pose.position.x);
-            // if (ref_path_.poses.at(2).pose.position.x < 0)
-            // {
-            //     ROS_INFO("Move reverse!");
-            //     ref_velocity_ = -ref_velocity_;
-            // } 
-
-            if (approaching_done_.data && final_ref_vel_ >= 0) 
+            if ((approaching_done_.data && final_ref_vel_ >= 0) ||
+                (!approaching_done_.data && final_ref_vel_ < 0)) 
             {
                 if (abs(steering_) >= 0.2) steering_ = 0.2*(abs(steering_)/steering_);
                 if (abs(final_ref_vel_) >= 0.1) final_ref_vel_ = 0.1 * (final_ref_vel_/abs(final_ref_vel_));

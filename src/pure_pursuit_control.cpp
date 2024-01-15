@@ -86,6 +86,11 @@ geometry_msgs::Point PurePursuitController::interpolateLkhPoint(const geometry_m
   return p;
 }
 
+void PurePursuitController::setGoalCorrectYaw(double dis_cor)
+{
+    goal_correct_yaw_ = dis_cor;
+}
+
 void PurePursuitController::calControl()
 {
     if(path_.poses.size() == 0) return;

@@ -1,7 +1,8 @@
 <launch>
  <arg name="use_simulation" default="false"/>
 
- <arg name="odom_topic" default ="/gazebo/forklift_controllers/odom"/>
+ <!-- <arg name="odom_topic" default ="/gazebo/forklift_controllers/odom"/> -->
+ <arg name="odom_topic" default ="/odom"/>
  <arg name="cmd_vel_topic" default ="/cmd_vel"/>
  <arg name="pallet_topic" default ="/pallet_detection_relay2/pallet_pose"/>
  <arg name="liftmast_action_robot" default="/exv_hw/robot_controller/change_fork_position"/>
@@ -62,6 +63,7 @@
   <!-- Goal tolerance -->
    <param name="distance_tolerance" value="0.1"/>  <!-- meter -->
    <param name="angle_tolerance" value="0.02"/>     <!-- radian -->  
+   <param name="final_angle_tolerance" value="0.03"/>     <!-- radian -->  
    <param name="x_tolerance" value="0.035"/> <!-- meter -->    
    <param name="y_tolerance" value="0.03"/> <!-- meter -->   
 

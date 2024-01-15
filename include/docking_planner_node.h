@@ -115,6 +115,7 @@ private:
     /* Tolerance (in local frame) */
     double distance_tolerance_{0.05};       // absolute tolerance of distance = sqrt(x^2+y^2)
     double angle_tolerance_{5*180/M_PI};    // absolute tolerance of yaw
+    double final_angle_tolerance_;
     double x_tolerance_{0.1}, y_tolerance_{0.1};              // absolute tolerance of x
     bool check_inside_goal_range_{false};
     int count_outside_goal_range_;

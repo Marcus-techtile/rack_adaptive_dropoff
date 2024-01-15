@@ -1,5 +1,5 @@
 <launch>
- <arg name="use_simulation" default="true"/>
+ <arg name="use_simulation" default="false"/>
  <arg name="odom_topic" default ="/gazebo/forklift_controllers/odom"/>
  <arg name="cmd_vel_topic" default ="/cmd_vel_raw"/>
 
@@ -16,7 +16,7 @@
    <param name="kp" value="2.0"/>     
    <param name="ki" value="0.0"/> 
    <param name="goal_correct_yaw" value="0.1"/>  
-   <param name="max_angular_vel" value="0.3"/> 
+   <param name="max_angular_vel" value="1.5"/>  <!-- change from the stable branch -->
    <param name="use_point_interpolate" value="true"/> 
 
    <!-- Fuzzy controller parameters -->

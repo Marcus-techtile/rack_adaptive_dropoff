@@ -55,6 +55,7 @@ public:
     void setRefPath(nav_msgs::Path path);
     void setRefVel(double ref_vel);
     void setClosestPoint(int closest_point);
+    void setGoalCorrectYaw(double dis_cor);
 
     //using the intersection between circle and 2 points of the line to interpolate the lkd point
     geometry_msgs::Point interpolateLkhPoint(const geometry_msgs::Point & p1,

@@ -14,6 +14,7 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
 
     nh.param<double>("distance_tolerance", distance_tolerance_, 0.08);
     nh.param<double>("angle_tolerance", angle_tolerance_, 5*180/M_PI);
+    nh.param<double>("final_angle_tolerance", final_angle_tolerance_, 1*180/M_PI);
     nh.param<double>("x_tolerance", x_tolerance_, 0.05);
     nh.param<double>("y_tolerance", y_tolerance_, 0.04);
 
@@ -288,7 +289,7 @@ void DockingManager::checkGoalReach()
     double error_sq = sqrt(error_x*error_x + error_y*error_y);
     if (approach_done_)
     {
-        angle_tolerance_ = 0.03;     // For temporary to make the pocket docking more stable
+        angle_tolerance_ = final_angle_tolerance_;     // For temporary to make the pocket docking more stable
     }
     if (error_sq <= distance_tolerance_) 
     {
@@ -334,6 +335,9 @@ void DockingManager::initDocking()
     pub_controller_on_.publish(controller_on_);
 
     quintic_planner.resetPlanner();
+
+    check_inside_goal_range_ = false;
+    count_goal_failed_ = 0;
 
     // reset the transition state
     get_pallet_pose_ = false;
@@ -486,7 +490,7 @@ void DockingManager::dockingFSM()
                 {
                     ROS_INFO_ONCE("MOVE BACKWARD. THE MOVEMENT DISTANCE IS TOO SHORT !!!");
                     // count_cmd_back_vel++;
-                    cmd_fw.linear.x = -0.1;
+                    cmd_fw.linear.x = -0.2;
                     cmd_fw.angular.z = 0.0;
                     pub_cmd_vel.publish(cmd_fw);
                     break;
@@ -547,6 +551,7 @@ void DockingManager::dockingFSM()
             } 
             if (goal_reach_)
             {
+                ros::Duration(1.5).sleep();
                 goal_reach_ = false;
                 ROS_INFO("Goal reach !!!");
                 if (!approach_done_) approach_done_ = true;
@@ -557,7 +562,7 @@ void DockingManager::dockingFSM()
             } 
             if (goal_failed_)
             {
-
+                ros::Duration(1.5).sleep();
                 failure_code_ = 3;
                 current_pallet_docking_state_ = FAILURE;
                 ROS_INFO("Goal failed !!!");
