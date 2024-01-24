@@ -15,8 +15,8 @@
    <param name="path_frame" value="base_link" if="$(arg use_simulation)"/>
    <param name="path_frame" value="base_link_p" unless="$(arg use_simulation)"/>
 
-  <!-- Docking location inside_container or outside_container -->
-   <param name="docking_area" value="OUTSIDE"/>
+  <param name="start_pallet_docking" value="false"/>
+  <param name="start_returning" value="false"/>
 
   <!-- liftmast action  -->
   <param name="liftmast_action" value="$(arg liftmast_action_simulation)" if="$(arg use_simulation)"/>

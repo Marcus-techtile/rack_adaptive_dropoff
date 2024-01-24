@@ -55,27 +55,12 @@ private:
 
         // Pallet pose
     geometry_msgs::PoseStamped pallet_pose_;
-    std_msgs::Bool pallet_pose_ready_;
-    ros::Time starting_detection_time_;
-    double detection_timeout_;
 
         // Odom
         nav_msgs::Odometry odom_sub_;
 
     /* Docking Service*/
     ros::ServiceServer service_;
-    
-    /* Pallet detection client service */
-    ros::ServiceClient pallet_detect_srv_client_;
-
-    /* Fork action */
-    //// For simulation 
-    std::shared_ptr<actionlib::SimpleActionClient<forklift_msgs::CmdLiftMastAction>> fork_ac_;
-    forklift_msgs::CmdLiftMastGoal liftmast_goal;
-    std::string liftmast_action_;
-    //// For EXV5
-    std::shared_ptr<actionlib::SimpleActionClient<pallet_dock_msgs::LiftPositionAction>> fork_ac_exv_;
-    pallet_dock_msgs::LiftPositionGoal lift_mast_goal_exv;
 
     /* Subscriber variables */
     geometry_msgs::Twist cmd_vel_sub;
@@ -92,7 +77,6 @@ private:
 
     std_msgs::Bool controller_on_;
 
-    int count_cmd_back_vel{0};
 
     /* goal point */
     bool move_reverse_{false};
@@ -123,21 +107,8 @@ private:
     int count_path_gen_fail_{0};
     int count_goal_failed_{0};
 
-    /* Docking location */
-    std::string docking_area_;
-
-    /* FULL Docking state definition */
-    enum full_docking_state_ {FULL_IDLE, PALLET_DOCKING, PALLET_LIFTING, RETURNING, FULL_DOCKING_END, 
-                                FULL_DOCKING_FAILURE};
-    bool start_pallet_docking_{false};
-    bool start_returning_{false};
-    bool pallet_docking_done_{false};
-    bool fork_liftup_done_{false};
-    bool returning_done_{false};
-    full_docking_state_ current_full_docking_state_;
-    std_msgs::String full_docking_state_data, old_full_docking_state_data;
-
     /* Docking State Control */
+    bool start_pallet_docking_, start_returning_;
     bool start_docking_FSM{false};
     enum docking_state {IDLE, GET_PALLET_POSE, APPROACHING, DOCKING, 
                         SET_GOAL, UPDATE_GOAL, SIDESHIFT_CONTROL, GEN_PATH_AND_PUB_CONTROL, STOP, RECOVER, END, FAILURE};
@@ -196,8 +167,4 @@ public:
     void initDocking();
     void resetPlanAndControl();
     void dockingFSM();
-
-    void initFullDocking();
-    void fulldockingFSM();
-
 };
