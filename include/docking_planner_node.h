@@ -37,6 +37,7 @@ private:
     ros::Publisher pub_cmd_vel;
     ros::Publisher pub_controller_on_;
     ros::Publisher pub_fake_goal_pose_;
+    ros::Publisher pub_global_goal_pose_;
     ros::Publisher pub_goal_pose_;
 
     /* Subscriber */
@@ -58,6 +59,8 @@ private:
 
         // Pallet pose
     geometry_msgs::PoseStamped pallet_pose_;
+    geometry_msgs::PoseStamped global_pallet_pose_;
+    bool global_pallet_pose_setup_;
 
         // Odom
         nav_msgs::Odometry odom_sub_;
@@ -134,6 +137,7 @@ private:
 
     /* tf conversion */
     std::string path_frame_;
+    std::string global_frame_;
     tf2_ros::Buffer docking_tf_buffer;
     tf2_ros::TransformListener docking_listener{docking_tf_buffer};
 

@@ -3,6 +3,7 @@
 DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh)
 {
     /* Get Param */
+    nh_.param<std::string>("global_frame", global_frame_, "odom");
     nh_.param<std::string>("path_frame", path_frame_, "base_link_p");
 
     /* Goal params */
@@ -37,6 +38,7 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     pub_cmd_vel = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
     pub_controller_on_ = nh_.advertise<std_msgs::Bool>("/pallet_docking/controller_turn_on", 1);
     pub_goal_pose_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("/pallet_docking/goal_pose", 1);
+    pub_global_goal_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("/pallet_docking/global_goal_pose", 1);
     pub_fake_goal_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("/pallet_docking/fake_goal_pose", 1);
 
     /* Subscriber */
@@ -172,10 +174,24 @@ void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStampe
 {
     pallet_pose.header.stamp = ros::Time(0);
     geometry_msgs::PoseStamped local_pallet_pose;
-    
+
+    if (!global_pallet_pose_setup_)
+    {
+        try
+        {
+            global_pallet_pose_ = docking_tf_buffer.transform(pallet_pose, global_frame_, ros::Duration(1));
+        }
+        catch (tf2::TransformException ex)
+        {
+            ROS_ERROR("%s", ex.what());
+        }
+        global_pallet_pose_setup_ = true;
+    }
+
+    global_pallet_pose_.header.stamp = ros::Time(0);  
     try
     {
-        local_pallet_pose = docking_tf_buffer.transform(pallet_pose, path_frame_, ros::Duration(1));
+        local_pallet_pose = docking_tf_buffer.transform(global_pallet_pose_, path_frame_, ros::Duration(1));
     }
     catch (tf2::TransformException ex)
     {
@@ -224,16 +240,17 @@ void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStampe
     /* Convert the goal to global frame */
     local_static_goal_pose_.header.stamp = ros::Time(0);;
     local_static_goal_pose_.header.frame_id = path_frame_;
-    std::string global_frame = pallet_pose.header.frame_id;
+    // std::string global_frame = pallet_pose.header.frame_id;
 
     try
     {
-        global_goal_pose_ = docking_tf_buffer.transform(local_static_goal_pose_, global_frame, ros::Duration(1));
+        global_goal_pose_ = docking_tf_buffer.transform(local_static_goal_pose_, global_frame_, ros::Duration(1));
     }
     catch (tf2::TransformException ex)
     {
         ROS_ERROR("%s", ex.what());
     }
+    pub_global_goal_pose_.publish(global_goal_pose_);
     goal_setup_ = true;  
 }
 
@@ -315,6 +332,8 @@ void DockingManager::initDocking()
     // start_docking_FSM = false;
     start_pallet_docking_ = false;
     start_returning_ = false;
+
+    global_pallet_pose_setup_ = false;
     
     docking_done.data = false;          
     approaching_done.data = false;
@@ -444,17 +463,18 @@ void DockingManager::dockingFSM()
                 quaternionToRPY(local_static_goal_pose_.pose.orientation, r_tm, p_tm, yaw_tm);
                 check_goal_distance_ = abs(local_static_goal_pose_.pose.position.x*cos(yaw_tm));
             } 
-            if (local_static_goal_pose_.pose.position.x < 0) move_reverse_ = true;
-            else move_reverse_ = false;
+            // if (local_static_goal_pose_.pose.position.x < 0) move_reverse_ = true;
+            // else move_reverse_ = false;
 
             if (check_goal_distance_ < approaching_min_dis_ && !approach_done_ && !move_back_cmd_.data)  // Move back to increase the distance
             {   
-                goalSetup(goal_distance, pallet_pose_);
+                // goalSetup(goal_distance, pallet_pose_);
+                updateGoal();
                 double r_tm, p_tm, yaw_tm;
-                quaternionToRPY(local_static_goal_pose_.pose.orientation, r_tm, p_tm, yaw_tm);
+                quaternionToRPY(local_goal_pose_.pose.orientation, r_tm, p_tm, yaw_tm);
                 /* TODO: Update the calculation for approaching distance
                 */
-                if (abs(local_static_goal_pose_.pose.position.x*cos(yaw_tm)) < approaching_min_dis_)
+                if (abs(local_goal_pose_.pose.position.x*cos(yaw_tm)) < approaching_min_dis_)
                 {
                     ROS_INFO_ONCE("MOVE BACKWARD. THE MOVEMENT DISTANCE IS TOO SHORT !!!");
                     cmd_fw.linear.x = -0.2;
@@ -464,7 +484,7 @@ void DockingManager::dockingFSM()
                 }
                 else
                 {
-                    ROS_INFO("Perpendicular distance to the approaching goal: %f", abs(local_static_goal_pose_.pose.position.x*cos(yaw_tm)));
+                    ROS_INFO("Perpendicular distance to the approaching goal: %f", abs(local_goal_pose_.pose.position.x*cos(yaw_tm)));
                 }
             }
             if (goal_setup_)
