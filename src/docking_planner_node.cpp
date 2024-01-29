@@ -44,6 +44,7 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     sub_pallet_pose_ = nh_.subscribe<geometry_msgs::PoseStamped>("/pallet_detection_relay/pallet_pose", 1, &DockingManager::palletPoseCallback, this);
 
     sub_docking_server_result_ = nh.subscribe<pallet_dock_msgs::PalletDockingActionResult>("/pallet_dock_action_server/pallet_docking/result", 1, &DockingManager::dockingServerResultCallback, this);
+    sub_docking_server_goal_ = nh_.subscribe<pallet_dock_msgs::PalletDockingActionGoal>("/pallet_dock_action_server/pallet_docking/goal", 1, &DockingManager::dockingServerGoalCallback, this);
 
     /* Service*/
     service_ = nh_.advertiseService("/pallet_docking_service", &DockingManager::dockingServiceCb, this);
@@ -88,6 +89,40 @@ void DockingManager::dockingServerResultCallback(const pallet_dock_msgs::PalletD
     }
 }
 
+void DockingManager::dockingServerGoalCallback(const pallet_dock_msgs::PalletDockingActionGoal::ConstPtr& msg)
+{
+    docking_server_goal_ = *msg;
+    docking_mode_ = docking_server_goal_.goal.mode;
+    if (docking_mode_ == 0) 
+    {
+        start_pallet_docking_ = true;
+        start_returning_ = false;
+    }
+    else
+    {
+        start_pallet_docking_ = false;
+        start_returning_ = true;
+    }
+    ROS_INFO("Subscriber! Start pallet docking: %d, returning: %d", start_pallet_docking_, start_returning_);
+    
+    if (!use_simulation_test_ && !use_fake_goal_)
+    {
+        pallet_pose_ = docking_server_goal_.goal.pallet_pose;
+        double r, p, yaw;
+        quaternionToRPY(pallet_pose_.pose.orientation, r, p, yaw);
+        yaw = yaw - M_PI;
+        pallet_pose_.pose.orientation = rpyToQuaternion(r, p, yaw);
+        pallet_pose_avai_ = true;
+        ROS_INFO("Receive docking goal");
+    }
+    if (use_simulation_test_ && !use_fake_goal_)
+    {
+        pallet_pose_ = docking_server_goal_.goal.pallet_pose;
+        pallet_pose_avai_ = true;
+        ROS_INFO("Receive docking goal");
+    }
+}
+
 void DockingManager::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_odom)
 {
     odom_sub_ = *msg_odom;
@@ -99,8 +134,8 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
 {
     if(req.data)
     {
-        initDocking();
-        resetPlanAndControl();
+    //     initDocking();
+    //     resetPlanAndControl();
         res.success = true;
         res.message = "Start docking!";
         preengage_position_.header.frame_id = odom_sub_.header.frame_id;
@@ -116,8 +151,9 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
             preengage_position_.pose.orientation = rpyToQuaternion(r_tmp, y_tmp, y_tmp);
         }
         
-        move_back_cmd_.data = false;
+        // move_back_cmd_.data = false;
         start_docking_FSM = true;
+        ROS_INFO("Docking is turned on");
     }
     else
     {
@@ -127,6 +163,7 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
         res.success = true;
         res.message = "Stop docking!";
         move_back_cmd_.data = false;
+        ROS_INFO("Docking is turned off");
     }
     return true;
 }
@@ -317,9 +354,9 @@ void DockingManager::resetPlanAndControl()
 
 void DockingManager::dockingFSM()
 {
-    ros::param::get("/docking_planner/start_pallet_docking", start_pallet_docking_);
-    ros::param::get("/docking_planner/start_returning", start_returning_);
-    if (!start_pallet_docking_ && !start_returning_) return;
+    if (!start_docking_FSM) return;
+    
+    if (!start_pallet_docking_ && !start_returning_) {}
     else if (start_pallet_docking_ && start_returning_)
     {
         ROS_WARN("BAD DOCKING STATE! Both pallet docking and returning is turned on!");

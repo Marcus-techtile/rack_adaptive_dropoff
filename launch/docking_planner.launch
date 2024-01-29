@@ -7,7 +7,7 @@
  <arg name="pallet_topic" default ="/pallet_detection_relay2/pallet_pose"/>
  <arg name="liftmast_action_robot" default="/exv_hw/robot_controller/change_fork_position"/>
  <arg name="liftmast_action_simulation" default="/gazebo/cmd_liftmast"/>
- <arg name="profile" default="RX20"/>
+ <arg name="use_fake_goal" default="false"/>
 
  <node pkg="pallet_docking_xsquare" type="docking_planner" name="docking_planner" output = "screen" >
    <param name="use_simulation_test" value="$(arg use_simulation)"/>
@@ -68,8 +68,7 @@
    <param name="y_tolerance" value="0.03"/> <!-- meter -->   
 
   <!-- Fake goal -->
-   <param name="use_fake_goal" value="false" if="$(arg use_simulation)"/> 
-   <param name="use_fake_goal" value="false" unless="$(arg use_simulation)"/> 
+   <param name="use_fake_goal" value="$(arg use_fake_goal)"/>
    <param name="fake_goal_x" value="2.0"/>  <!-- meter -->
    <param name="fake_goal_y" value="-0.08"/>     <!-- meter -->  
    <param name="fake_goal_yaw" value="0.05"/> <!-- radian -->    

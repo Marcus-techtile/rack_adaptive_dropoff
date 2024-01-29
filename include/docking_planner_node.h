@@ -48,7 +48,10 @@ private:
     
         // Pallet docking action server
     ros::Subscriber sub_docking_server_result_;
+    ros::Subscriber sub_docking_server_goal_;
     pallet_dock_msgs::PalletDockingActionResult docking_server_result_;
+    pallet_dock_msgs::PalletDockingActionGoal docking_server_goal_;
+    bool docking_goal_avai_;
 
         // pre-engage position
     geometry_msgs::PoseStamped preengage_position_;
@@ -61,6 +64,8 @@ private:
 
     /* Docking Service*/
     ros::ServiceServer service_;
+
+    bool docking_mode_;
 
     /* Subscriber variables */
     geometry_msgs::Twist cmd_vel_sub;
@@ -77,7 +82,6 @@ private:
 
     std_msgs::Bool controller_on_;
 
-
     /* goal point */
     bool move_reverse_{false};
     double dis_approach_offset_ = 1.5; // Offset from pallet to goal
@@ -91,10 +95,6 @@ private:
 
     double check_goal_distance_;
     double approaching_min_dis_; //minimum necessary distance (perpendicular distance) to start approaching. Less than it, the forklift will move backward to increase the distance
-
-    // goal for pallet lifting
-    double liftmast_high_goal_;
-    double liftmast_high_max_vel_;
 
     /* Tolerance (in local frame) */
     double distance_tolerance_{0.05};       // absolute tolerance of distance = sqrt(x^2+y^2)
@@ -154,7 +154,7 @@ private:
     bool dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
     void palletPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
     void dockingServerResultCallback(const pallet_dock_msgs::PalletDockingActionResult::ConstPtr& msg);
-    void moveBackCallback(const std_msgs::Bool::ConstPtr& msg);
+    void dockingServerGoalCallback(const pallet_dock_msgs::PalletDockingActionGoal::ConstPtr& msg);
     void odomCallback(const nav_msgs::Odometry::ConstPtr& msg_odom);
 
     void goalSetup(double distance_pallet, geometry_msgs::PoseStamped pallet_pose);
