@@ -513,7 +513,7 @@ void DockingManager::dockingFSM()
                                     quintic_planner.stopping_vel_, quintic_planner.stopping_acc_);
             if (!quintic_planner.path_avai_)
                 quintic_planner.genPath();
-            quintic_planner.visualize(pallet_pose_);
+            quintic_planner.visualize(global_pallet_pose_);
             if (!quintic_planner.path_feasible_)
             {
                 ROS_WARN("PATH IS NOT FEASIBLE. RECOVERY %d times", count_path_gen_fail_+1);
@@ -538,7 +538,7 @@ void DockingManager::dockingFSM()
             } 
             if (goal_reach_)
             {
-                ros::Duration(1.5).sleep();
+                // ros::Duration(1.5).sleep();
                 goal_reach_ = false;
                 ROS_INFO("Goal reach !!!");
                 if (!approach_done_) approach_done_ = true;
@@ -561,6 +561,7 @@ void DockingManager::dockingFSM()
             docking_state.data = "STOP";
             // Stop the controller
             resetPlanAndControl();
+            ros::Duration(1.5).sleep();
             if (docking_done_) current_pallet_docking_state_ = END;
             else 
             {
