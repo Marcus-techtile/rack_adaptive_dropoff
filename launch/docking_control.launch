@@ -35,9 +35,9 @@
    <param name="output_M" value="0.3"/>      
    <param name="max_vel" value="0.4"/>        -->
 
-   <param name="min_dis" value="0.2"/>      <!-- SMALL distance for input -->
-   <param name="goal_M_b" value="0.4"/>      <!-- MEDIUM distance for input -->
-   <param name="max_dis" value="0.8"/>      <!-- BIG distance for input -->
+   <param name="min_dis" value="0.1"/>      <!-- SMALL distance for input -->
+   <param name="goal_M_b" value="0.3"/>      <!-- MEDIUM distance for input -->
+   <param name="max_dis" value="0.5"/>      <!-- BIG distance for input -->
 
    <param name="min_steer" value="-1.495"/>  <!-- NEGATIVE BIG steering for input -->
    <param name="steer_NS_b" value="-0.8"/>   <!-- NEGATIVE SMALL steering for input -->
