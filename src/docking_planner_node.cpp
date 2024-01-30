@@ -25,10 +25,6 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     nh_.param<double>("fake_goal_yaw", fake_goal_yaw_, 0.1);
     nh_.param<bool>("use_fake_goal", use_fake_goal_, false);
 
-    /* params for pallet docking */
-    nh_.param<bool>("start_pallet_docking", start_pallet_docking_, false);
-    nh_.param<bool>("start_returning", start_returning_, false);
-
     nh_.param<bool>("use_simulation_test", use_simulation_test_, false);
     
     /* Publisher */

@@ -5,8 +5,6 @@
  <arg name="odom_topic" default ="/odom"/>
  <arg name="cmd_vel_topic" default ="/cmd_vel"/>
  <arg name="pallet_topic" default ="/pallet_detection_relay2/pallet_pose"/>
- <arg name="liftmast_action_robot" default="/exv_hw/robot_controller/change_fork_position"/>
- <arg name="liftmast_action_simulation" default="/gazebo/cmd_liftmast"/>
  <arg name="use_fake_goal" default="false"/>
 
  <node pkg="pallet_docking_xsquare" type="docking_planner" name="docking_planner" output = "screen" >
@@ -17,13 +15,6 @@
 
    <param name="global_frame" value="odom"/>
 
-  <param name="start_pallet_docking" value="false"/>
-  <param name="start_returning" value="false"/>
-
-  <!-- liftmast action  -->
-  <param name="liftmast_action" value="$(arg liftmast_action_simulation)" if="$(arg use_simulation)"/>
-  <param name="liftmast_action" value="$(arg liftmast_action_robot)" unless="$(arg use_simulation)"/>
-
   <!-- Pallet detection param -->
    <param name="detection_timeout" value="200.0"/>
    <param name="pallet_cov" value="0.001"/>
@@ -32,14 +23,7 @@
    <param name="approaching_min_dis" value="1.0"/>  
    <param name="dis_approach_offset" value="0.8"/>  
    <param name="dis_docking_offset" value="-0.57"/> <!-- -0.6 -->
-   <param name="moveback_straight_distance" value="1.1"/>
-
-   <param name="liftmast_high_goal" value="0.55"/>
-   <param name="liftmast_high_max_vel" value="0.1"/>
-
-
-   <!-- <param name="dis_approach_offset" value="1.8"/>  
-   <param name="dis_docking_offset" value="0.6"/> -->
+   <param name="moveback_straight_distance" value="1.0"/>
 
   <!-- Starting boundary -->
    <param name="starting_vel" value="0.2"/>
