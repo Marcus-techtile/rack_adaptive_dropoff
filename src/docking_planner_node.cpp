@@ -516,15 +516,10 @@ void DockingManager::dockingFSM()
             quintic_planner.visualize(global_pallet_pose_);
             if (!quintic_planner.path_feasible_)
             {
-                ROS_WARN("PATH IS NOT FEASIBLE. RECOVERY %d times", count_path_gen_fail_+1);
-                count_path_gen_fail_++; 
-                if (count_path_gen_fail_ == 3) 
-                {
-                    failure_code_ = 2;
-                    current_pallet_docking_state_ = FAILURE;
-                    break;
-                }
-                current_pallet_docking_state_ = RECOVER;
+                ROS_WARN("PATH IS NOT FEASIBLE");
+                failure_code_ = 2;
+                current_pallet_docking_state_ = FAILURE;
+                break;
             } 
             else    // path feasible
             {   
