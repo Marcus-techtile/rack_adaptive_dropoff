@@ -38,7 +38,6 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     pub_fake_goal_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("/pallet_docking/fake_goal_pose", 1);
 
     /* Subscriber */
-    sub_odom_ = nh_.subscribe<nav_msgs::Odometry>("/gazebo/forklift_controllers/odom", 1, &DockingManager::odomCallback, this);
     sub_pallet_pose_ = nh_.subscribe<geometry_msgs::PoseStamped>("/pallet_detection_relay/pallet_pose", 1, &DockingManager::palletPoseCallback, this);
 
     sub_docking_server_result_ = nh.subscribe<pallet_dock_msgs::PalletDockingActionResult>("/pallet_dock_action_server/pallet_docking/result", 1, &DockingManager::dockingServerResultCallback, this);
@@ -121,13 +120,6 @@ void DockingManager::dockingServerGoalCallback(const pallet_dock_msgs::PalletDoc
     }
 }
 
-void DockingManager::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_odom)
-{
-    odom_sub_ = *msg_odom;
-    // odom_sub_.pose = msg_odom->pose;
-    // odom_sub_.twist = msg_odom->twist;
-}
-
 bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
 {
     if(req.data)
@@ -135,20 +127,7 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
     //     initDocking();
     //     resetPlanAndControl();
         res.success = true;
-        res.message = "Start docking!";
-        preengage_position_.header.frame_id = odom_sub_.header.frame_id;
-        preengage_position_.pose.position = odom_sub_.pose.pose.position;
-
-        if (use_simulation_test_)
-            preengage_position_.pose.orientation = odom_sub_.pose.pose.orientation;
-        else
-        {
-            double r_tmp, p_tmp, y_tmp;
-            quaternionToRPY(odom_sub_.pose.pose.orientation, r_tmp, p_tmp, y_tmp);
-            y_tmp = y_tmp - M_PI;
-            preengage_position_.pose.orientation = rpyToQuaternion(r_tmp, y_tmp, y_tmp);
-        }
-        
+        res.message = "Start docking!"; 
         // move_back_cmd_.data = false;
         start_docking_FSM = true;
         ROS_INFO("Docking is turned on");
