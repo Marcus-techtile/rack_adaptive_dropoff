@@ -3,7 +3,7 @@
 
  <!-- <arg name="odom_topic" default ="/gazebo/forklift_controllers/odom"/> -->
  <arg name="odom_topic" default ="/odom"/>
- <arg name="cmd_vel_topic" default ="/cmd_vel"/>
+ <arg name="cmd_vel_topic" default ="/cmd_vel_raw"/>
  <arg name="pallet_topic" default ="/pallet_detection_relay2/pallet_pose"/>
  <arg name="use_fake_goal" default="false"/>
 
