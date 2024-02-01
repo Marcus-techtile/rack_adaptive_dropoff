@@ -5,7 +5,6 @@
  <arg name="odom_topic" default ="/odom"/>
  <arg name="cmd_vel_topic" default ="/cmd_vel_raw"/>
  <arg name="pallet_topic" default ="/pallet_detection_relay2/pallet_pose"/>
- <arg name="use_fake_goal" default="false"/>
 
  <node pkg="pallet_docking_xsquare" type="docking_planner" name="docking_planner" output = "screen" >
    <param name="use_simulation_test" value="$(arg use_simulation)"/>
@@ -51,13 +50,7 @@
    <param name="angle_tolerance" value="0.02"/>     <!-- radian -->  
    <param name="final_angle_tolerance" value="0.03"/>     <!-- radian -->  
    <param name="x_tolerance" value="0.035"/> <!-- meter -->    
-   <param name="y_tolerance" value="0.03"/> <!-- meter -->   
-
-  <!-- Fake goal -->
-   <param name="use_fake_goal" value="$(arg use_fake_goal)"/>
-   <param name="fake_goal_x" value="2.0"/>  <!-- meter -->
-   <param name="fake_goal_y" value="-0.08"/>     <!-- meter -->  
-   <param name="fake_goal_yaw" value="0.05"/> <!-- radian -->    
+   <param name="y_tolerance" value="0.03"/> <!-- meter -->     
 
   <!-- PID control for sideshift control -->
     <param name="kp" value="12.0"/>

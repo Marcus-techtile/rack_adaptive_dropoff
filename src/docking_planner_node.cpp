@@ -19,12 +19,6 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     nh_.param<double>("x_tolerance", x_tolerance_, 0.05);
     nh_.param<double>("y_tolerance", y_tolerance_, 0.04);
 
-    /* fake goal for test */
-    nh_.param<double>("fake_goal_x", fake_goal_x_, 2.0);
-    nh_.param<double>("fake_goal_y", fake_goal_y_, 0.1);
-    nh_.param<double>("fake_goal_yaw", fake_goal_yaw_, 0.1);
-    nh_.param<bool>("use_fake_goal", use_fake_goal_, false);
-
     nh_.param<bool>("use_simulation_test", use_simulation_test_, false);
     
     /* Publisher */
@@ -60,7 +54,7 @@ DockingManager::~ DockingManager(){}
 
 void DockingManager::palletPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
-    if (get_pallet_pose_ && !use_fake_goal_)
+    if (get_pallet_pose_)
     {
         pallet_pose_ = *msg;
         double r, p, yaw;
@@ -102,7 +96,7 @@ void DockingManager::dockingServerGoalCallback(const pallet_dock_msgs::PalletDoc
     }
     ROS_INFO("Subscriber! Start pallet docking: %d, returning: %d", start_pallet_docking_, start_returning_);
     
-    if (!use_simulation_test_ && !use_fake_goal_)
+    if (!use_simulation_test_)
     {
         pallet_pose_ = docking_server_goal_.goal.pallet_pose;
         double r, p, yaw;
@@ -112,7 +106,7 @@ void DockingManager::dockingServerGoalCallback(const pallet_dock_msgs::PalletDoc
         pallet_pose_avai_ = true;
         ROS_INFO("Receive docking goal");
     }
-    if (use_simulation_test_ && !use_fake_goal_)
+    if (use_simulation_test_)
     {
         pallet_pose_ = docking_server_goal_.goal.pallet_pose;
         pallet_pose_avai_ = true;
@@ -375,31 +369,7 @@ void DockingManager::dockingFSM()
             break;
         case GET_PALLET_POSE:
             docking_state.data = "GET_PALLET_POSE";
-            if (!get_pallet_pose_) 
-            {
-                get_pallet_pose_ = true;             
-                if (use_fake_goal_ && !move_back_cmd_.data)
-                {
-                    fake_goal.header.frame_id = path_frame_;
-                    fake_goal.header.stamp = ros::Time::now() + ros::Duration(5);
-                    fake_goal.pose.position.x = fake_goal_x_;
-                    fake_goal.pose.position.y = fake_goal_y_;
-                    fake_goal.pose.orientation = rpyToQuaternion(0.0, 0.0, fake_goal_yaw_);
-                    try
-                    {
-                        pallet_pose_ = pose_tf_buffer.transform(fake_goal, "odom", ros::Duration(5));
-                    }
-                    catch (tf2::TransformException ex)
-                    {
-                        ROS_ERROR("%s",ex.what());
-                    }
-                    ///// TODO: add general transform for the path frame and the pallet pose frame. Will not depend on the out frame from the pallet detection
-                    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                    pub_fake_goal_pose_.publish(pallet_pose_);
-                    pallet_pose_avai_ = true; //fake goal test
-                }
-            }
-            
+            if (!get_pallet_pose_) get_pallet_pose_ = true;             
             if (pallet_pose_avai_)
             {
                 ///// TODO: check 2 pallet poses from approach and dock to determine the pose for dock

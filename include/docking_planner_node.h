@@ -137,10 +137,6 @@ private:
     tf2_ros::Buffer pose_tf_buffer;
     tf2_ros::TransformListener pose_listener{pose_tf_buffer};
 
-    /* Fake goal */
-    double fake_goal_x_, fake_goal_y_, fake_goal_yaw_;
-    bool use_fake_goal_;
-
     /* move back */
     std_msgs::Bool move_back_cmd_;
 
