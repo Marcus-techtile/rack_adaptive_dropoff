@@ -18,8 +18,6 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     nh_.param<double>("final_angle_tolerance", final_angle_tolerance_, 1*180/M_PI);
     nh_.param<double>("x_tolerance", x_tolerance_, 0.05);
     nh_.param<double>("y_tolerance", y_tolerance_, 0.04);
-
-    nh_.param<bool>("use_simulation_test", use_simulation_test_, false);
     
     /* Publisher */
     pub_docking_state = nh_.advertise<std_msgs::String>("/pallet_docking/docking_state", 1);
@@ -94,24 +92,14 @@ void DockingManager::dockingServerGoalCallback(const pallet_dock_msgs::PalletDoc
         start_pallet_docking_ = false;
         start_returning_ = true;
     }
-    ROS_INFO("Subscriber! Start pallet docking: %d, returning: %d", start_pallet_docking_, start_returning_);
     
-    if (!use_simulation_test_)
-    {
-        pallet_pose_ = docking_server_goal_.goal.pallet_pose;
-        double r, p, yaw;
-        quaternionToRPY(pallet_pose_.pose.orientation, r, p, yaw);
-        yaw = yaw - M_PI;
-        pallet_pose_.pose.orientation = rpyToQuaternion(r, p, yaw);
-        pallet_pose_avai_ = true;
-        ROS_INFO("Receive docking goal");
-    }
-    if (use_simulation_test_)
-    {
-        pallet_pose_ = docking_server_goal_.goal.pallet_pose;
-        pallet_pose_avai_ = true;
-        ROS_INFO("Receive docking goal");
-    }
+    pallet_pose_ = docking_server_goal_.goal.pallet_pose;
+    double r, p, yaw;
+    quaternionToRPY(pallet_pose_.pose.orientation, r, p, yaw);
+    yaw = yaw - M_PI;
+    pallet_pose_.pose.orientation = rpyToQuaternion(r, p, yaw);
+    pallet_pose_avai_ = true;
+    ROS_INFO("Receive docking goal");
 }
 
 bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
@@ -372,8 +360,6 @@ void DockingManager::dockingFSM()
             if (!get_pallet_pose_) get_pallet_pose_ = true;             
             if (pallet_pose_avai_)
             {
-                ///// TODO: check 2 pallet poses from approach and dock to determine the pose for dock
-                ////////////
                 current_pallet_docking_state_ = APPROACHING;
                 pallet_pose_avai_ = false;
                 get_pallet_pose_ = false;  // get pallet pose

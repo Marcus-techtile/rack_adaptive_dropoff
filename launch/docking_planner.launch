@@ -1,22 +1,13 @@
 <launch>
- <arg name="use_simulation" default="false"/>
-
  <!-- <arg name="odom_topic" default ="/gazebo/forklift_controllers/odom"/> -->
- <arg name="odom_topic" default ="/odom"/>
+ <arg name="global_frame" default ="odom"/>
+ <arg name="path_frame" default ="base_link_p"/>
  <arg name="cmd_vel_topic" default ="/cmd_vel_raw"/>
  <arg name="pallet_topic" default ="/pallet_detection_relay2/pallet_pose"/>
 
  <node pkg="pallet_docking_xsquare" type="docking_planner" name="docking_planner" output = "screen" >
-   <param name="use_simulation_test" value="$(arg use_simulation)"/>
-
-   <param name="path_frame" value="base_link" if="$(arg use_simulation)"/>
-   <param name="path_frame" value="base_link_p" unless="$(arg use_simulation)"/>
-
-   <param name="global_frame" value="odom"/>
-
-  <!-- Pallet detection param -->
-   <param name="detection_timeout" value="200.0"/>
-   <param name="pallet_cov" value="0.001"/>
+   <param name="global_frame" value="$(arg global_frame)"/>
+   <param name="path_frame" value="$(arg path_frame)"/>
 
   <!-- Goal parameters -->
    <param name="approaching_min_dis" value="1.0"/>  
@@ -59,7 +50,6 @@
     <param name="error_tolerance_" value="0.005"/>
 
     <remap from="/cmd_vel" to = "$(arg cmd_vel_topic)"/>
-    <remap from="/gazebo/forklift_controllers/odom" to = "$(arg odom_topic)"/>
     <remap from="/pallet_detection_relay/pallet_pose" to = "$(arg pallet_topic)"/>
  </node>
 
