@@ -337,7 +337,7 @@ public:
                 (!approaching_done_.data && final_ref_vel_ < 0)) 
             {
                 if (abs(steering_) >= 0.2) steering_ = 0.2*(abs(steering_)/steering_);
-                if (abs(final_ref_vel_) >= 0.1) final_ref_vel_ = 0.1 * (final_ref_vel_/abs(final_ref_vel_));
+                if (abs(final_ref_vel_) >= 0.2) final_ref_vel_ = 0.2 * (final_ref_vel_/abs(final_ref_vel_));
             } 
 
             ROS_INFO("Velocity output: %f", final_ref_vel_);
