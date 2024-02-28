@@ -95,12 +95,15 @@ void DockingManager::dockingServerGoalCallback(const pallet_dock_msgs::PalletDoc
         start_returning_ = true;
     }
     
-    pallet_pose_ = docking_server_goal_.goal.pallet_pose;
+    pallet_pose_ = docking_server_goal_.goal.docking_pose;
     double r, p, yaw;
     quaternionToRPY(pallet_pose_.pose.orientation, r, p, yaw);
     yaw = yaw - M_PI;
     pallet_pose_.pose.orientation = rpyToQuaternion(r, p, yaw);
     pub_global_goal_pose_.publish(pallet_pose_);
+
+    dis_docking_offset_ = docking_server_goal_.goal.pallet_depth_offset;
+    ROS_INFO("Pallet depth offset: %f", dis_docking_offset_);
     pallet_pose_avai_ = true;
     ROS_INFO("Receive docking goal");
 }
