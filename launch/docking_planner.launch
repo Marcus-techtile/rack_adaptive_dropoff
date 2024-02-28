@@ -27,7 +27,7 @@
    <param name="max_yaw_rate" value="2.5"/>
    <param name="max_path_curvature" value="100.0"/>
    <param name="max_ax" value="1.0"/>
-   <param name="max_ay" value="0.2"/>
+   <param name="max_ay" value="1.0"/>
    <param name="max_acc" value="0.5"/>
    <param name="max_jerk" value="0.2"/>
 
@@ -38,10 +38,12 @@
 
   <!-- Goal tolerance -->
    <param name="distance_tolerance" value="0.1"/>  <!-- meter -->
-   <param name="angle_tolerance" value="0.02"/>     <!-- radian -->  
-   <param name="final_angle_tolerance" value="0.03"/>     <!-- radian -->  
-   <param name="x_tolerance" value="0.035"/> <!-- meter -->    
-   <param name="y_tolerance" value="0.03"/> <!-- meter -->     
+   <param name="angle_tolerance" value="0.05"/>     <!-- radian -->  
+   <param name="final_angle_tolerance" value="0.02"/>     <!-- radian -->  
+   <param name="x_tolerance" value="0.03"/> <!-- meter -->  
+   <param name="final_x_tolerance" value="0.01"/> <!-- meter -->   
+   <param name="y_tolerance" value="0.03"/> <!-- meter -->    
+   <param name="final_y_tolerance" value="0.015"/> <!-- meter -->    
 
   <!-- PID control for sideshift control -->
     <param name="kp" value="12.0"/>
