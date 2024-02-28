@@ -18,7 +18,6 @@ private:
     double look_ahead_reverse_time_;
     double min_look_ahead_dis_;
     double max_look_ahead_dis_;
-    double look_ahead_distance_;
     
     double max_steering_;   // max steering wheel angle
     double min_steering_;   // min steering wheel angle
@@ -28,7 +27,7 @@ private:
     double sum_e_la{0};
 
     /* PP varibales */
-    double alpha_;          // angle between look ahead point and current pose
+
     double distance_;       // distance between look ahead point and current pose
     geometry_msgs::PoseStamped look_ahead_point_;  // pose of the look head point
     double rotational_radius_;  // rotational radius
@@ -68,4 +67,7 @@ public:
     int max_lk_reverse_point_;
     std_msgs::Float32 lateral_heading_error_, lateral_error_;
     double cur_vel_, raw_cur_vel_;
+
+    double look_ahead_distance_;
+    double alpha_;          // angle between look ahead point and current pose
 };

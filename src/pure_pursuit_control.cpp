@@ -142,12 +142,16 @@ void PurePursuitController::calControl()
         point_index_ = path_.poses.size() - 1;
         point_lkh.x = path_.poses.at(point_index_).pose.position.x;
         point_lkh.y = path_.poses.at(point_index_).pose.position.y;
-        ROS_INFO("MAX POINT INDEX CORRECTED!!!");
+        // ROS_INFO("MAX POINT INDEX CORRECTED!!!");
     }   
 
     look_ahead_distance_ = sqrt(point_lkh.x*point_lkh.x + point_lkh.y*point_lkh.y);
-    if (abs(look_ahead_distance_) < min_look_ahead_dis_) look_ahead_distance_ = min_look_ahead_dis_;
-    if (abs(look_ahead_distance_) > max_look_ahead_dis_) look_ahead_distance_ = max_look_ahead_dis_;
+    // if (abs(look_ahead_distance_) < min_look_ahead_dis_) look_ahead_distance_ = min_look_ahead_dis_;
+    // if (abs(look_ahead_distance_) > max_look_ahead_dis_) look_ahead_distance_ = max_look_ahead_dis_;
+        
+    // correct lookahead distance when near goal
+    // if (point_index_ == path_.poses.size() - 1) look_ahead_distance_ = sqrt(point_lkh.x*point_lkh.x + point_lkh.y*point_lkh.y);
+
 
     ROS_INFO("PP Look ahead point distance: %f", look_ahead_distance_);
     ROS_INFO("PP Look ahead point: %d", point_index_);
@@ -165,7 +169,7 @@ void PurePursuitController::calControl()
     if (distance_to_goal <= goal_correct_yaw_)
     {
         quaternionToRPY(path_.poses.at(path_.poses.size()-1).pose.orientation, roll_tmp, pitch_tmp, alpha_);
-        look_ahead_distance_ = goal_correct_yaw_;
+        // look_ahead_distance_ = goal_correct_yaw_;
     }
         
     
