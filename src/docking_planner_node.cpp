@@ -17,7 +17,9 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     nh_.param<double>("angle_tolerance", angle_tolerance_, 5*180/M_PI);
     nh_.param<double>("final_angle_tolerance", final_angle_tolerance_, 1*180/M_PI);
     nh_.param<double>("x_tolerance", x_tolerance_, 0.05);
+    nh_.param<double>("final_x_tolerance", final_x_tolerance_, 0.05);
     nh_.param<double>("y_tolerance", y_tolerance_, 0.04);
+    nh_.param<double>("final_y_tolerance", final_y_tolerance_, 0.04);
     
     /* Publisher */
     pub_docking_state = nh_.advertise<std_msgs::String>("/pallet_docking/docking_state", 1);
@@ -27,7 +29,7 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     pub_controller_on_ = nh_.advertise<std_msgs::Bool>("/pallet_docking/controller_turn_on", 1);
     pub_goal_pose_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("/pallet_docking/goal_pose", 1);
     pub_global_goal_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("/pallet_docking/global_goal_pose", 1);
-    pub_fake_goal_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("/pallet_docking/fake_goal_pose", 1);
+    pub_docking_error_ = nh_.advertise<geometry_msgs::Vector3>("/pallet_docking/docking_error", 1);
 
     /* Subscriber */
     sub_pallet_pose_ = nh_.subscribe<geometry_msgs::PoseStamped>("/pallet_detection_relay/pallet_pose", 1, &DockingManager::palletPoseCallback, this);
@@ -98,6 +100,7 @@ void DockingManager::dockingServerGoalCallback(const pallet_dock_msgs::PalletDoc
     quaternionToRPY(pallet_pose_.pose.orientation, r, p, yaw);
     yaw = yaw - M_PI;
     pallet_pose_.pose.orientation = rpyToQuaternion(r, p, yaw);
+    pub_global_goal_pose_.publish(pallet_pose_);
     pallet_pose_avai_ = true;
     ROS_INFO("Receive docking goal");
 }
@@ -207,7 +210,7 @@ void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStampe
     {
         ROS_ERROR("%s", ex.what());
     }
-    pub_global_goal_pose_.publish(global_goal_pose_);
+    // pub_global_goal_pose_.publish(global_goal_pose_);
     goal_setup_ = true;  
 }
 
@@ -249,9 +252,23 @@ void DockingManager::checkGoalReach()
     double error_y = goal_pose_.y;
     double error_yaw = goal_pose_.z;
     double error_sq = sqrt(error_x*error_x + error_y*error_y);
-    if (approach_done_)
+    geometry_msgs::Vector3 docking_error;
+    docking_error.x = error_x;
+    docking_error.y = error_y;
+    docking_error.z = error_yaw;
+    pub_docking_error_.publish(docking_error);
+    if (!approach_done_)        // tolerance for approaching
     {
-        angle_tolerance_ = final_angle_tolerance_;     // For temporary to make the pocket docking more stable
+        ros::param::get("/docking_planner/x_tolerance", x_tolerance_);
+        ros::param::get("/docking_planner/y_tolerance", y_tolerance_);
+        ros::param::get("/docking_planner/angle_tolerance", angle_tolerance_);
+    
+    }
+    else                        // tolerance for final docking
+    {
+        ros::param::get("/docking_planner/final_x_tolerance", x_tolerance_);
+        ros::param::get("/docking_planner/final_y_tolerance", y_tolerance_);
+        ros::param::get("/docking_planner/final_angle_tolerance", angle_tolerance_);
     }
     if (error_sq <= distance_tolerance_) 
     {
