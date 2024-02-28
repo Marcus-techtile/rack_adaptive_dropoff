@@ -35,6 +35,8 @@ private:
     ros::Publisher pub_cmd_vel_;
     ros::Publisher pub_local_path_;
     ros::Publisher pub_debug_;
+    ros::Publisher pub_pp_lookahead_distance_;
+    ros::Publisher pub_pp_lookahead_angle_;
     ros::Publisher marker_pub_;
     boost::shared_ptr <dynamic_reconfigure::Server<config> > srv_;
 
@@ -123,6 +125,8 @@ public:
         pub_local_path_ = nh_.advertise<nav_msgs::Path>("pallet_docking/local_ref_path", 1);
         pub_debug_ = nh_.advertise<std_msgs::Float32>("pallet_docking/debug", 1);
         marker_pub_ = nh_.advertise<visualization_msgs::Marker>("/pallet_docking/marker", 1);
+        pub_pp_lookahead_distance_ = nh_.advertise<std_msgs::Float32>("pallet_docking/purepursuit_lookahead_distance", 1);
+        pub_pp_lookahead_angle_ = nh_.advertise<std_msgs::Float32>("pallet_docking/purepursuit_lookahead_angle", 1);
 
         /* ROS Subscriber */
         sub_odom_ = nh_.subscribe<nav_msgs::Odometry>("/gazebo/forklift_controllers/odom", 1, &DockingControl::odomCallback, this);
@@ -282,9 +286,21 @@ public:
             pure_pursuit_control.calControl();
             steering_angle_ = pure_pursuit_control.getSteeringAngle();
 
+            std_msgs::Float32 pp_lkh_distance, pp_lkh_angle;
+            pp_lkh_distance.data = pure_pursuit_control.look_ahead_distance_;
+            pub_pp_lookahead_distance_.publish(pp_lkh_distance);
+
+            pp_lkh_angle.data = pure_pursuit_control.alpha_;
+            pub_pp_lookahead_angle_.publish(pp_lkh_angle);
+
             ROS_INFO("PP index: %d", pure_pursuit_control.point_index_);
 
-            steering_ = steering_angle_;
+            double cutoff_frequency_steering = 0.5;
+            e_pow_s_ = 1 - exp(-0.025 * 2 * M_PI * cutoff_frequency_steering);
+            lpf_output_s_ += (steering_angle_ - lpf_output_s_) * e_pow_s_;
+
+            // steering_ = steering_angle_;
+            steering_ = lpf_output_s_;
 
             /* VELOCITY calculate */
             int lk_index;
@@ -345,9 +361,10 @@ public:
 
             if(isnan(steering_) || isnan(final_ref_vel_))
             {
-                ROS_ERROR("Nan number !");
+                ROS_ERROR("Nan number ! Reset controller");
                 controller_on_.data = false;
                 pub_stop_ = false;
+                resetController();
                 return;
             }
 
