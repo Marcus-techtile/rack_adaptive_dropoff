@@ -100,9 +100,9 @@ void PurePursuitController::calControl()
 
     if (cur_vel_*ref_vel_ < 0) cur_vel_ = -cur_vel_;
 
-    if (ref_vel_ < 0) lk_time = look_ahead_reverse_time_;
+    // if (ref_vel_ < 0) lk_time = look_ahead_reverse_time_;
     // current velocity, can be tried with ref velocity from the fuzzy controller
-    look_ahead_distance_ = cur_vel_*lk_time;
+    look_ahead_distance_ = abs(cur_vel_)*lk_time;
     if (abs(look_ahead_distance_) < min_look_ahead_dis_) look_ahead_distance_ = min_look_ahead_dis_;
     if (abs(look_ahead_distance_) > max_look_ahead_dis_) look_ahead_distance_ = max_look_ahead_dis_;
 
