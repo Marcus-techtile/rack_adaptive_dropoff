@@ -242,7 +242,6 @@ public:
 
             /* Convert global path "odom" to local path "base_link" */ 
             local_ref_path_.poses.clear();
-            // local_ref_path_.header.frame_id = "base_link_p";
             for (int i = 0; i < ref_path_.poses.size(); i++)
             {
                 ref_path_.poses.at(i).header.stamp = ros::Time(0);
@@ -255,7 +254,6 @@ public:
                     ROS_ERROR("%s",ex.what());
                 }
             }
-
             pub_local_path_.publish(local_ref_path_);
 
             /* Find the closest point on the path */
@@ -344,7 +342,7 @@ public:
                 // ROS_INFO("MAX_LINEAR_VEL: %f", max_vel_limit);
                 if (abs(final_ref_vel_) >= max_vel_limit) final_ref_vel_ = max_vel_limit * (final_ref_vel_/abs(final_ref_vel_));
             }
-            if (abs(final_ref_vel_) < 0.03) final_ref_vel_ = std::copysign(0.03, final_ref_vel_);
+            if (abs(final_ref_vel_) < min_vel_) final_ref_vel_ = std::copysign(min_vel_, final_ref_vel_);
 
 
             ROS_INFO("REF PATH LK X: %f", local_ref_path_.poses.at(lk_index).pose.position.x);
