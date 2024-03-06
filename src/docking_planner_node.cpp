@@ -88,18 +88,19 @@ void DockingManager::dockingServerGoalCallback(const pallet_dock_msgs::PalletDoc
     {
         start_pallet_docking_ = true;
         start_returning_ = false;
+        pallet_pose_ = docking_server_goal_.goal.docking_pose;
+        double r, p, yaw;
+        quaternionToRPY(pallet_pose_.pose.orientation, r, p, yaw);
+        yaw = yaw - M_PI;
+        pallet_pose_.pose.orientation = rpyToQuaternion(r, p, yaw);
     }
     else
     {
         start_pallet_docking_ = false;
         start_returning_ = true;
+        pallet_pose_ = docking_server_goal_.goal.docking_pose;
     }
     
-    pallet_pose_ = docking_server_goal_.goal.docking_pose;
-    double r, p, yaw;
-    quaternionToRPY(pallet_pose_.pose.orientation, r, p, yaw);
-    yaw = yaw - M_PI;
-    pallet_pose_.pose.orientation = rpyToQuaternion(r, p, yaw);
     pub_global_goal_pose_.publish(pallet_pose_);
 
     dis_docking_offset_ = docking_server_goal_.goal.pallet_depth_offset;
@@ -260,19 +261,30 @@ void DockingManager::checkGoalReach()
     docking_error.y = error_y;
     docking_error.z = error_yaw;
     pub_docking_error_.publish(docking_error);
-    if (!approach_done_)        // tolerance for approaching
+    if (docking_mode_ == 0)     // pallet docking mode
     {
+        if (!approach_done_)        // tolerance for approaching
+        {
+            ros::param::get("/docking_planner/x_tolerance", x_tolerance_);
+            ros::param::get("/docking_planner/y_tolerance", y_tolerance_);
+            ros::param::get("/docking_planner/angle_tolerance", angle_tolerance_);
+        
+        }
+        else                        // tolerance for final docking
+        {
+            ros::param::get("/docking_planner/final_x_tolerance", x_tolerance_);
+            ros::param::get("/docking_planner/final_y_tolerance", y_tolerance_);
+            ros::param::get("/docking_planner/final_angle_tolerance", angle_tolerance_);
+        }
+    }
+    else                            // returning mode
+    {
+        // Relax the tolerance with returning motion
         ros::param::get("/docking_planner/x_tolerance", x_tolerance_);
         ros::param::get("/docking_planner/y_tolerance", y_tolerance_);
         ros::param::get("/docking_planner/angle_tolerance", angle_tolerance_);
-    
     }
-    else                        // tolerance for final docking
-    {
-        ros::param::get("/docking_planner/final_x_tolerance", x_tolerance_);
-        ros::param::get("/docking_planner/final_y_tolerance", y_tolerance_);
-        ros::param::get("/docking_planner/final_angle_tolerance", angle_tolerance_);
-    }
+
     if (error_sq <= distance_tolerance_) 
     {
         check_inside_goal_range_ = true;
