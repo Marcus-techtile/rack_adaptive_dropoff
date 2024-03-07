@@ -103,6 +103,7 @@ void DockingManager::dockingServerGoalCallback(const pallet_dock_msgs::PalletDoc
     
     pub_global_goal_pose_.publish(pallet_pose_);
 
+    dis_approach_offset_ = docking_server_goal_.goal.approaching_distance;
     dis_docking_offset_ = docking_server_goal_.goal.pallet_depth_offset;
     ROS_INFO("Pallet depth offset: %f", dis_docking_offset_);
     pallet_pose_avai_ = true;
