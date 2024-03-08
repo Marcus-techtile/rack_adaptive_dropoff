@@ -69,7 +69,6 @@ private:
     double alpha_;          // angle between look ahead point and current pose
     double distance_;       // distance between look ahead point and current pose
     double goal_distance_;
-    double goal_x_, goal_y_, goal_yaw_;
     geometry_msgs::PoseStamped look_ahead_point_;  // pose of the look head point
     double rotational_radius_;  // rotational radius
     double steering_angle_, steering_;     // steering wheel
@@ -164,13 +163,13 @@ public:
 
     void JointStateCallBack(const sensor_msgs::JointState::ConstPtr &msg)
     {
-    for (int i = 0; i < msg->name.size(); i++) {
-        if (msg->name.at(i) == "drive_steer_joint" ) {
-        steering_sub_ = msg->position.at(i);
-        ROS_DEBUG("JointStateCallBack: steering angle: %f", steering_sub_);
-        break;
+        for (int i = 0; i < msg->name.size(); i++) {
+            if (msg->name.at(i) == "drive_steer_joint" ) {
+            steering_sub_ = msg->position.at(i);
+            ROS_DEBUG("JointStateCallBack: steering angle: %f", steering_sub_);
+            break;
+            }
         }
-    }
     }
 
     void refPathCallback(const nav_msgs::Path::ConstPtr& msg)
@@ -188,6 +187,7 @@ public:
     void controllerOnCallback(const std_msgs::Bool::ConstPtr& msg)
     {
         controller_on_.data = msg->data;
+        ROS_INFO("CONTROLLER IS TRIGGERED: %d !", controller_on_.data);
     }
 
     void approachingStatusCallback(const std_msgs::Bool::ConstPtr& msg)
@@ -203,6 +203,10 @@ public:
         cmd_vel_.linear.x = 0.0;
         cmd_vel_.angular.z = 0;
         pub_cmd_vel_.publish(cmd_vel_);
+        lpf_output_s_ = 0;
+        steering_ = 0;
+        lpf_output_v_ = 0;
+        final_ref_vel_ = 0;
     }
 
     void controllerCal()
@@ -214,7 +218,6 @@ public:
                 resetController();
                 pub_stop_ = true;
             }
-            // ROS_INFO("Controller is turned off!");
             return;
         }
         pub_stop_ = false;
@@ -225,22 +228,17 @@ public:
         }
         if (!ref_path_avai_)
         {
-            ROS_INFO("No ref path!!!");
+            ROS_WARN("No ref path!!!");
             return;
         }
         if (!goal_avai_)
         {
-            ROS_INFO("No goal!!!");
+            ROS_WARN("No goal!!!");
             return;
         }
         if (ref_path_.poses.size() > 1)
         {
-            /* Calculate distance to goal */
-            goal_x_ = goal_pose_.pose.pose.position.x;
-            goal_y_ = goal_pose_.pose.pose.position.y;
-
-
-            /* Convert global path "odom" to local path "base_link" */ 
+            /*********** CONVERT GLOBAL PATH TO BASE_LINK PATH ***********/ 
             local_ref_path_.poses.clear();
             for (int i = 0; i < ref_path_.poses.size(); i++)
             {
@@ -256,7 +254,7 @@ public:
             }
             pub_local_path_.publish(local_ref_path_);
 
-            /* Find the closest point on the path */
+            /*********** NEAREST POINT FINDING **********/
             int closest_index = 0;
             double min_dist = sqrt(local_ref_path_.poses.at(closest_index).pose.position.x*local_ref_path_.poses.at(closest_index).pose.position.x +
                                     local_ref_path_.poses.at(closest_index).pose.position.y*local_ref_path_.poses.at(closest_index).pose.position.y);
@@ -271,9 +269,9 @@ public:
                 }
             }
             if (ref_path_.poses.size() - 1 < closest_index) closest_index = ref_path_.poses.size() - 1;
-            ROS_INFO ("Min index for lookahead: %d", closest_index);
+            ROS_DEBUG ("Nearest index: %d", closest_index);
 
-            // PurePursuit control
+            /******** STEERING CONTROL *********/  
             std_msgs::Float32 debug_p;
             debug_p.data = pure_pursuit_control.lateral_error_.data;
             pub_debug_.publish(debug_p);
@@ -284,6 +282,14 @@ public:
             pure_pursuit_control.calControl();
             steering_angle_ = pure_pursuit_control.getSteeringAngle();
 
+            // Smooth the steering output. Lowpass filter
+            double cutoff_frequency_steering = 0.5;
+            e_pow_s_ = 1 - exp(-0.025 * 2 * M_PI * cutoff_frequency_steering);
+            lpf_output_s_ += (steering_angle_ - lpf_output_s_) * e_pow_s_;
+
+            steering_ = lpf_output_s_;
+
+            // Visualize PP lookahead distance and lookahead angle
             std_msgs::Float32 pp_lkh_distance, pp_lkh_angle;
             pp_lkh_distance.data = pure_pursuit_control.look_ahead_distance_;
             pub_pp_lookahead_distance_.publish(pp_lkh_distance);
@@ -291,16 +297,7 @@ public:
             pp_lkh_angle.data = pure_pursuit_control.alpha_;
             pub_pp_lookahead_angle_.publish(pp_lkh_angle);
 
-            ROS_INFO("PP index: %d", pure_pursuit_control.point_index_);
-
-            double cutoff_frequency_steering = 0.5;
-            e_pow_s_ = 1 - exp(-0.025 * 2 * M_PI * cutoff_frequency_steering);
-            lpf_output_s_ += (steering_angle_ - lpf_output_s_) * e_pow_s_;
-
-            // steering_ = steering_angle_;
-            steering_ = lpf_output_s_;
-
-            /* VELOCITY calculate */
+            /******** VELOCITY CONTROL ****/
             int lk_index;
             double fuzzy_lk_dis = fuzzy_lookahead_dis_;
             double max_dist = sqrt(local_ref_path_.poses.at(local_ref_path_.poses.size()-1).pose.position.x*local_ref_path_.poses.at(local_ref_path_.poses.size()-1).pose.position.x
@@ -313,40 +310,30 @@ public:
                                             + local_ref_path_.poses.at(lk_index).pose.position.y*local_ref_path_.poses.at(lk_index).pose.position.y)) break;  
             }
 
-
-            // ROS_INFO("Fuzzy max_dist: %f", max_dist);
-            // double lk_dis = abs(local_ref_path_.poses.at(lk_index).pose.position.x);
-            ROS_INFO("Fuzzy lk distance: %f", fuzzy_lk_dis);
             fuzzy_controller.inputSolveGoal(abs(fuzzy_lk_dis));
             fuzzy_controller.inputsolveSteering(0.0);
             fuzzy_controller.inputResults();
             ref_velocity_ = fuzzy_controller.cal_fuzzy_output() * cos(steering_);
             
             if (local_ref_path_.poses.at(lk_index).pose.position.x < 0)
-            {
                 if (ref_velocity_ > 0) ref_velocity_ = -ref_velocity_;
-            }
-
+            
+            // Smooth the velocity output
             double cutoff_frequency_v = 0.2;
             e_pow_v_ = 1 - exp(-0.025 * 2 * M_PI * cutoff_frequency_v);
             lpf_output_v_ += (ref_velocity_ - lpf_output_v_) * e_pow_v_;
             final_ref_vel_ = lpf_output_v_;
 
-            // final_ref_vel_ = ref_velocity_;
-
-            
-            // Limit the velocity to limit the angular velocity
+            /************ ANGULAR VELOCITY LIMIT ************/
             if (steering_ != 0)
             {
                 double max_vel_limit = abs(max_angular_vel_ * l_wheelbase_ / tan(steering_));
-                // ROS_INFO("MAX_LINEAR_VEL: %f", max_vel_limit);
                 if (abs(final_ref_vel_) >= max_vel_limit) final_ref_vel_ = max_vel_limit * (final_ref_vel_/abs(final_ref_vel_));
             }
             if (abs(final_ref_vel_) < min_vel_) final_ref_vel_ = std::copysign(min_vel_, final_ref_vel_);
 
 
-            ROS_INFO("REF PATH LK X: %f", local_ref_path_.poses.at(lk_index).pose.position.x);
-
+            /*********** LIMIT CONTROL SIGNAL WHEN DOCKING TO POCKET FOR SAFETY ************/
             if ((approaching_done_.data && final_ref_vel_ >= 0) ||
                 (!approaching_done_.data && final_ref_vel_ < 0)) 
             {
@@ -354,12 +341,10 @@ public:
                 if (abs(final_ref_vel_) >= 0.2) final_ref_vel_ = 0.2 * (final_ref_vel_/abs(final_ref_vel_));
             } 
 
-            ROS_INFO("Velocity output: %f", final_ref_vel_);
-            ROS_INFO("steering_angle: %f", steering_);
-
+            /*********** NAN OUTPUT HANDLE *************/
             if(isnan(steering_) || isnan(final_ref_vel_))
             {
-                ROS_ERROR("Nan number ! Reset controller");
+                ROS_ERROR("NAN NUMBER ! RESET CONTROLLER");
                 controller_on_.data = false;
                 pub_stop_ = false;
                 resetController();
@@ -367,13 +352,10 @@ public:
             }
 
             cmd_vel_.linear.x = final_ref_vel_;
-            // cmd_vel_.angular.z = steering_angle_;
             cmd_vel_.angular.z = steering_;
-
-            ROS_INFO("Generated signal !!! \r\n"); 
             pub_cmd_vel_.publish(cmd_vel_);
 
-            /* Visualize lookahead point */
+            /********** VISUALIZE LOOKAHEAD POINT MARKER ************/
             visualization_msgs::Marker points;
             points.header.frame_id =  path_frame_;
             points.header.stamp = ros::Time::now();
@@ -420,7 +402,6 @@ public:
                 points.points.push_back(my_points[i]);
                 points.colors.push_back(c);
             }
-
             marker_pub_.publish(points);
         }
 

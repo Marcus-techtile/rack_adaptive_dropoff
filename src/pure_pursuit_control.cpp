@@ -106,8 +106,6 @@ void PurePursuitController::calControl()
     if (abs(look_ahead_distance_) < min_look_ahead_dis_) look_ahead_distance_ = min_look_ahead_dis_;
     if (abs(look_ahead_distance_) > max_look_ahead_dis_) look_ahead_distance_ = max_look_ahead_dis_;
 
-    // ROS_INFO("PP Look ahead distance: %f", look_ahead_distance_);
-
     // Find the first point which has the distance longer than the lookahead distance
     for (point_index_ = closest_point_; point_index_ < path_.poses.size(); point_index_++)
     {
@@ -151,11 +149,6 @@ void PurePursuitController::calControl()
         
     // correct lookahead distance when near goal
     // if (point_index_ == path_.poses.size() - 1) look_ahead_distance_ = sqrt(point_lkh.x*point_lkh.x + point_lkh.y*point_lkh.y);
-
-
-    ROS_INFO("PP Look ahead point distance: %f", look_ahead_distance_);
-    ROS_INFO("PP Look ahead point: %d", point_index_);
-    // ROS_INFO("Max lkh reverse point: %d", max_lk_reverse_point_);
     
     // Calculate alpha and set the ending condition to avoid the singularity
     double roll_tmp, pitch_tmp;
@@ -175,16 +168,12 @@ void PurePursuitController::calControl()
     
     if (ref_vel_ < 0) alpha_ = -alpha_;  
 
-    ROS_INFO("PP alpha: %f", alpha_);
     steering_angle_ = atan(2*l_wheelbase_*sin(alpha_)/look_ahead_distance_);
 
-    ROS_INFO("Steering_angle: %f", steering_angle_);
     sum_e_la += lateral_heading_error_.data * 0.02;
 
     double steering_angle_corrected = steering_angle_ + kp_*lateral_heading_error_.data 
                                             + ki_*sum_e_la;
-    ROS_INFO("Corrected steering_angle: %f", steering_angle_corrected);
-    ROS_INFO("LATERAL ERROR: %f", lateral_heading_error_.data);
 
     steering_angle_ = steering_angle_corrected;
 
