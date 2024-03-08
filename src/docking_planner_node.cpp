@@ -105,6 +105,12 @@ void DockingManager::dockingServerGoalCallback(const pallet_dock_msgs::PalletDoc
 
     dis_approach_offset_ = docking_server_goal_.goal.approaching_distance;
     dis_docking_offset_ = docking_server_goal_.goal.pallet_depth_offset;
+    if (dis_docking_offset_ > 0)
+    {
+        ROS_WARN("Docking offset is positive. This param should be negative to ensure the docking depth. Revert it to negative!");
+        dis_docking_offset_ = -dis_docking_offset_;
+    }
+    approaching_min_dis_ = docking_server_goal_.goal.move_back_distance;  // enable moveback motion for pallet docking
     ROS_INFO("Pallet depth offset: %f", dis_docking_offset_);
     pallet_pose_avai_ = true;
     ROS_INFO("Receive docking goal");
@@ -430,7 +436,8 @@ void DockingManager::dockingFSM()
             // if (local_static_goal_pose_.pose.position.x < 0) move_reverse_ = true;
             // else move_reverse_ = false;
 
-            if (check_goal_distance_ < approaching_min_dis_ && !approach_done_ && !move_back_cmd_.data)  // Move back to increase the distance
+            if (check_goal_distance_ < approaching_min_dis_ 
+                                && !approach_done_ && !move_back_cmd_.data)  // Move back to increase the distance
             {   
                 // goalSetup(goal_distance, pallet_pose_);
                 updateGoal();

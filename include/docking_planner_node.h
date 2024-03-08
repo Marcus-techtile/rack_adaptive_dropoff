@@ -91,6 +91,7 @@ private:
 
     double check_goal_distance_;
     double approaching_min_dis_; //minimum necessary distance (perpendicular distance) to start approaching. Less than it, the forklift will move backward to increase the distance
+    bool moveback_enable_;
 
     /* Tolerance (in local frame) */
     double distance_tolerance_{0.05};       // absolute tolerance of distance = sqrt(x^2+y^2)
