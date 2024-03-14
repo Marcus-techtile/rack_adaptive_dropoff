@@ -55,6 +55,7 @@ public:
     void setRefVel(double ref_vel);
     void setClosestPoint(int closest_point);
     void setGoalCorrectYaw(double dis_cor);
+    void setLookaheadTime(double lk_t);
 
     //using the intersection between circle and 2 points of the line to interpolate the lkd point
     geometry_msgs::Point interpolateLkhPoint(const geometry_msgs::Point & p1,
@@ -69,5 +70,6 @@ public:
     double cur_vel_, raw_cur_vel_;
 
     double look_ahead_distance_;
+    double lk_time;
     double alpha_;          // angle between look ahead point and current pose
 };

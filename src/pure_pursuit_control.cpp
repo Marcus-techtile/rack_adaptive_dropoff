@@ -91,12 +91,17 @@ void PurePursuitController::setGoalCorrectYaw(double dis_cor)
     goal_correct_yaw_ = dis_cor;
 }
 
+void PurePursuitController::setLookaheadTime(double lk_t)
+{
+    lk_time = lk_t;
+}
+
 void PurePursuitController::calControl()
 {
     if(path_.poses.size() == 0) return;
     double distance_to_goal = sqrt(path_.poses.at(path_.poses.size()-1).pose.position.x*path_.poses.at(path_.poses.size()-1).pose.position.x
                             + path_.poses.at(path_.poses.size()-1).pose.position.y*path_.poses.at(path_.poses.size()-1).pose.position.y);
-    double lk_time = look_ahead_time_;
+    // lk_time = look_ahead_time_;
 
     if (cur_vel_*ref_vel_ < 0) cur_vel_ = -cur_vel_;
 

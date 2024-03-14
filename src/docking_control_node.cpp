@@ -75,6 +75,7 @@ private:
     double ref_velocity_, final_ref_vel_;       // reference velocity
     geometry_msgs::Twist cmd_vel_;   // command velocity
     bool correct_yaw_{false};
+    double pp_look_ahead_time_, pp_look_ahead_time_straigh_line_;
 
     double last_ref_vel_{0.0};
     double velocity_rate_limit_;
@@ -111,7 +112,8 @@ public:
         paramGet.param<std::string>("path_frame", path_frame_, "base_link_p");
         paramGet.param("/forklift_params/wheel_base", l_wheelbase_, 1.311);
         // ROS_INFO("Robot model wheel base (%f)", l_wheelbase_);
-        paramGet.param<int>("look_ahead", look_ahead_, 10);
+        paramGet.param<double>("look_ahead_time", pp_look_ahead_time_, 3.0);
+        paramGet.param<double>("look_ahead_time_straigh_line", pp_look_ahead_time_straigh_line_, 5.0);
         paramGet.param<double>("alpha_offset", alpha_offset_, 0.005);
         paramGet.param<double>("max_steering", max_steering_, 1.5);
         paramGet.param<double>("min_steering", min_steering_, -1.5);
@@ -285,6 +287,8 @@ public:
             pure_pursuit_control.setRefPath(local_ref_path_);
             pure_pursuit_control.setRefVel(final_ref_vel_);
             pure_pursuit_control.setClosestPoint(closest_index);
+            if (!approaching_done_.data) pure_pursuit_control.setLookaheadTime(pp_look_ahead_time_);
+            else pure_pursuit_control.setLookaheadTime(pp_look_ahead_time_straigh_line_);
             pure_pursuit_control.calControl();
             steering_angle_ = pure_pursuit_control.getSteeringAngle();
 
