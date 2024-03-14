@@ -52,6 +52,7 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
 
 DockingManager::~ DockingManager(){}
 
+/***** PALLET POSE CALLBACK ******/
 void DockingManager::palletPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     if (get_pallet_pose_)
@@ -70,6 +71,7 @@ void DockingManager::palletPoseCallback(const geometry_msgs::PoseStamped::ConstP
     }
 }
 
+/***** DOCKING SERVER RESULT CALLBACK ******/
 void DockingManager::dockingServerResultCallback(const pallet_dock_msgs::PalletDockingActionResult::ConstPtr& msg)
 {
     docking_server_result_ = *msg;
@@ -80,27 +82,28 @@ void DockingManager::dockingServerResultCallback(const pallet_dock_msgs::PalletD
     }
 }
 
+/***** DOCKING SERVER GOAL CALLBACK ******/
 void DockingManager::dockingServerGoalCallback(const pallet_dock_msgs::PalletDockingActionGoal::ConstPtr& msg)
 {
     docking_server_goal_ = *msg;
     docking_mode_ = docking_server_goal_.goal.mode;
-    if (docking_mode_ == 0) 
+    if (docking_mode_ == 0)         // mode pallet docking
     {
         start_pallet_docking_ = true;
         start_returning_ = false;
         pallet_pose_ = docking_server_goal_.goal.docking_pose;
+        // rotate angle 180 degree
         double r, p, yaw;
         quaternionToRPY(pallet_pose_.pose.orientation, r, p, yaw);
         yaw = yaw - M_PI;
         pallet_pose_.pose.orientation = rpyToQuaternion(r, p, yaw);
     }
-    else
+    else                            // mode returning
     {
         start_pallet_docking_ = false;
         start_returning_ = true;
         pallet_pose_ = docking_server_goal_.goal.docking_pose;
     }
-    
     pub_global_goal_pose_.publish(pallet_pose_);
 
     dis_approach_offset_ = docking_server_goal_.goal.approaching_distance;
@@ -111,20 +114,17 @@ void DockingManager::dockingServerGoalCallback(const pallet_dock_msgs::PalletDoc
         dis_docking_offset_ = -dis_docking_offset_;
     }
     approaching_min_dis_ = docking_server_goal_.goal.move_back_distance;  // enable moveback motion for pallet docking
-    ROS_INFO("Pallet depth offset: %f", dis_docking_offset_);
     pallet_pose_avai_ = true;
     ROS_INFO("Receive docking goal");
 }
 
+/***** DOCKING SERVICE CALLBACK *****/
 bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
 {
     if(req.data)
     {
-    //     initDocking();
-    //     resetPlanAndControl();
         res.success = true;
         res.message = "Start docking!"; 
-        // move_back_cmd_.data = false;
         start_docking_FSM = true;
         ROS_INFO("Docking is turned on");
     }
@@ -135,18 +135,19 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
         start_docking_FSM = false;
         res.success = true;
         res.message = "Stop docking!";
-        move_back_cmd_.data = false;
+        returning_mode_.data = false;
         ROS_INFO("Docking is turned off");
     }
     return true;
 }
 
+/***** SETUP GOAL FOR DOCKING *****/
 void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStamped pallet_pose)
 {
     pallet_pose.header.stamp = ros::Time(0);
     geometry_msgs::PoseStamped local_pallet_pose;
 
-    if (!global_pallet_pose_setup_)
+    if (!global_pallet_pose_setup_)        // Convert pallet pose to global_frame
     {
         try
         {
@@ -160,7 +161,7 @@ void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStampe
     }
 
     global_pallet_pose_.header.stamp = ros::Time(0);  
-    try
+    try                                     // Convert pallet pose to local_frame
     {
         local_pallet_pose = docking_tf_buffer.transform(global_pallet_pose_, path_frame_, ros::Duration(1));
     }
@@ -168,10 +169,8 @@ void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStampe
     {
         ROS_ERROR("%s", ex.what());
     }
-    
-    double local_goal_y;
 
-    if (local_pallet_pose.pose.position.x >= 0)
+    if (docking_mode_ == 0)                 // pallet docking mode
     {
             /* Calculate the goal in local frame */
         double r_tmp, p_tmp, y_tmp;
@@ -183,35 +182,29 @@ void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStampe
         local_static_goal_pose_.pose.position.x = local_pallet_pose.pose.position.x - 
                                                         distance_pallet*cos(y_tmp);
         
-        local_goal_y = local_pallet_pose.pose.position.y - 
+        local_static_goal_pose_.pose.position.y = local_pallet_pose.pose.position.y - 
                                                         distance_pallet*sin(y_tmp);
         local_static_goal_pose_.pose.orientation = local_pallet_pose.pose.orientation;
     }
-    else
+    else                                    // returning mode
     {
         if (!approach_done_)
         {
             local_static_goal_pose_.pose.position.x = -moveback_straight_distance_;
-            local_goal_y = 0.0;
+            local_static_goal_pose_.pose.position.y = 0.0;
             local_static_goal_pose_.pose.orientation = rpyToQuaternion(0.0, 0.0, 0.0);
         }
         else
         {
             local_static_goal_pose_.pose.position.x = local_pallet_pose.pose.position.x;
-            local_goal_y = local_pallet_pose.pose.position.y;
+            local_static_goal_pose_.pose.position.y = local_pallet_pose.pose.position.y;
             local_static_goal_pose_.pose.orientation = local_pallet_pose.pose.orientation;
         }
-    }
-    local_static_goal_pose_.pose.position.y = local_goal_y; 
-
-    // if (approach_done_) local_static_goal_pose_.pose.position.y = 0;       // Need to test more
-    //////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////
+    } 
             
     /* Convert the goal to global frame */
     local_static_goal_pose_.header.stamp = ros::Time(0);;
     local_static_goal_pose_.header.frame_id = path_frame_;
-    // std::string global_frame = pallet_pose.header.frame_id;
 
     try
     {
@@ -225,6 +218,7 @@ void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStampe
     goal_setup_ = true;  
 }
 
+/***** UPDATE GOAL EACH CONTROL PERIOD *****/
 void DockingManager::updateGoal()
 {
     /* Transform goal pose to path_frame */
@@ -232,7 +226,7 @@ void DockingManager::updateGoal()
 
     try
     {
-        local_goal_pose_ = docking_tf_buffer.transform(global_goal_pose_, path_frame_, ros::Duration(1));
+        local_update_goal_pose_ = docking_tf_buffer.transform(global_goal_pose_, path_frame_, ros::Duration(1));
     }
     catch (tf2::TransformException ex)
     {
@@ -240,21 +234,19 @@ void DockingManager::updateGoal()
     }
 
     double r_tmp, p_tmp, y_tmp;
-    quaternionToRPY(local_goal_pose_.pose.orientation, r_tmp, p_tmp, y_tmp);
+    quaternionToRPY(local_update_goal_pose_.pose.orientation, r_tmp, p_tmp, y_tmp);
 
-    goal_pose_.x = local_goal_pose_.pose.position.x;
-    goal_pose_.y = local_goal_pose_.pose.position.y;
-    double local_goal_yaw = y_tmp;
-    goal_pose_.z = local_goal_yaw;
+    goal_pose_.x = local_update_goal_pose_.pose.position.x;
+    goal_pose_.y = local_update_goal_pose_.pose.position.y;
+    goal_pose_.z = y_tmp;
 
-    local_goal_pose_.pose.position.z = 0;
+    local_update_goal_pose_.pose.position.z = 0;
 
     geometry_msgs::PoseWithCovarianceStamped goal_pose_pub;
-    goal_pose_pub.header = local_goal_pose_.header;
-    goal_pose_pub.pose.pose = local_goal_pose_.pose;
+    goal_pose_pub.header = local_update_goal_pose_.header;
+    goal_pose_pub.pose.pose = local_update_goal_pose_.pose;
     pub_goal_pose_.publish(goal_pose_pub);
     goal_avai_ = true; 
-
 }
 
 void DockingManager::checkGoalReach()
@@ -319,13 +311,13 @@ void DockingManager::checkGoalReach()
     }
 }
 
+/***** RESET PALLET DOCKING ******/
 void DockingManager::initDocking()
 {
     current_pallet_docking_state_ = IDLE;
     docking_state.data = "IDLE";
     pub_docking_state.publish(docking_state);
     
-    // start_docking_FSM = false;
     start_pallet_docking_ = false;
     start_returning_ = false;
 
@@ -340,7 +332,7 @@ void DockingManager::initDocking()
     quintic_planner.resetPlanner();
 
     check_inside_goal_range_ = false;
-    count_goal_failed_ = 0;
+    count_outside_goal_range_ = 0;
 
     // reset the transition state
     get_pallet_pose_ = false;
@@ -351,13 +343,9 @@ void DockingManager::initDocking()
     goal_avai_ = false;         // transition from UPDATE_GOAL to GEN_PATH
     goal_reach_ = false;         // transition from GEN_PATH to STOP
     goal_failed_ = false;        // transition from GEN_PATH to RECOVER
-
-    count_path_gen_fail_ = 0;
-    count_goal_failed_ = 0;
-
-    count_outside_goal_range_ = 0;
 }
 
+/***** RESET PLANNING AND CONTROL ******/
 void DockingManager::resetPlanAndControl()
 {
     controller_on_.data = false;
@@ -367,6 +355,7 @@ void DockingManager::resetPlanAndControl()
     count_outside_goal_range_ = 0;
 }
 
+/***** DOCKING FSM ******/
 void DockingManager::dockingFSM()
 {
     if (!start_docking_FSM) return;
@@ -377,8 +366,8 @@ void DockingManager::dockingFSM()
         ROS_WARN("BAD DOCKING STATE! Both pallet docking and returning is turned on!");
         return;
     }
-    else if (start_pallet_docking_ && !start_returning_) move_back_cmd_.data = false;        //docking
-    else move_back_cmd_.data = true;             // returning. move back
+    else if (start_pallet_docking_ && !start_returning_) returning_mode_.data = false;        //docking
+    else returning_mode_.data = true;             // returning. move back
 
     if (old_docking_state.data != docking_state.data)
     {
@@ -387,12 +376,12 @@ void DockingManager::dockingFSM()
     }
     old_docking_state = docking_state;
     
-    geometry_msgs::PoseStamped fake_goal;
+    // FM transition
     switch(current_pallet_docking_state_)
     {   case IDLE:
             docking_state.data = "IDLE";
             if (start_pallet_docking_ || start_returning_) current_pallet_docking_state_ = GET_PALLET_POSE;
-            else 
+            else  break;
             break;
         case GET_PALLET_POSE:
             docking_state.data = "GET_PALLET_POSE";
@@ -401,7 +390,7 @@ void DockingManager::dockingFSM()
             {
                 current_pallet_docking_state_ = APPROACHING;
                 pallet_pose_avai_ = false;
-                get_pallet_pose_ = false;  // get pallet pose
+                get_pallet_pose_ = false;  
                 break;
             }
             break;
@@ -425,29 +414,27 @@ void DockingManager::dockingFSM()
             break;
         case SET_GOAL:
             docking_state.data = "SET_GOAL";
-
             if (!goal_setup_)
             {
                 goalSetup(goal_distance, pallet_pose_);
                 double r_tm, p_tm, yaw_tm;
                 quaternionToRPY(local_static_goal_pose_.pose.orientation, r_tm, p_tm, yaw_tm);
-                check_goal_distance_ = abs(local_static_goal_pose_.pose.position.x*cos(yaw_tm));
+                check_approaching_goal_distance_ = abs(local_static_goal_pose_.pose.position.x*cos(yaw_tm));
             } 
-            // if (local_static_goal_pose_.pose.position.x < 0) move_reverse_ = true;
-            // else move_reverse_ = false;
 
-            if (check_goal_distance_ < approaching_min_dis_ 
-                                && !approach_done_ && !move_back_cmd_.data)  // Move back to increase the distance
+            if (check_approaching_goal_distance_ < approaching_min_dis_ 
+                                && !approach_done_ && !returning_mode_.data)  // Move back to increase the distance
             {   
                 // goalSetup(goal_distance, pallet_pose_);
                 updateGoal();
                 double r_tm, p_tm, yaw_tm;
-                quaternionToRPY(local_goal_pose_.pose.orientation, r_tm, p_tm, yaw_tm);
+                quaternionToRPY(local_update_goal_pose_.pose.orientation, r_tm, p_tm, yaw_tm);
                 /* TODO: Update the calculation for approaching distance
                 */
-                if (abs(local_goal_pose_.pose.position.x*cos(yaw_tm)) < approaching_min_dis_)
+                if (abs(local_update_goal_pose_.pose.position.x*cos(yaw_tm)) < approaching_min_dis_)
                 {
                     ROS_INFO_ONCE("MOVE BACKWARD. THE MOVEMENT DISTANCE IS TOO SHORT !!!");
+                    geometry_msgs::Twist cmd_fw;
                     cmd_fw.linear.x = -0.2;
                     cmd_fw.angular.z = 0.0;
                     pub_cmd_vel.publish(cmd_fw);
@@ -455,7 +442,7 @@ void DockingManager::dockingFSM()
                 }
                 else
                 {
-                    ROS_INFO("Perpendicular distance to the approaching goal: %f", abs(local_goal_pose_.pose.position.x*cos(yaw_tm)));
+                    ROS_INFO("Perpendicular distance to the approaching goal: %f", abs(local_update_goal_pose_.pose.position.x*cos(yaw_tm)));
                 }
             }
             if (goal_setup_)
@@ -469,7 +456,7 @@ void DockingManager::dockingFSM()
             updateGoal();
             if (!goal_avai_) break;
             checkGoalReach();
-            if (move_back_cmd_.data)
+            if (returning_mode_.data)
             {
                 if (quintic_planner.starting_vel_ > 0) quintic_planner.starting_vel_ = -quintic_planner.starting_vel_;
                 if (quintic_planner.stopping_vel_ > 0) quintic_planner.stopping_vel_ = -quintic_planner.stopping_vel_;
@@ -500,11 +487,10 @@ void DockingManager::dockingFSM()
                     controller_on_.data = true;
                     pub_controller_on_.publish(controller_on_);
                 }
-                count_path_gen_fail_ = 0;
             } 
             if (goal_reach_)
             {
-                // ros::Duration(1.5).sleep();
+                resetPlanAndControl();
                 goal_reach_ = false;
                 ROS_INFO("Goal reach !!!");
                 if (!approach_done_) approach_done_ = true;
@@ -515,7 +501,6 @@ void DockingManager::dockingFSM()
             } 
             if (goal_failed_)
             {
-                ros::Duration(1.5).sleep();
                 failure_code_ = 3;
                 current_pallet_docking_state_ = FAILURE;
                 ROS_INFO("Goal failed !!!");
@@ -527,7 +512,7 @@ void DockingManager::dockingFSM()
             docking_state.data = "STOP";
             // Stop the controller
             resetPlanAndControl();
-            ros::Duration(1.5).sleep();
+            ros::Duration(1.0).sleep();
             if (docking_done_) current_pallet_docking_state_ = END;
             else 
             {
@@ -557,7 +542,6 @@ void DockingManager::dockingFSM()
     pub_docking_done.publish(docking_done); 
     pub_approaching_done.publish(approaching_done);
 }
-
 
 int main(int argc, char** argv)
 {

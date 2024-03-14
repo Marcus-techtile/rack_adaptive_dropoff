@@ -45,6 +45,9 @@ private:
     ros::Subscriber sub_pallet_pose_;
     ros::Subscriber sub_pallet_pose_ready_;
     ros::Subscriber sub_move_back_;
+
+    /* Docking Service*/
+    ros::ServiceServer service_;
     
         // Pallet docking action server
     ros::Subscriber sub_docking_server_result_;
@@ -58,13 +61,8 @@ private:
     geometry_msgs::PoseStamped global_pallet_pose_;
     bool global_pallet_pose_setup_;
 
-    /* Docking Service*/
-    ros::ServiceServer service_;
-
+        // Docking Mode
     bool docking_mode_;
-
-    /* Subscriber variables */
-    geometry_msgs::Twist cmd_vel_sub;
 
     /* Auxiliary class*/
     QuinticPlanner quintic_planner;
@@ -74,43 +72,34 @@ private:
     std_msgs::Bool docking_done;        // Docking process done or not
     std_msgs::Bool approaching_done;    // Approaching process done or not
 
-    geometry_msgs::Twist cmd_fw;
-
-    std_msgs::Bool controller_on_;
+    std_msgs::Bool controller_on_;      // on/off signal for controller
 
     /* goal point */
-    bool move_reverse_{false};
-    double dis_approach_offset_ = 1.5; // Offset from pallet to goal
-    double dis_docking_offset_ = 0.5;
+    double dis_approach_offset_; // Offset from pallet to approaching goal
+    double dis_docking_offset_;  // Offset from pallet to docking goal
     double moveback_straight_distance_;
     geometry_msgs::Vector3 goal_pose_;      // pose of the goal, vector3 type x:x; y:y, z:yaw
-    geometry_msgs::PoseStamped global_goal_pose_;
-    geometry_msgs::PoseStamped  local_static_goal_pose_;   //local goal to facilitate computing global goal
-    geometry_msgs::PoseStamped  local_goal_pose_;
-    double goal_sideshift_;
+    geometry_msgs::PoseStamped  global_goal_pose_;         // goal pose in global_frame_ 
+    geometry_msgs::PoseStamped  local_static_goal_pose_;   // goal pose in path_frame_
+    geometry_msgs::PoseStamped  local_update_goal_pose_;   // goal pose in path_frame_. Updated each period
 
-    double check_goal_distance_;
+    double check_approaching_goal_distance_;                // distance from robot to approaching pose
     double approaching_min_dis_; //minimum necessary distance (perpendicular distance) to start approaching. Less than it, the forklift will move backward to increase the distance
-    bool moveback_enable_;
 
     /* Tolerance (in local frame) */
-    double distance_tolerance_{0.05};       // absolute tolerance of distance = sqrt(x^2+y^2)
-    double angle_tolerance_{5*180/M_PI};    // absolute tolerance of yaw
-    double final_angle_tolerance_;
-    double x_tolerance_{0.1}, final_x_tolerance_;
-    double y_tolerance_{0.1}, final_y_tolerance_;              // absolute tolerance of x
-    bool check_inside_goal_range_{false};
+    double distance_tolerance_;       // absolute tolerance of distance = sqrt(x^2+y^2)
+    double angle_tolerance_, final_angle_tolerance_;    // absolute tolerance of yaw
+    double x_tolerance_, final_x_tolerance_;
+    double y_tolerance_, final_y_tolerance_;              // absolute tolerance of x
+    bool check_inside_goal_range_{false};       // if the distance error < distance tol -> inside goal range
     int count_outside_goal_range_;
-
-    int count_path_gen_fail_{0};
-    int count_goal_failed_{0};
 
     /* Docking State Control */
     bool start_pallet_docking_, start_returning_;
+    std_msgs::Bool returning_mode_;             // Mode returning back to the pre-docking position
     bool start_docking_FSM{false};
     enum docking_state {IDLE, GET_PALLET_POSE, APPROACHING, DOCKING, 
                         SET_GOAL, UPDATE_GOAL, SIDESHIFT_CONTROL, GEN_PATH_AND_PUB_CONTROL, STOP, RECOVER, END, FAILURE};
-    bool start_fsm_{false};
     bool get_pallet_pose_{false}; // transition to start GET_PALLET_POSE
     bool pallet_pose_avai_{false};  // transition from GET_PALLET_POSE to APPROACH
     bool approach_done_{false};     // transition from APPROACHING to DOCKING, to SET_GOAL
@@ -128,24 +117,13 @@ private:
     std::vector<std::string> failure_cases_;
     std::map<int, std::string> failure_map_;
 
-    double starting_time_recover;
-
     /* tf conversion */
     std::string path_frame_;
     std::string global_frame_;
     tf2_ros::Buffer docking_tf_buffer;
     tf2_ros::TransformListener docking_listener{docking_tf_buffer};
 
-    tf2_ros::Buffer pose_tf_buffer;
-    tf2_ros::TransformListener pose_listener{pose_tf_buffer};
-
-    /* move back */
-    std_msgs::Bool move_back_cmd_;
-
-    bool use_simulation_test_;
-
     /* Callback function */
-    void cmdCallback(const geometry_msgs::Twist::ConstPtr& msg);
     bool dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
     void palletPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
     void dockingServerResultCallback(const pallet_dock_msgs::PalletDockingActionResult::ConstPtr& msg);
