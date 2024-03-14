@@ -98,6 +98,10 @@ private:
     /* Limit angular rate */
     double max_angular_vel_;
 
+    /* Limit docking velocity */
+    double max_pocket_dock_vel_;
+    double max_pocket_dock_steering_;
+
     std::string path_frame_;
     
 public:
@@ -118,6 +122,8 @@ public:
         paramGet.param<double>("max_angular_vel", max_angular_vel_, 0.2);
 
         paramGet.param<double>("fuzzy_lookahead_dis", fuzzy_lookahead_dis_, 0.3);
+        paramGet.param<double>("max_pocket_dock_vel", max_pocket_dock_vel_, 0.2);
+        paramGet.param<double>("max_pocket_dock_steering", max_pocket_dock_steering_, 0.2);
 
         /* ROS Publisher */
         pub_cmd_vel_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
@@ -309,7 +315,10 @@ public:
                 if (abs(fuzzy_lk_dis) <= sqrt(local_ref_path_.poses.at(lk_index).pose.position.x*local_ref_path_.poses.at(lk_index).pose.position.x
                                             + local_ref_path_.poses.at(lk_index).pose.position.y*local_ref_path_.poses.at(lk_index).pose.position.y)) break;  
             }
-
+            
+            if (abs(local_ref_path_.poses.at(local_ref_path_.poses.size()-1).pose.position.x) < fuzzy_lk_dis)
+                lk_index = local_ref_path_.poses.size()-1;
+            
             fuzzy_controller.inputSolveGoal(abs(fuzzy_lk_dis));
             fuzzy_controller.inputsolveSteering(0.0);
             fuzzy_controller.inputResults();
@@ -337,8 +346,8 @@ public:
             if ((approaching_done_.data && final_ref_vel_ >= 0) ||
                 (!approaching_done_.data && final_ref_vel_ < 0)) 
             {
-                if (abs(steering_) >= 0.2) steering_ = 0.2*(abs(steering_)/steering_);
-                if (abs(final_ref_vel_) >= 0.2) final_ref_vel_ = 0.2 * (final_ref_vel_/abs(final_ref_vel_));
+                if (abs(steering_) >= max_pocket_dock_steering_) steering_ = max_pocket_dock_steering_*(abs(steering_)/steering_);
+                if (abs(final_ref_vel_) >= max_pocket_dock_vel_) final_ref_vel_ = max_pocket_dock_vel_ * (final_ref_vel_/abs(final_ref_vel_));
             } 
 
             /*********** NAN OUTPUT HANDLE *************/
