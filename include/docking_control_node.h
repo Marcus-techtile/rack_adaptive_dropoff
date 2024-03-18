@@ -33,6 +33,7 @@ private:
 
     /* Publisher */
     ros::Publisher pub_cmd_vel_;
+    ros::Publisher pub_pp_steering_;
     ros::Publisher pub_local_path_;
     ros::Publisher pub_debug_;
     ros::Publisher pub_pp_lookahead_distance_;
@@ -46,6 +47,9 @@ private:
 
     /* Steering sub */
     double steering_sub_;
+
+    double docking_freq_;
+    double dt_;
 
     /* Ref path */
     nav_msgs::Path ref_path_, local_ref_path_;
@@ -84,6 +88,7 @@ private:
     double e_pow_s_, e_pow_v_, e_pow_d_;
 
     /* Limit docking velocity */
+    double max_steering_speed_, min_steering_speed_;
     double max_pocket_dock_vel_;
     double max_pocket_dock_steering_;
 
