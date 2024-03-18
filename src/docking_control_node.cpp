@@ -23,6 +23,8 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
 
     paramGet.param<double>("fuzzy_lookahead_dis", fuzzy_lookahead_dis_, 0.3);
     paramGet.param<double>("backward_offset", backward_offset_, -0.02);
+    paramGet.param<double>("max_linear_acc", max_linear_acc_, 0.5);
+    paramGet.param<double>("min_linear_acc", min_linear_acc_, -0.5);
 
     paramGet.param<double>("max_pocket_dock_vel", max_pocket_dock_vel_, 0.2);
     paramGet.param<double>("max_pocket_dock_steering", max_pocket_dock_steering_, 0.2);
@@ -116,9 +118,7 @@ void DockingControl::resetController()
     pure_pursuit_control.resetPP();
     ref_path_.poses.clear();
     ref_path_avai_ = false;
-    lpf_output_s_ = 0;
     steering_ = 0;
-    lpf_output_v_ = 0;
     final_ref_vel_ = 0;
 }
 
@@ -199,6 +199,7 @@ void DockingControl::controllerCal()
     else pure_pursuit_control.setLookaheadTime(pp_look_ahead_time_straigh_line_);
     pure_pursuit_control.calControl();
 
+    // Publish PP steering for debug 
     std_msgs::Float32 pp_steer;
     pp_steer.data = pure_pursuit_control.PP_steering_angle_;
     pub_pp_steering_.publish(pp_steer);     // pp steering angle before being added PID
@@ -208,7 +209,6 @@ void DockingControl::controllerCal()
     double steering_speed = (steering_angle_ - steering_)/dt_;
     if (steering_speed > max_steering_speed_) steering_speed = max_steering_speed_;
     if (steering_speed < min_steering_speed_) steering_speed = min_steering_speed_;
-
     steering_ = steering_ + steering_speed * dt_;
 
     // Visualize PP lookahead distance and lookahead angle
@@ -243,11 +243,11 @@ void DockingControl::controllerCal()
     if (local_ref_path_.poses.at(lk_index).pose.position.x < backward_offset_)
         if (ref_velocity_ > 0) ref_velocity_ = -ref_velocity_;
     
-    // Smooth the velocity output
-    double cutoff_frequency_v = 0.2;
-    e_pow_v_ = 1 - exp(-0.025 * 2 * M_PI * cutoff_frequency_v);
-    lpf_output_v_ += (ref_velocity_ - lpf_output_v_) * e_pow_v_;
-    final_ref_vel_ = lpf_output_v_;
+    // Smooth the velocity output. Limit linear acceleration
+    double linear_acc = (ref_velocity_ - final_ref_vel_)/dt_;
+    if (linear_acc > max_linear_acc_) linear_acc = max_linear_acc_;
+    if (linear_acc < min_linear_acc_) linear_acc = min_linear_acc_;
+    final_ref_vel_ = final_ref_vel_ + linear_acc * dt_;
 
     /************ ANGULAR VELOCITY LIMIT ************/
     if (steering_ != 0)

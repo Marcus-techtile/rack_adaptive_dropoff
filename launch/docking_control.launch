@@ -25,31 +25,33 @@
     <param name="use_point_interpolate" value="true"/> 
 
    <!-- Fuzzy controller parameters -->
-   <param name="fuzzy_lookahead_dis" value="1.0"/>      <!-- ZERO value for output velocity --> 
+    <param name="fuzzy_lookahead_dis" value="1.0"/>      <!-- ZERO value for output velocity --> 
 
-   <param name="min_vel" value="0.03"/>      
-   <param name="output_VS" value="0.05"/>    
-   <param name="output_S" value="0.1"/>     
-   <param name="output_M" value="0.15"/>     
-   <param name="max_vel" value="0.2"/>       
+    <param name="min_vel" value="0.03"/>      
+    <param name="output_VS" value="0.05"/>    
+    <param name="output_S" value="0.1"/>     
+    <param name="output_M" value="0.15"/>     
+    <param name="max_vel" value="0.2"/>       
 
-   <param name="min_dis" value="0.2"/>      <!-- SMALL distance for input -->
-   <param name="goal_M_b" value="0.35"/>      <!-- MEDIUM distance for input -->
-   <param name="max_dis" value="0.5"/>      <!-- BIG distance for input -->
+    <param name="min_dis" value="0.2"/>      <!-- SMALL distance for input -->
+    <param name="goal_M_b" value="0.35"/>      <!-- MEDIUM distance for input -->
+    <param name="max_dis" value="0.5"/>      <!-- BIG distance for input -->
 
-   <param name="min_steer" value="-1.495"/>  <!-- NEGATIVE BIG steering for input -->
-   <param name="steer_NS_b" value="-0.8"/>   <!-- NEGATIVE SMALL steering for input -->
-   <param name="steer_Z_b" value="0.0"/>     <!-- ZERO steering for input -->
-   <param name="steer_PS_b" value="0.8"/>    <!-- POSITIVE SMALL steeringfor input -->
-   <param name="max_steer" value="1.495"/>   <!-- POSITIVE BIG steering for input -->
+    <param name="min_steer" value="-1.495"/>  <!-- NEGATIVE BIG steering for input -->
+    <param name="steer_NS_b" value="-0.8"/>   <!-- NEGATIVE SMALL steering for input -->
+    <param name="steer_Z_b" value="0.0"/>     <!-- ZERO steering for input -->
+    <param name="steer_PS_b" value="0.8"/>    <!-- POSITIVE SMALL steeringfor input -->
+    <param name="max_steer" value="1.495"/>   <!-- POSITIVE BIG steering for input -->
 
-   <param name="backward_offset" value="-0.02"/> <!-- offset velocity used to switch to reverse movement.
+    <param name="backward_offset" value="-0.02"/> <!-- offset velocity used to switch to reverse movement.
                                                   should be small negative -->
+    <param name="max_linear_acc" value="0.5"/>
+    <param name="min_linear_acc" value="-0.5"/>
 
-   <param name="max_pocket_dock_vel" value="0.2"/> 
-   <param name="max_pocket_dock_steering" value="0.2"/> 
+    <param name="max_pocket_dock_vel" value="0.2"/> 
+    <param name="max_pocket_dock_steering" value="0.2"/> 
 
-   <param name="max_abs_vel_change" value="0.01"/>   <!-- dt = 0.02, a = max_abs_vel_change/dt-->
+    <param name="max_abs_vel_change" value="0.01"/>   <!-- dt = 0.02, a = max_abs_vel_change/dt-->
  
   <remap from="/cmd_vel" to = "$(arg cmd_vel_topic)"/>
   <remap from="/gazebo/forklift_controllers/odom" to = "$(arg odom_topic)"/>

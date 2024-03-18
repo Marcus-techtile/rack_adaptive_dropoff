@@ -83,10 +83,7 @@ private:
     double fuzzy_lookahead_dis_;
     double ref_velocity_, final_ref_vel_;       // reference velocity
     double backward_offset_;        //offset velocity used to switch to reverse movement
-
-    /* Low pass filter */
-    double lpf_output_s_{0.0}, lpf_output_v_{0.0};
-    double e_pow_s_, e_pow_v_;
+    double max_linear_acc_, min_linear_acc_;
 
     /* Limit docking velocity */
     double max_steering_speed_, min_steering_speed_;
