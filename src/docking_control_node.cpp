@@ -6,10 +6,14 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     paramGet.param<std::string>("path_frame", path_frame_, "base_link_p");
     paramGet.param("/forklift_params/wheel_base", l_wheelbase_, 1.311);
     // ROS_INFO("Robot model wheel base (%f)", l_wheelbase_);
+    paramGet.param<double>("docking_freq", docking_freq_, 50.0);
+    dt_ = 1 / docking_freq_;
     paramGet.param<double>("look_ahead_time", pp_look_ahead_time_, 3.0);
     paramGet.param<double>("look_ahead_time_straigh_line", pp_look_ahead_time_straigh_line_, 5.0);
     paramGet.param<double>("max_steering", max_steering_, 1.5);
     paramGet.param<double>("min_steering", min_steering_, -1.5);
+    paramGet.param<double>("max_steering_speed", max_steering_speed_, 0.2);
+    paramGet.param<double>("min_steering_speed", min_steering_speed_, -0.2);
     paramGet.param<double>("max_vel", max_vel_, 0.3);
     paramGet.param<double>("min_vel", min_vel_, 0.15);
     paramGet.param<double>("goal_correct_yaw", goal_correct_yaw_, 0.3);
@@ -26,6 +30,7 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     marker_pub_ = nh_.advertise<visualization_msgs::Marker>("/pallet_docking/marker", 1);
     pub_pp_lookahead_distance_ = nh_.advertise<std_msgs::Float32>("pallet_docking/purepursuit_lookahead_distance", 1);
     pub_pp_lookahead_angle_ = nh_.advertise<std_msgs::Float32>("pallet_docking/purepursuit_lookahead_angle", 1);
+    pub_pp_steering_ = nh_.advertise<std_msgs::Float32>("pallet_docking/pp_steering_angle", 1);
 
     /* ROS Subscriber */
     sub_odom_ = nh_.subscribe<nav_msgs::Odometry>("/gazebo/forklift_controllers/odom", 1, &DockingControl::odomCallback, this);
@@ -52,6 +57,7 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     fuzzy_controller = FuzzyControl(paramGet);
     pure_pursuit_control = PurePursuitController(paramGet);
 
+
 }
 
 DockingControl::~DockingControl(){}
@@ -70,6 +76,13 @@ void DockingControl::JointStateCallBack(const sensor_msgs::JointState::ConstPtr 
         if (msg->name.at(i) == "drive_steer_joint" ) {
         steering_sub_ = msg->position.at(i);
         ROS_DEBUG("JointStateCallBack: steering angle: %f", steering_sub_);
+        break;
+        }
+    }
+    for (int i = 0; i < msg->name.size(); i++) {
+        if (msg->name.at(i) == "drive_wheel_joint" ) {
+        wheel_sp_sub_ = msg->velocity.at(i);
+        ROS_DEBUG("JointStateCallBack: drive wheel speed: %f", wheel_sp_sub_);
         break;
         }
     }
@@ -140,7 +153,7 @@ void DockingControl::controllerCal()
         ROS_WARN("No goal!!!");
         return;
     }
-    if (ref_path_.poses.size() > 1)
+    if (ref_path_.poses.size() < 1)
     {
         ROS_WARN("Path is not feasible for the controller");
         return;
@@ -189,14 +202,18 @@ void DockingControl::controllerCal()
     if (!approaching_done_.data) pure_pursuit_control.setLookaheadTime(pp_look_ahead_time_);
     else pure_pursuit_control.setLookaheadTime(pp_look_ahead_time_straigh_line_);
     pure_pursuit_control.calControl();
+
+    std_msgs::Float32 pp_steer;
+    pp_steer.data = pure_pursuit_control.PP_steering_angle_;
+    pub_pp_steering_.publish(pp_steer);     // pp steering angle before being added PID
     steering_angle_ = pure_pursuit_control.getSteeringAngle();
 
-    // Smooth the steering output. Lowpass filter
-    double cutoff_frequency_steering = 0.5;
-    e_pow_s_ = 1 - exp(-0.025 * 2 * M_PI * cutoff_frequency_steering);
-    lpf_output_s_ += (steering_angle_ - lpf_output_s_) * e_pow_s_;
+    // Smooth the steering output. Limit steering speed
+    double steering_speed = (steering_angle_ - steering_)/dt_;
+    if (steering_speed > max_steering_speed_) steering_speed = max_steering_speed_;
+    if (steering_speed < min_steering_speed_) steering_speed = min_steering_speed_;
 
-    steering_ = lpf_output_s_;
+    steering_ = steering_ + steering_speed * dt_;
 
     // Visualize PP lookahead distance and lookahead angle
     std_msgs::Float32 pp_lkh_distance, pp_lkh_angle;
@@ -340,7 +357,9 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "docking_control");
     ros::NodeHandle n ("~");
-    ros::Rate loop_rate(50);
+    double docking_frequency;
+    n.param<double>("docking_freq", docking_frequency, 50);
+    ros::Rate loop_rate(docking_frequency);
 
     DockingControl docking_controller(n);
 
