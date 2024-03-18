@@ -70,7 +70,7 @@ FuzzyControl::FuzzyControl(ros::NodeHandle &paramGet)
     // Output vector date based on the following rules
     output_vect_.push_back(output_Z_);
     output_vect_.push_back(output_Z_);
-    output_vect_.push_back(output_VS_);
+    output_vect_.push_back(output_Z_);
     output_vect_.push_back(output_Z_);
     output_vect_.push_back(output_Z_);
 
