@@ -3,11 +3,13 @@
 DockingControl::DockingControl(ros::NodeHandle &paramGet)
 {
     /* Get Param */
+    paramGet.param<double>("docking_freq", docking_freq_, 50.0);
+    ROS_INFO("Docking Control Frequency: %f", docking_freq_);
+    dt_ = 1 / docking_freq_;                        // Calculate sampling time
+
     paramGet.param<std::string>("path_frame", path_frame_, "base_link_p");
     paramGet.param("/forklift_params/wheel_base", l_wheelbase_, 1.311);
-    // ROS_INFO("Robot model wheel base (%f)", l_wheelbase_);
-    paramGet.param<double>("docking_freq", docking_freq_, 50.0);
-    dt_ = 1 / docking_freq_;
+    
     paramGet.param<double>("look_ahead_time", pp_look_ahead_time_, 3.0);
     paramGet.param<double>("look_ahead_time_straigh_line", pp_look_ahead_time_straigh_line_, 5.0);
     paramGet.param<double>("max_steering", max_steering_, 1.5);
@@ -20,6 +22,8 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     paramGet.param<double>("max_angular_vel", max_angular_vel_, 0.2);
 
     paramGet.param<double>("fuzzy_lookahead_dis", fuzzy_lookahead_dis_, 0.3);
+    paramGet.param<double>("backward_offset", backward_offset_, -0.02);
+
     paramGet.param<double>("max_pocket_dock_vel", max_pocket_dock_vel_, 0.2);
     paramGet.param<double>("max_pocket_dock_steering", max_pocket_dock_steering_, 0.2);
 
@@ -57,7 +61,6 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     fuzzy_controller = FuzzyControl(paramGet);
     pure_pursuit_control = PurePursuitController(paramGet);
 
-
 }
 
 DockingControl::~DockingControl(){}
@@ -76,13 +79,6 @@ void DockingControl::JointStateCallBack(const sensor_msgs::JointState::ConstPtr 
         if (msg->name.at(i) == "drive_steer_joint" ) {
         steering_sub_ = msg->position.at(i);
         ROS_DEBUG("JointStateCallBack: steering angle: %f", steering_sub_);
-        break;
-        }
-    }
-    for (int i = 0; i < msg->name.size(); i++) {
-        if (msg->name.at(i) == "drive_wheel_joint" ) {
-        wheel_sp_sub_ = msg->velocity.at(i);
-        ROS_DEBUG("JointStateCallBack: drive wheel speed: %f", wheel_sp_sub_);
         break;
         }
     }
@@ -244,7 +240,7 @@ void DockingControl::controllerCal()
     fuzzy_controller.inputResults();
     ref_velocity_ = fuzzy_controller.cal_fuzzy_output() * cos(steering_);
     
-    if (local_ref_path_.poses.at(lk_index).pose.position.x < 0)
+    if (local_ref_path_.poses.at(lk_index).pose.position.x < backward_offset_)
         if (ref_velocity_ > 0) ref_velocity_ = -ref_velocity_;
     
     // Smooth the velocity output
