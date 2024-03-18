@@ -173,11 +173,11 @@ void PurePursuitController::calControl()
     
     if (ref_vel_ < 0) alpha_ = -alpha_;  
 
-    steering_angle_ = atan(2*l_wheelbase_*sin(alpha_)/look_ahead_distance_);
+    PP_steering_angle_ = atan(2*l_wheelbase_*sin(alpha_)/look_ahead_distance_);
 
     sum_e_la += lateral_heading_error_.data * 0.02;
 
-    double steering_angle_corrected = steering_angle_ + kp_*lateral_heading_error_.data 
+    double steering_angle_corrected = PP_steering_angle_ + kp_*lateral_heading_error_.data 
                                             + ki_*sum_e_la;
 
     steering_angle_ = steering_angle_corrected;

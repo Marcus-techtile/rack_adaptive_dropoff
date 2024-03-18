@@ -31,7 +31,6 @@ private:
     double distance_;       // distance between look ahead point and current pose
     geometry_msgs::PoseStamped look_ahead_point_;  // pose of the look head point
     double rotational_radius_;  // rotational radius
-    double steering_angle_;     // steering wheel
     bool correct_yaw_{false};
     // double cur_vel_, raw_cur_vel_;
     bool rotate_in_place_{false};
@@ -72,4 +71,7 @@ public:
     double look_ahead_distance_;
     double lk_time;
     double alpha_;          // angle between look ahead point and current pose
+
+    double PP_steering_angle_;
+    double steering_angle_;     // steering wheel
 };
