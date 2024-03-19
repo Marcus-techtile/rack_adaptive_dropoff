@@ -4,8 +4,9 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
 {
     /* Get Param */
     paramGet.param<double>("docking_freq", docking_freq_, 50.0);
-    ROS_INFO("Docking Control Frequency: %f", docking_freq_);
     dt_ = 1 / docking_freq_;                        // Calculate sampling time
+    ROS_INFO("Docking Control Frequency: %f", docking_freq_);
+    ROS_INFO("Docking Control Sampling Time: %f", dt_);
 
     paramGet.param<std::string>("path_frame", path_frame_, "base_link_p");
     paramGet.param("/forklift_params/wheel_base", l_wheelbase_, 1.311);
@@ -46,6 +47,10 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     sub_approaching_status_ = nh_.subscribe<std_msgs::Bool>("/pallet_docking/pallet_approaching_done", 1, &DockingControl::approachingStatusCallback, this);
     joint_states_sub_ = nh_.subscribe<sensor_msgs::JointState>("/joint_states", 1, &DockingControl::JointStateCallBack, this);
 
+    /* Define the Controller */
+    fuzzy_controller = FuzzyControl(paramGet);
+    pure_pursuit_control = PurePursuitController(paramGet);
+
     // dynamic reconfigure server
     srv_ = boost::make_shared <dynamic_reconfigure::Server<config> > (paramGet);
     dynamic_reconfigure::Server<config>::CallbackType f;
@@ -59,10 +64,6 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     controller_on_.data = false;
     approaching_done_.data = false;
     pub_stop_ = false;
-
-    fuzzy_controller = FuzzyControl(paramGet);
-    pure_pursuit_control = PurePursuitController(paramGet);
-
 }
 
 DockingControl::~DockingControl(){}
@@ -122,6 +123,32 @@ void DockingControl::resetController()
     final_ref_vel_ = 0;
 }
 
+/***** Check Required Data *****/
+bool DockingControl::checkData()
+{
+    if(!odom_avai_)
+    {
+        ROS_WARN("No Odometry!!!");
+        return false; 
+    }
+    if (!ref_path_avai_)
+    {
+        ROS_WARN("No ref path!!!");
+        return false;
+    }
+    if (!goal_avai_)
+    {
+        ROS_WARN("No goal!!!");
+        return false;
+    }
+    if (ref_path_.poses.size() < 1)
+    {
+        ROS_WARN("Path is not feasible for the controller");
+        return false;
+    }
+    return true;
+}
+
 void DockingControl::controllerCal()
 {
     if (!controller_on_.data)
@@ -134,27 +161,13 @@ void DockingControl::controllerCal()
         return;
     }
     pub_stop_ = false;
-    if(!odom_avai_)
-    {
-        ROS_WARN("No Odometry!!!");
-        return; 
-    }
-    if (!ref_path_avai_)
-    {
-        ROS_WARN("No ref path!!!");
-        return;
-    }
-    if (!goal_avai_)
-    {
-        ROS_WARN("No goal!!!");
-        return;
-    }
-    if (ref_path_.poses.size() < 1)
-    {
-        ROS_WARN("Path is not feasible for the controller");
-        return;
-    }
+
+    /* Check input data */
+    if (!checkData()) return;
+
     /*********** CONVERT GLOBAL PATH TO BASE_LINK PATH ***********/ 
+    local_ref_path_.header.frame_id = path_frame_;
+    local_ref_path_.header.stamp = ros::Time(0);
     local_ref_path_.poses.clear();
     for (int i = 0; i < ref_path_.poses.size(); i++)
     {
@@ -240,23 +253,24 @@ void DockingControl::controllerCal()
     fuzzy_controller.inputResults();
     ref_velocity_ = fuzzy_controller.cal_fuzzy_output() * cos(steering_);
     
-    if (local_ref_path_.poses.at(lk_index).pose.position.x < backward_offset_)
-        if (ref_velocity_ > 0) ref_velocity_ = -ref_velocity_;
-    
     // Smooth the velocity output. Limit linear acceleration
-    double linear_acc = (ref_velocity_ - final_ref_vel_)/dt_;
+    double linear_acc = (ref_velocity_ - abs_ref_vel_)/dt_;
     if (linear_acc > max_linear_acc_) linear_acc = max_linear_acc_;
     if (linear_acc < min_linear_acc_) linear_acc = min_linear_acc_;
-    final_ref_vel_ = final_ref_vel_ + linear_acc * dt_;
+    abs_ref_vel_ = abs_ref_vel_ + linear_acc * dt_;
+
+    final_ref_vel_ = abs_ref_vel_;
+    if (local_ref_path_.poses.at(lk_index).pose.position.x < backward_offset_)
+        if (final_ref_vel_ > 0) final_ref_vel_ = -final_ref_vel_;
 
     /************ ANGULAR VELOCITY LIMIT ************/
+    if (abs(final_ref_vel_) < min_vel_) final_ref_vel_ = std::copysign(min_vel_, final_ref_vel_);
+
     if (steering_ != 0)
     {
         double max_vel_limit = abs(max_angular_vel_ * l_wheelbase_ / tan(steering_));
         if (abs(final_ref_vel_) >= max_vel_limit) final_ref_vel_ = max_vel_limit * (final_ref_vel_/abs(final_ref_vel_));
     }
-    if (abs(final_ref_vel_) < min_vel_) final_ref_vel_ = std::copysign(min_vel_, final_ref_vel_);
-
 
     /*********** LIMIT CONTROL SIGNAL WHEN DOCKING TO POCKET FOR SAFETY ************/
     if ((approaching_done_.data && final_ref_vel_ >= 0) ||

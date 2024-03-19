@@ -86,11 +86,6 @@ geometry_msgs::Point PurePursuitController::interpolateLkhPoint(const geometry_m
   return p;
 }
 
-void PurePursuitController::setGoalCorrectYaw(double dis_cor)
-{
-    goal_correct_yaw_ = dis_cor;
-}
-
 void PurePursuitController::setLookaheadTime(double lk_t)
 {
     lk_time = lk_t;
@@ -145,7 +140,7 @@ void PurePursuitController::calControl()
         point_index_ = path_.poses.size() - 1;
         point_lkh.x = path_.poses.at(point_index_).pose.position.x;
         point_lkh.y = path_.poses.at(point_index_).pose.position.y;
-        // ROS_INFO("MAX POINT INDEX CORRECTED!!!");
+        ROS_DEBUG("Start Yaw Correction !");
     }   
 
     look_ahead_distance_ = sqrt(point_lkh.x*point_lkh.x + point_lkh.y*point_lkh.y);

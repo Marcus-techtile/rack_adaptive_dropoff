@@ -81,7 +81,7 @@ private:
     /* Fuzzy control */
     FuzzyControl fuzzy_controller;
     double fuzzy_lookahead_dis_;
-    double ref_velocity_, final_ref_vel_;       // reference velocity
+    double ref_velocity_, abs_ref_vel_, final_ref_vel_;       // reference velocity
     double backward_offset_;        //offset velocity used to switch to reverse movement
     double max_linear_acc_, min_linear_acc_;
 
@@ -106,6 +106,7 @@ public:
 
     /* Functions */
     void resetController();
+    bool checkData();
     void controllerCal();
     void reconfigCallback(pallet_docking_xsquare::purePursuitReconfigConfig &config, uint32_t level);
 

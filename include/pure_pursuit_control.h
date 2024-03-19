@@ -21,7 +21,7 @@ private:
     
     double max_steering_;   // max steering wheel angle
     double min_steering_;   // min steering wheel angle
-    double goal_correct_yaw_{0.1};
+    double goal_correct_yaw_;
 
     double kp_, ki_;
     double sum_e_la{0};
@@ -53,7 +53,6 @@ public:
     void setRefPath(nav_msgs::Path path);
     void setRefVel(double ref_vel);
     void setClosestPoint(int closest_point);
-    void setGoalCorrectYaw(double dis_cor);
     void setLookaheadTime(double lk_t);
 
     //using the intersection between circle and 2 points of the line to interpolate the lkd point
