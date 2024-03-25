@@ -38,6 +38,7 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     pub_pp_lookahead_distance_ = nh_.advertise<std_msgs::Float32>("pallet_docking/purepursuit_lookahead_distance", 1);
     pub_pp_lookahead_angle_ = nh_.advertise<std_msgs::Float32>("pallet_docking/purepursuit_lookahead_angle", 1);
     pub_pp_steering_ = nh_.advertise<std_msgs::Float32>("pallet_docking/pp_steering_angle", 1);
+    pub_pp_lookahead_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("pallet_docking/pp_lookahead_pose", 1);
 
     /* ROS Subscriber */
     sub_odom_ = nh_.subscribe<nav_msgs::Odometry>("/gazebo/forklift_controllers/odom", 1, &DockingControl::odomCallback, this);
@@ -216,6 +217,12 @@ void DockingControl::controllerCal()
     std_msgs::Float32 pp_steer;
     pp_steer.data = pure_pursuit_control.PP_steering_angle_;
     pub_pp_steering_.publish(pp_steer);     // pp steering angle before being added PID
+
+    pp_lkh_pose_ = pure_pursuit_control.pp_lookahead_pose_;
+    pp_lkh_pose_.header.frame_id = path_frame_;
+    pp_lkh_pose_.header.stamp = ros::Time::now();
+    pub_pp_lookahead_pose_.publish(pp_lkh_pose_);
+    
     steering_angle_ = pure_pursuit_control.getSteeringAngle();
 
     // Smooth the steering output. Limit steering speed

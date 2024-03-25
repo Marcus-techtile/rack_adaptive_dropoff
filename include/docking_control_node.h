@@ -38,6 +38,7 @@ private:
     ros::Publisher pub_debug_;
     ros::Publisher pub_pp_lookahead_distance_;
     ros::Publisher pub_pp_lookahead_angle_;
+    ros::Publisher pub_pp_lookahead_pose_;
     ros::Publisher marker_pub_;
     boost::shared_ptr <dynamic_reconfigure::Server<config> > srv_;
 
@@ -77,6 +78,7 @@ private:
     PurePursuitController pure_pursuit_control;
     double steering_angle_, steering_;     // steering wheel
     double pp_look_ahead_time_, pp_look_ahead_time_straigh_line_;
+    geometry_msgs::PoseStamped pp_lkh_pose_;
 
     /* Fuzzy control */
     FuzzyControl fuzzy_controller;
