@@ -5,6 +5,8 @@ PurePursuitController::PurePursuitController(){}
 PurePursuitController::PurePursuitController(ros::NodeHandle &paramGet)
 {
     /* Param get */
+    paramGet.param<double>("docking_freq", freq_, 0.0);
+    dt_ = 1/freq_;
     paramGet.param("/forklift_params/wheel_base", l_wheelbase_, 1.311);
     paramGet.param<double>("look_ahead_time", look_ahead_time_, 0.8);
     paramGet.param<double>("look_ahead_reverse_time", look_ahead_reverse_time_, 1.2);
@@ -19,7 +21,7 @@ PurePursuitController::PurePursuitController(ros::NodeHandle &paramGet)
 
     paramGet.param<double>("goal_correct_yaw", goal_correct_yaw_, 0.3);
     paramGet.param<bool>("use_point_interpolate", use_point_interpolate_, true);
-
+    paramGet.param<bool>("use_ref_angle_from_path", use_ref_angle_from_path_, true);
 }
 
 void PurePursuitController::resetPP()
@@ -52,7 +54,6 @@ double PurePursuitController::getSteeringAngle()
 void PurePursuitController::setRefVel(double ref_vel)
 {
     ref_vel_ = ref_vel;
-    // cur_vel_ = ref_vel;
 }
 
 void PurePursuitController::setClosestPoint(int closest_point)
@@ -98,8 +99,6 @@ void PurePursuitController::calControl()
                             + path_.poses.at(path_.poses.size()-1).pose.position.y*path_.poses.at(path_.poses.size()-1).pose.position.y);
     // lk_time = look_ahead_time_;
 
-    if (cur_vel_*ref_vel_ < 0) cur_vel_ = -cur_vel_;
-
     // if (ref_vel_ < 0) lk_time = look_ahead_reverse_time_;
     // current velocity, can be tried with ref velocity from the fuzzy controller
     look_ahead_distance_ = abs(cur_vel_)*lk_time;
@@ -127,6 +126,11 @@ void PurePursuitController::calControl()
         point1.x = path_.poses.at(point_index_).pose.position.x;
         point1.y = path_.poses.at(point_index_).pose.position.y;
         point_lkh = interpolateLkhPoint(point0, point1, look_ahead_distance_);
+        if (point_index_ == path_.poses.size() - 1)
+        {
+            point_lkh.x = path_.poses.at(point_index_).pose.position.x;
+            point_lkh.y = path_.poses.at(point_index_).pose.position.y;
+        }
     }
     else
     {
@@ -135,35 +139,43 @@ void PurePursuitController::calControl()
     }
 
     // If close to the goal. Correct the lookahead point
-    if (distance_to_goal <= goal_correct_yaw_)
-    {
-        point_index_ = path_.poses.size() - 1;
-        point_lkh.x = path_.poses.at(point_index_).pose.position.x;
-        point_lkh.y = path_.poses.at(point_index_).pose.position.y;
-        ROS_DEBUG("Start Yaw Correction !");
-    }   
+    // if (distance_to_goal <= goal_correct_yaw_ || point_index_ == path_.poses.size() - 1)
+    // if (distance_to_goal <= goal_correct_yaw_)
+    // {
+    //     point_index_ = path_.poses.size() - 1;
+    //     point_lkh.x = path_.poses.at(point_index_).pose.position.x;
+    //     point_lkh.y = path_.poses.at(point_index_).pose.position.y;
+    //     ROS_DEBUG("Start Yaw Correction !");
+    // }   
 
     look_ahead_distance_ = sqrt(point_lkh.x*point_lkh.x + point_lkh.y*point_lkh.y);
     // if (abs(look_ahead_distance_) < min_look_ahead_dis_) look_ahead_distance_ = min_look_ahead_dis_;
     // if (abs(look_ahead_distance_) > max_look_ahead_dis_) look_ahead_distance_ = max_look_ahead_dis_;
-        
-    // correct lookahead distance when near goal
-    // if (point_index_ == path_.poses.size() - 1) look_ahead_distance_ = sqrt(point_lkh.x*point_lkh.x + point_lkh.y*point_lkh.y);
     
     // Calculate alpha and set the ending condition to avoid the singularity
     double roll_tmp, pitch_tmp;
-    if (abs(point_lkh.x) > 0.01) alpha_= atan(point_lkh.y/ point_lkh.x);
-    else quaternionToRPY(path_.poses.at(point_index_).pose.orientation, roll_tmp, pitch_tmp, alpha_);
+    if (use_ref_angle_from_path_)
+        quaternionToRPY(path_.poses.at(point_index_).pose.orientation, roll_tmp, pitch_tmp, alpha_);
+    else
+    {
+        if (abs(distance_to_goal) > goal_correct_yaw_) alpha_= atan(point_lkh.y/ point_lkh.x);
+        else quaternionToRPY(path_.poses.at(point_index_).pose.orientation, roll_tmp, pitch_tmp, alpha_);
+    }
+
+    // Visualize the lookahead pose
+    pp_lookahead_pose_.pose.position.x = point_lkh.x;
+    pp_lookahead_pose_.pose.position.y = point_lkh.y;
+    pp_lookahead_pose_.pose.position.z = 0;
+    pp_lookahead_pose_.pose.orientation = rpyToQuaternion(0, 0, alpha_);
 
     lateral_heading_error_.data = point_lkh.y;
     // lateral_heading_error_.data = path_.poses.at(closest_point_).pose.position.y;
     lateral_error_.data = path_.poses.at(closest_point_).pose.position.y;
     
-    if (distance_to_goal <= goal_correct_yaw_)
-    {
-        quaternionToRPY(path_.poses.at(path_.poses.size()-1).pose.orientation, roll_tmp, pitch_tmp, alpha_);
-        // look_ahead_distance_ = goal_correct_yaw_;
-    }
+    // if (distance_to_goal <= goal_correct_yaw_)
+    // {
+    //     quaternionToRPY(path_.poses.at(path_.poses.size()-1).pose.orientation, roll_tmp, pitch_tmp, alpha_);
+    // }
         
     
     if (ref_vel_ < 0) alpha_ = -alpha_;  

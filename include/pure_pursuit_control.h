@@ -3,6 +3,7 @@
 #include <nav_msgs/Path.h>
 #include <std_msgs/Float32.h>
 #include <geometry_msgs/Point.h>
+#include <geometry_msgs/Pose.h>
 #include <utils.h>
 
 class PurePursuitController
@@ -10,6 +11,7 @@ class PurePursuitController
 private:
     ros::NodeHandle nh_;
 
+    double freq_, dt_;
     /* Forklift parameters */
     double l_wheelbase_;
 
@@ -37,6 +39,7 @@ private:
     int closest_point_;
     geometry_msgs::Point point0, point1, point_lkh;
     bool use_point_interpolate_{true};
+    bool use_ref_angle_from_path_;
 
     /* input variables */
     nav_msgs::Odometry odom_;
@@ -67,6 +70,7 @@ public:
     std_msgs::Float32 lateral_heading_error_, lateral_error_;
     double cur_vel_, raw_cur_vel_;
 
+    geometry_msgs::PoseStamped pp_lookahead_pose_;
     double look_ahead_distance_;
     double lk_time;
     double alpha_;          // angle between look ahead point and current pose
