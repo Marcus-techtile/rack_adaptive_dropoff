@@ -56,9 +56,9 @@ void PurePursuitController::setRefVel(double ref_vel)
     ref_vel_ = ref_vel;
 }
 
-void PurePursuitController::setClosestPoint(int closest_point)
+void PurePursuitController::setClosestPoint(int closest_index)
 {
-    closest_point_ = closest_point;
+    closest_index_ = closest_index;
 }
 
 geometry_msgs::Point PurePursuitController::interpolateLkhPoint(const geometry_msgs::Point & p1,
@@ -92,76 +92,64 @@ void PurePursuitController::setLookaheadTime(double lk_t)
     lk_time = lk_t;
 }
 
+double PurePursuitController::calLookaheadDistance(double lk_t, double cur_spd)
+{
+    double lk_dis = abs(cur_spd) * lk_time;     // adaptive lookahead distance
+    if (lk_dis < min_look_ahead_dis_) return min_look_ahead_dis_;
+    if (lk_dis > max_look_ahead_dis_) return min_look_ahead_dis_;
+    return lk_dis;
+}
+
+geometry_msgs::PoseStamped PurePursuitController::calLookaheadPoint(int nearest_index, double lookahead_distance, nav_msgs::Path path)
+{
+    // Find the first point which has the distance longer than the lookahead distance
+    auto point_it = std::find_if(path.poses.begin() + nearest_index, path.poses.end(), [&](const auto & ps) {
+      return hypot(ps.pose.position.x, ps.pose.position.y) >= lookahead_distance;});
+
+    this->point_index_ = std::distance(path.poses.begin(), point_it);
+    if (this->point_index_ > path.poses.size() - 1) this->point_index_ = path.poses.size() - 1;
+    
+    // Return the last point if no it satisfied
+    if (point_it == path.poses.end()) {point_it = std::prev(path.poses.end());}
+    else if (this->use_point_interpolate_ && point_it != path.poses.begin()) 
+    {
+        auto prev_point_it = std::prev(point_it);
+        auto point = interpolateLkhPoint(prev_point_it->pose.position,
+                                        point_it->pose.position, lookahead_distance);
+        geometry_msgs::PoseStamped pose;
+        pose.header.frame_id = point_it->header.frame_id;
+        pose.header.stamp = point_it->header.stamp;
+        pose.pose.position = point;
+        return pose;
+    }
+    return *point_it;
+}
+
+
 void PurePursuitController::calControl()
 {
     if(path_.poses.size() == 0) return;
     double distance_to_goal = sqrt(path_.poses.at(path_.poses.size()-1).pose.position.x*path_.poses.at(path_.poses.size()-1).pose.position.x
                             + path_.poses.at(path_.poses.size()-1).pose.position.y*path_.poses.at(path_.poses.size()-1).pose.position.y);
-    // lk_time = look_ahead_time_;
 
-    // if (ref_vel_ < 0) lk_time = look_ahead_reverse_time_;
-    // current velocity, can be tried with ref velocity from the fuzzy controller
-    look_ahead_distance_ = abs(cur_vel_)*lk_time;
-    if (abs(look_ahead_distance_) < min_look_ahead_dis_) look_ahead_distance_ = min_look_ahead_dis_;
-    if (abs(look_ahead_distance_) > max_look_ahead_dis_) look_ahead_distance_ = max_look_ahead_dis_;
+    look_ahead_distance_ = calLookaheadDistance(lk_time, cur_vel_);
 
-    // Find the first point which has the distance longer than the lookahead distance
-    for (point_index_ = closest_point_; point_index_ < path_.poses.size(); point_index_++)
-    {
-        if (abs(look_ahead_distance_) <= sqrt(path_.poses.at(point_index_).pose.position.x*path_.poses.at(point_index_).pose.position.x
-                                    + path_.poses.at(point_index_).pose.position.y*path_.poses.at(point_index_).pose.position.y)) break;  
-    }
-    // if (ref_vel_ < 0)
-    // {
-    //     if (point_index_ > max_lk_reverse_point_) point_index_ = max_lk_reverse_point_;
-    // } 
-    if (point_index_ >= path_.poses.size()) point_index_ = path_.poses.size() - 1;
-
-    // Interpolate the point which has the distance = lookahead_distance
-    if (use_point_interpolate_ && point_index_ > 0)
-    {
-        pre_point_index_ = point_index_ - 1;
-        point0.x = path_.poses.at(pre_point_index_).pose.position.x;
-        point0.y = path_.poses.at(pre_point_index_).pose.position.y;
-        point1.x = path_.poses.at(point_index_).pose.position.x;
-        point1.y = path_.poses.at(point_index_).pose.position.y;
-        point_lkh = interpolateLkhPoint(point0, point1, look_ahead_distance_);
-        if (point_index_ == path_.poses.size() - 1)
-        {
-            point_lkh.x = path_.poses.at(point_index_).pose.position.x;
-            point_lkh.y = path_.poses.at(point_index_).pose.position.y;
-        }
-    }
-    else
-    {
-        point_lkh.x = path_.poses.at(point_index_).pose.position.x;
-        point_lkh.y = path_.poses.at(point_index_).pose.position.y;
-    }
-
-    // If close to the goal. Correct the lookahead point
-    // if (distance_to_goal <= goal_correct_yaw_ || point_index_ == path_.poses.size() - 1)
-    // if (distance_to_goal <= goal_correct_yaw_)
-    // {
-    //     point_index_ = path_.poses.size() - 1;
-    //     point_lkh.x = path_.poses.at(point_index_).pose.position.x;
-    //     point_lkh.y = path_.poses.at(point_index_).pose.position.y;
-    //     ROS_DEBUG("Start Yaw Correction !");
-    // }   
-
+    pp_lookahead_pose_ = calLookaheadPoint(closest_index_, look_ahead_distance_, path_);
+    point_lkh = pp_lookahead_pose_.pose.position;
+    
     look_ahead_distance_ = sqrt(point_lkh.x*point_lkh.x + point_lkh.y*point_lkh.y);
     // if (abs(look_ahead_distance_) < min_look_ahead_dis_) look_ahead_distance_ = min_look_ahead_dis_;
     // if (abs(look_ahead_distance_) > max_look_ahead_dis_) look_ahead_distance_ = max_look_ahead_dis_;
     
     // Calculate alpha and set the ending condition to avoid the singularity
     double roll_tmp, pitch_tmp;
-    if (use_ref_angle_from_path_)
-        quaternionToRPY(path_.poses.at(point_index_).pose.orientation, roll_tmp, pitch_tmp, alpha_);
+    if (use_ref_angle_from_path_) alpha_ = tf2::getYaw(pp_lookahead_pose_.pose.orientation);
     else
     {
         if (abs(distance_to_goal) > goal_correct_yaw_) alpha_= atan(point_lkh.y/ point_lkh.x);
         else quaternionToRPY(path_.poses.at(point_index_).pose.orientation, roll_tmp, pitch_tmp, alpha_);
     }
-
+    
     // Visualize the lookahead pose
     pp_lookahead_pose_.pose.position.x = point_lkh.x;
     pp_lookahead_pose_.pose.position.y = point_lkh.y;
@@ -169,8 +157,8 @@ void PurePursuitController::calControl()
     pp_lookahead_pose_.pose.orientation = rpyToQuaternion(0, 0, alpha_);
 
     lateral_heading_error_.data = point_lkh.y;
-    // lateral_heading_error_.data = path_.poses.at(closest_point_).pose.position.y;
-    lateral_error_.data = path_.poses.at(closest_point_).pose.position.y;
+    // lateral_heading_error_.data = path_.poses.at(closest_index_).pose.position.y;
+    lateral_error_.data = path_.poses.at(closest_index_).pose.position.y;
     
     // if (distance_to_goal <= goal_correct_yaw_)
     // {
@@ -191,5 +179,4 @@ void PurePursuitController::calControl()
 
     if (steering_angle_ > max_steering_) steering_angle_ = max_steering_;
     if (steering_angle_ < min_steering_) steering_angle_ = min_steering_;
-
 }

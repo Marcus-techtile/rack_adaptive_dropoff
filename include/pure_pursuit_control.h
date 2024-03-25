@@ -4,6 +4,7 @@
 #include <std_msgs/Float32.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Pose.h>
+#include <tf2/utils.h>
 #include <utils.h>
 
 class PurePursuitController
@@ -31,12 +32,11 @@ private:
     /* PP varibales */
 
     double distance_;       // distance between look ahead point and current pose
-    geometry_msgs::PoseStamped look_ahead_point_;  // pose of the look head point
     double rotational_radius_;  // rotational radius
     bool correct_yaw_{false};
     // double cur_vel_, raw_cur_vel_;
     bool rotate_in_place_{false};
-    int closest_point_;
+    int closest_index_;
     geometry_msgs::Point point0, point1, point_lkh;
     bool use_point_interpolate_{true};
     bool use_ref_angle_from_path_;
@@ -55,9 +55,12 @@ public:
     void setOdom(nav_msgs::Odometry odom);
     void setRefPath(nav_msgs::Path path);
     void setRefVel(double ref_vel);
-    void setClosestPoint(int closest_point);
+    void setClosestPoint(int closest_index);
     void setLookaheadTime(double lk_t);
 
+    double calLookaheadDistance(double lk_t, double cur_spd);
+    geometry_msgs::PoseStamped calLookaheadPoint(int nearest_index, double lookahead_distance, nav_msgs::Path path);
+    double calLookaheadCurvature();
     //using the intersection between circle and 2 points of the line to interpolate the lkd point
     geometry_msgs::Point interpolateLkhPoint(const geometry_msgs::Point & p1,
                                                     const geometry_msgs::Point & p2,
