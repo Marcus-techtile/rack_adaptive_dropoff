@@ -39,6 +39,7 @@ private:
     ros::Publisher pub_pp_lookahead_distance_;
     ros::Publisher pub_pp_lookahead_angle_;
     ros::Publisher pub_pp_lookahead_pose_;
+    ros::Publisher pub_pp_lookahead_curvature_;
     ros::Publisher marker_pub_;
     boost::shared_ptr <dynamic_reconfigure::Server<config> > srv_;
 

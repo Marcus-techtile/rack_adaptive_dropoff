@@ -12,17 +12,20 @@
     <!-- Pure Pursuit parameters -->
     <param name="look_ahead_time" value="3.6"/>    
     <param name="look_ahead_time_straigh_line" value="3.6"/>   
-    <param name="min_look_ahead_dis" value="0.3"/>  
+    <param name="min_look_ahead_dis" value="0.1"/>  
     <param name="max_look_ahead_dis" value="2.5"/> 
     <param name="max_steering" value="1.57"/>     
     <param name="min_steering" value="-1.57"/> 
     <param name="max_steering_speed" value="0.7"/> 
     <param name="min_steering_speed" value="-0.7"/>  
     <param name="kp" value="2.0"/>     
-    <param name="ki" value="0.1"/> 
-    <param name="goal_correct_yaw" value="0.1"/>  
-    <param name="max_angular_vel" value="0.2"/>  <!-- change from the stable branch -->
-    <param name="use_point_interpolate" value="true"/> 
+    <param name="ki" value="1.0"/> 
+    <param name="goal_correct_yaw" value="0.2"/>  
+    <param name="max_angular_vel" value="0.5"/>  <!-- change from the stable branch -->
+    
+    <param name="use_point_interpolate" value="false"/> 
+    <param name="use_ref_angle_from_path" value="false"/> 
+    <param name="re_cal_lookahead_dis" value="false"/> 
 
    <!-- Fuzzy controller parameters -->
     <param name="fuzzy_lookahead_dis" value="1.0"/>      <!-- ZERO value for output velocity --> 
@@ -49,7 +52,7 @@
     <param name="min_linear_acc" value="-0.5"/>
 
     <param name="max_pocket_dock_vel" value="0.2"/> 
-    <param name="max_pocket_dock_steering" value="0.2"/> 
+    <param name="max_pocket_dock_steering" value="1.2"/> 
 
     <param name="max_abs_vel_change" value="0.01"/>   <!-- dt = 0.02, a = max_abs_vel_change/dt-->
  

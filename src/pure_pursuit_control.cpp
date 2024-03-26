@@ -22,6 +22,7 @@ PurePursuitController::PurePursuitController(ros::NodeHandle &paramGet)
     paramGet.param<double>("goal_correct_yaw", goal_correct_yaw_, 0.3);
     paramGet.param<bool>("use_point_interpolate", use_point_interpolate_, true);
     paramGet.param<bool>("use_ref_angle_from_path", use_ref_angle_from_path_, true);
+    paramGet.param<bool>("re_cal_lookahead_dis", re_cal_lookahead_dis_, true);
 }
 
 void PurePursuitController::resetPP()
@@ -100,7 +101,18 @@ double PurePursuitController::calLookaheadDistance(double lk_t, double cur_spd)
     return lk_dis;
 }
 
-geometry_msgs::PoseStamped PurePursuitController::calLookaheadPoint(int nearest_index, double lookahead_distance, nav_msgs::Path path)
+double PurePursuitController::calLookaheadCurvature(geometry_msgs::Point lookahead_point)
+{
+    const double sq_dis = (lookahead_point.x * lookahead_point.x) +
+                            (lookahead_point.y * lookahead_point.y);
+    // Assume that the initial point = robot position
+    // Curvature of circle (k = 1 / R)
+    if (sq_dis > 0.01) return 2.0 * lookahead_point.y / sq_dis;
+    else return 0.0;
+    
+}
+
+geometry_msgs::PoseStamped PurePursuitController::calLookaheadPoint(int nearest_index, double & lookahead_distance, nav_msgs::Path path)
 {
     // Find the first point which has the distance longer than the lookahead distance
     auto point_it = std::find_if(path.poses.begin() + nearest_index, path.poses.end(), [&](const auto & ps) {
@@ -136,18 +148,18 @@ void PurePursuitController::calControl()
 
     pp_lookahead_pose_ = calLookaheadPoint(closest_index_, look_ahead_distance_, path_);
     point_lkh = pp_lookahead_pose_.pose.position;
+
+    look_ahead_curvature_ = calLookaheadCurvature(point_lkh);
     
-    look_ahead_distance_ = sqrt(point_lkh.x*point_lkh.x + point_lkh.y*point_lkh.y);
-    // if (abs(look_ahead_distance_) < min_look_ahead_dis_) look_ahead_distance_ = min_look_ahead_dis_;
-    // if (abs(look_ahead_distance_) > max_look_ahead_dis_) look_ahead_distance_ = max_look_ahead_dis_;
-    
+    if (re_cal_lookahead_dis_)
+     look_ahead_distance_ = sqrt(point_lkh.x*point_lkh.x + point_lkh.y*point_lkh.y);
+
     // Calculate alpha and set the ending condition to avoid the singularity
-    double roll_tmp, pitch_tmp;
-    if (use_ref_angle_from_path_) alpha_ = tf2::getYaw(pp_lookahead_pose_.pose.orientation);
+    if (use_ref_angle_from_path_) alpha_ = tf2::getYaw(path_.poses.at(point_index_).pose.orientation);
     else
     {
         if (abs(distance_to_goal) > goal_correct_yaw_) alpha_= atan(point_lkh.y/ point_lkh.x);
-        else quaternionToRPY(path_.poses.at(point_index_).pose.orientation, roll_tmp, pitch_tmp, alpha_);
+        else alpha_ = tf2::getYaw(path_.poses.at(point_index_).pose.orientation);
     }
     
     // Visualize the lookahead pose

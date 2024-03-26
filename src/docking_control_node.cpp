@@ -37,6 +37,7 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     marker_pub_ = nh_.advertise<visualization_msgs::Marker>("/pallet_docking/marker", 1);
     pub_pp_lookahead_distance_ = nh_.advertise<std_msgs::Float32>("pallet_docking/purepursuit_lookahead_distance", 1);
     pub_pp_lookahead_angle_ = nh_.advertise<std_msgs::Float32>("pallet_docking/purepursuit_lookahead_angle", 1);
+    pub_pp_lookahead_curvature_ = nh_.advertise<std_msgs::Float32>("pallet_docking/purepursuit_lookahead_curvature", 1);
     pub_pp_steering_ = nh_.advertise<std_msgs::Float32>("pallet_docking/pp_steering_angle", 1);
     pub_pp_lookahead_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("pallet_docking/pp_lookahead_pose", 1);
 
@@ -232,12 +233,15 @@ void DockingControl::controllerCal()
     steering_ = steering_ + steering_speed * dt_;
 
     // Visualize PP lookahead distance and lookahead angle
-    std_msgs::Float32 pp_lkh_distance, pp_lkh_angle;
+    std_msgs::Float32 pp_lkh_distance, pp_lkh_angle, pp_lkh_curve;
     pp_lkh_distance.data = pure_pursuit_control.look_ahead_distance_;
     pub_pp_lookahead_distance_.publish(pp_lkh_distance);
 
     pp_lkh_angle.data = pure_pursuit_control.alpha_;
     pub_pp_lookahead_angle_.publish(pp_lkh_angle);
+
+    pp_lkh_curve.data = pure_pursuit_control.look_ahead_curvature_;
+    pub_pp_lookahead_curvature_.publish(pp_lkh_curve);
 
     /******** VELOCITY CONTROL ****/
     int lk_index;
