@@ -57,30 +57,30 @@ private:
     ros::NodeHandle nh_;
 
     double min_dis_, max_dis_;
-    double min_steer_, max_steer_;
+    double min_curve_, max_curve_;
     double min_vel_, max_vel_;
 
     double  goal_S_a_, goal_S_b_, goal_S_c_;    // vertex of Small
     double  goal_M_a_, goal_M_b_, goal_M_c_;    // vertex of Medium
     double  goal_B_a_, goal_B_b_, goal_B_c_;    // vertex of Big
     
-    double  steer_NB_a_, steer_NB_b_, steer_NB_c_;    // vertex of Negative Big
-    double  steer_NS_a_, steer_NS_b_, steer_NS_c_;    // vertex of Negative Small
-    double  steer_Z_a_, steer_Z_b_, steer_Z_c_;       // vertex of Zero
-    double  steer_PS_a_, steer_PS_b_, steer_PS_c_;       // vertex of Positive Small
-    double  steer_PB_a_, steer_PB_b_, steer_PB_c_;       // vertex of Positive Big
+    double  curve_NB_a_, curve_NB_b_, curve_NB_c_;    // vertex of Negative Big
+    double  curve_NS_a_, curve_NS_b_, curve_NS_c_;    // vertex of Negative Small
+    double  curve_Z_a_, curve_Z_b_, curve_Z_c_;       // vertex of Zero
+    double  curve_PS_a_, curve_PS_b_, curve_PS_c_;       // vertex of Positive Small
+    double  curve_PB_a_, curve_PB_b_, curve_PB_c_;       // vertex of Positive Big
 
     double output_Z_, output_VS_, output_S_, output_M_, output_B_;
     std::vector<double> output_vect_;
 
     std::vector<double> muy_goal_;        // satisfaction ratio of goal input 
-    std::vector<double> muy_steer_;       // satisfaction ratio of distance input 
+    std::vector<double> muy_curve_;       // satisfaction ratio of distance input 
 
     std::vector<double> input_result_;     // input solve results of each fuzzy statement
 
 
     trimfFunction goal_S, goal_M, goal_B;
-    trimfFunction steer_NB, steer_NS, steer_Z, steer_PS, steer_PB;
+    trimfFunction curve_NB, curve_NS, curve_Z, curve_PS, curve_PB;
 
     double fuzzy_out_{0.0}, last_fuzzy_out_{0.0};
     double max_abs_vel_change_;

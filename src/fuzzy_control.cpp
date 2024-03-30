@@ -8,8 +8,8 @@ FuzzyControl::FuzzyControl(ros::NodeHandle &paramGet)
     /* Get Param */
     paramGet.param<double>("min_dis", min_dis_, 0.11);
     paramGet.param<double>("max_dis", max_dis_, 0.99);
-    paramGet.param<double>("min_steer", min_steer_, -1.495);
-    paramGet.param<double>("max_steer", max_steer_, 1.495);
+    paramGet.param<double>("min_curve", min_curve_, -1.495);
+    paramGet.param<double>("max_curve", max_curve_, 1.495);
     paramGet.param<double>("min_vel", min_vel_, 0.02);
     paramGet.param<double>("max_vel", max_vel_, 0.5);
 
@@ -19,13 +19,13 @@ FuzzyControl::FuzzyControl(ros::NodeHandle &paramGet)
     paramGet.param<double>("goal_M_b", goal_M_b_, 0.5);
     // paramGet.param<double>("goal_B_b", goal_B_b_, 1.0);
 
-    steer_NB_b_ = min_steer_ - 0.005;
-    steer_PB_b_ = max_steer_ + 0.005;
-    // paramGet.param<double>("steer_NB_b", steer_NB_b_, -1.5);
-    paramGet.param<double>("steer_NS_b", steer_NS_b_, -0.8);
-    paramGet.param<double>("steer_Z_b", steer_Z_b_, 0.0);
-    paramGet.param<double>("steer_PS_b", steer_PS_b_, 0.8);
-    // paramGet.param<double>("steer_PB_b", steer_PB_b_, 1.5);
+    curve_NB_b_ = min_curve_ - 0.005;
+    curve_PB_b_ = max_curve_ + 0.005;
+    // paramGet.param<double>("curve_NB_b", curve_NB_b_, -1.5);
+    paramGet.param<double>("curve_NS_b", curve_NS_b_, -0.8);
+    paramGet.param<double>("curve_Z_b", curve_Z_b_, 0.0);
+    paramGet.param<double>("curve_PS_b", curve_PS_b_, 0.8);
+    // paramGet.param<double>("curve_PB_b", curve_PB_b_, 1.5);
 
     output_Z_ = min_vel_;
     output_B_ = max_vel_;
@@ -45,27 +45,27 @@ FuzzyControl::FuzzyControl(ros::NodeHandle &paramGet)
     goal_M_c_ = goal_B_b_;
     goal_B_c_ = goal_B_b_;
 
-    steer_NB_a_ = steer_NB_b_;
-    steer_NS_a_ = steer_NB_b_;
-    steer_NB_c_ = steer_NS_b_;
-    steer_Z_a_ = steer_NS_b_;
-    steer_NS_c_ = steer_Z_b_;
-    steer_PS_a_ = steer_Z_b_;
-    steer_Z_c_ = steer_PS_b_;
-    steer_PB_a_ = steer_PS_b_;
-    steer_PS_c_ = steer_PB_b_;
-    steer_PB_c_ = steer_PB_b_;
+    curve_NB_a_ = curve_NB_b_;
+    curve_NS_a_ = curve_NB_b_;
+    curve_NB_c_ = curve_NS_b_;
+    curve_Z_a_ = curve_NS_b_;
+    curve_NS_c_ = curve_Z_b_;
+    curve_PS_a_ = curve_Z_b_;
+    curve_Z_c_ = curve_PS_b_;
+    curve_PB_a_ = curve_PS_b_;
+    curve_PS_c_ = curve_PB_b_;
+    curve_PB_c_ = curve_PB_b_;
 
     // Membership function initialize
     goal_S = trimfFunction(goal_S_a_, goal_S_b_, goal_S_c_);
     goal_M = trimfFunction(goal_M_a_, goal_M_b_, goal_M_c_);
     goal_B = trimfFunction(goal_B_a_, goal_B_b_, goal_B_c_);
 
-    steer_NB = trimfFunction(steer_NB_a_, steer_NB_b_, steer_NB_c_);
-    steer_NS = trimfFunction(steer_NS_a_, steer_NS_b_, steer_NS_c_);
-    steer_Z = trimfFunction(steer_Z_a_, steer_Z_b_, steer_Z_c_);
-    steer_PS = trimfFunction(steer_PS_a_, steer_PS_b_, steer_PS_c_);
-    steer_PB = trimfFunction(steer_PB_a_, steer_PB_b_, steer_PB_b_);
+    curve_NB = trimfFunction(curve_NB_a_, curve_NB_b_, curve_NB_c_);
+    curve_NS = trimfFunction(curve_NS_a_, curve_NS_b_, curve_NS_c_);
+    curve_Z = trimfFunction(curve_Z_a_, curve_Z_b_, curve_Z_c_);
+    curve_PS = trimfFunction(curve_PS_a_, curve_PS_b_, curve_PS_c_);
+    curve_PB = trimfFunction(curve_PB_a_, curve_PB_b_, curve_PB_b_);
 
     // Output vector date based on the following rules
     output_vect_.push_back(output_Z_);
@@ -74,17 +74,17 @@ FuzzyControl::FuzzyControl(ros::NodeHandle &paramGet)
     output_vect_.push_back(output_Z_);
     output_vect_.push_back(output_Z_);
 
-    output_vect_.push_back(output_Z_);
+    output_vect_.push_back(output_VS_);
     output_vect_.push_back(output_S_);
     output_vect_.push_back(output_M_);
     output_vect_.push_back(output_S_);
-    output_vect_.push_back(output_Z_);
+    output_vect_.push_back(output_VS_);
 
-    output_vect_.push_back(output_Z_);
+    output_vect_.push_back(output_S_);
     output_vect_.push_back(output_M_);
     output_vect_.push_back(output_B_);
     output_vect_.push_back(output_M_);
-    output_vect_.push_back(output_Z_);
+    output_vect_.push_back(output_S_);
 
 }
 
@@ -107,19 +107,19 @@ void FuzzyControl::inputSolveGoal(double distance)
 
 void FuzzyControl::inputsolveSteering(double steering)
 {
-    if(steering < min_steer_) steering = min_steer_;
-    if(steering > max_steer_) steering = max_steer_;
+    if(steering < min_curve_) steering = min_curve_;
+    if(steering > max_curve_) steering = max_curve_;
 
-    muy_steer_.clear();
-    muy_steer_.push_back(steer_NB.cal(steering));
-    muy_steer_.push_back(steer_NS.cal(steering));
-    muy_steer_.push_back(steer_Z.cal(steering));
-    muy_steer_.push_back(steer_PS.cal(steering));
-    muy_steer_.push_back(steer_PB.cal(steering));
+    muy_curve_.clear();
+    muy_curve_.push_back(curve_NB.cal(steering));
+    muy_curve_.push_back(curve_NS.cal(steering));
+    muy_curve_.push_back(curve_Z.cal(steering));
+    muy_curve_.push_back(curve_PS.cal(steering));
+    muy_curve_.push_back(curve_PB.cal(steering));
     // ROS_INFO("Input steering results:");
-    // for (int i = 0; i < muy_steer_.size(); i++)
+    // for (int i = 0; i < muy_curve_.size(); i++)
     // {
-    //     ROS_INFO("muy steering [%d]: %f", i, muy_steer_.at(i));
+    //     ROS_INFO("muy steering [%d]: %f", i, muy_curve_.at(i));
     // }
 }
 
@@ -128,13 +128,13 @@ void FuzzyControl::inputResults()
     input_result_.clear();
     for (int i = 0; i < muy_goal_.size(); i ++)
     {
-        for (int j = 0; j < muy_steer_.size(); j++)
+        for (int j = 0; j < muy_curve_.size(); j++)
         {
-            // if (muy_goal_.at(i) == 0) input_result_.push_back(muy_steer_.at(i));
-            // else if (muy_steer_.at(i) == 0) input_result_.push_back(muy_goal_.at(i));
+            // if (muy_goal_.at(i) == 0) input_result_.push_back(muy_curve_.at(i));
+            // else if (muy_curve_.at(i) == 0) input_result_.push_back(muy_goal_.at(i));
             // else
             // {
-                input_result_.push_back(std::min(muy_steer_.at(j), muy_goal_.at(i)));
+                input_result_.push_back(std::min(muy_curve_.at(j), muy_goal_.at(i)));
             // }
         }
     }

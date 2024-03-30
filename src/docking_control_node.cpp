@@ -23,6 +23,7 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     paramGet.param<double>("max_angular_vel", max_angular_vel_, 0.2);
 
     paramGet.param<double>("fuzzy_lookahead_dis", fuzzy_lookahead_dis_, 0.3);
+    paramGet.param<bool>("limit_sp_curve", limit_sp_curve_, true);
     paramGet.param<double>("backward_offset", backward_offset_, -0.02);
     paramGet.param<double>("max_linear_acc", max_linear_acc_, 0.5);
     paramGet.param<double>("min_linear_acc", min_linear_acc_, -0.5);
@@ -276,9 +277,15 @@ void DockingControl::controllerCal()
         lk_index = local_ref_path_.poses.size()-1;
     
     fuzzy_controller.inputSolveGoal(abs(fuzzy_lk_dis));
-    fuzzy_controller.inputsolveSteering(0.0);
+    if (limit_sp_curve_)
+        fuzzy_controller.inputsolveSteering(pure_pursuit_control.look_ahead_curvature_);
+    else fuzzy_controller.inputsolveSteering(0.0);
     fuzzy_controller.inputResults();
-    ref_velocity_ = fuzzy_controller.cal_fuzzy_output() * cos(steering_);
+    
+    if (limit_sp_curve_)
+        ref_velocity_ = fuzzy_controller.cal_fuzzy_output();
+    else
+        ref_velocity_ = fuzzy_controller.cal_fuzzy_output() * cos(steering_);
     
     // Smooth the velocity output. Limit linear acceleration
     double linear_acc = (ref_velocity_ - abs_ref_vel_)/dt_;

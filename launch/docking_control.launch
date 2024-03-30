@@ -23,12 +23,13 @@
     <param name="goal_correct_yaw" value="0.2"/>  
     <param name="max_angular_vel" value="0.5"/>  <!-- change from the stable branch -->
     
-    <param name="use_point_interpolate" value="false"/> 
+    <param name="use_point_interpolate" value="true"/> 
     <param name="use_ref_angle_from_path" value="false"/> 
-    <param name="re_cal_lookahead_dis" value="false"/> 
+    <param name="re_cal_lookahead_dis" value="true"/> 
 
    <!-- Fuzzy controller parameters -->
     <param name="fuzzy_lookahead_dis" value="1.0"/>      <!-- ZERO value for output velocity --> 
+    <param name="limit_sp_curve" value="true"/> 
 
     <param name="min_vel" value="0.03"/>      
     <param name="output_VS" value="0.05"/>    
@@ -40,16 +41,16 @@
     <param name="goal_M_b" value="0.35"/>      <!-- MEDIUM distance for input -->
     <param name="max_dis" value="0.5"/>      <!-- BIG distance for input -->
 
-    <param name="min_steer" value="-1.495"/>  <!-- NEGATIVE BIG steering for input -->
-    <param name="steer_NS_b" value="-0.8"/>   <!-- NEGATIVE SMALL steering for input -->
-    <param name="steer_Z_b" value="0.0"/>     <!-- ZERO steering for input -->
-    <param name="steer_PS_b" value="0.8"/>    <!-- POSITIVE SMALL steeringfor input -->
-    <param name="max_steer" value="1.495"/>   <!-- POSITIVE BIG steering for input -->
+    <param name="min_curve" value="-1.5"/>  <!-- NEGATIVE BIG steering for input -->
+    <param name="curve_NS_b" value="-0.8"/>   <!-- NEGATIVE SMALL steering for input -->
+    <param name="curve_Z_b" value="0.0"/>     <!-- ZERO steering for input -->
+    <param name="curve_PS_b" value="0.8"/>    <!-- POSITIVE SMALL steeringfor input -->
+    <param name="max_curve" value="1.5"/>   <!-- POSITIVE BIG steering for input -->
 
     <param name="backward_offset" value="-0.02"/> <!-- offset velocity used to switch to reverse movement.
                                                   should be small negative -->
-    <param name="max_linear_acc" value="0.5"/>
-    <param name="min_linear_acc" value="-0.5"/>
+    <param name="max_linear_acc" value="0.1"/>
+    <param name="min_linear_acc" value="-0.1"/>
 
     <param name="max_pocket_dock_vel" value="0.2"/> 
     <param name="max_pocket_dock_steering" value="1.2"/> 

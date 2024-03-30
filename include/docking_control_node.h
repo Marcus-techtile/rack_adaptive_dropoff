@@ -103,6 +103,8 @@ private:
     /* Limit angular rate */
     double max_angular_vel_;
 
+    bool limit_sp_curve_;
+
     /* Callback function */
     void odomCallback(const nav_msgs::Odometry::ConstPtr& msg_odom);
     void JointStateCallBack(const sensor_msgs::JointState::ConstPtr &msg);
