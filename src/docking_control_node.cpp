@@ -40,6 +40,7 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     pub_pp_lookahead_curvature_ = nh_.advertise<std_msgs::Float32>("pallet_docking/purepursuit_lookahead_curvature", 1);
     pub_pp_steering_ = nh_.advertise<std_msgs::Float32>("pallet_docking/pp_steering_angle", 1);
     pub_pp_lookahead_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("pallet_docking/pp_lookahead_pose", 1);
+    pub_nearest_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("pallet_docking/nearest_pose", 1);
 
     /* ROS Subscriber */
     sub_odom_ = nh_.subscribe<nav_msgs::Odometry>("/gazebo/forklift_controllers/odom", 1, &DockingControl::odomCallback, this);
@@ -151,6 +152,48 @@ bool DockingControl::checkData()
     return true;
 }
 
+nav_msgs::Path DockingControl::convertPathtoLocalFrame(nav_msgs::Path global_path)
+{
+    nav_msgs::Path local_ref_path;
+    local_ref_path.header.frame_id = this->path_frame_;
+    local_ref_path.header.stamp = ros::Time(0);
+    local_ref_path.poses.clear();
+    for (int i = 0; i < ref_path_.poses.size(); i++)
+    {
+        global_path.poses.at(i).header.stamp = ros::Time(0);
+        try
+        {
+            local_ref_path.poses.push_back(tf_buffer_c.transform(global_path.poses.at(i), path_frame_, ros::Duration(1)));
+        }
+        catch (tf::LookupException ex)
+        {
+            ROS_ERROR("%s",ex.what());
+        }
+    }
+    return local_ref_path;
+}
+
+int DockingControl::nearestPointIndexFind(nav_msgs::Path local_path)
+{
+    int closest_index = 0;
+    double min_dist = hypot(local_path.poses.at(closest_index).pose.position.x,
+                            local_path.poses.at(closest_index).pose.position.y);
+    for (int i = 2; i < local_path.poses.size(); i++)
+    {
+        double dist = hypot(local_path.poses.at(i).pose.position.x, local_path.poses.at(i).pose.position.y);
+        if (dist < min_dist)
+        {
+            min_dist = dist;
+            closest_index = i;
+        }
+    }
+    if (local_path.poses.size() - 1 < closest_index) closest_index = local_path.poses.size() - 1;
+    geometry_msgs::PoseStamped nearest_pose;
+    nearest_pose = local_path.poses.at(closest_index);
+    pub_nearest_pose_.publish(nearest_pose);
+    return closest_index;
+}
+
 void DockingControl::controllerCal()
 {
     if (!controller_on_.data)
@@ -164,43 +207,16 @@ void DockingControl::controllerCal()
     }
     pub_stop_ = false;
 
-    /* Check input data */
+    /********* Check input data ***********/
     if (!checkData()) return;
 
     /*********** CONVERT GLOBAL PATH TO BASE_LINK PATH ***********/ 
-    local_ref_path_.header.frame_id = path_frame_;
-    local_ref_path_.header.stamp = ros::Time(0);
-    local_ref_path_.poses.clear();
-    for (int i = 0; i < ref_path_.poses.size(); i++)
-    {
-        ref_path_.poses.at(i).header.stamp = ros::Time(0);
-        try
-        {
-            local_ref_path_.poses.push_back(tf_buffer_c.transform(ref_path_.poses.at(i), path_frame_, ros::Duration(1)));
-        }
-        catch (tf::LookupException ex)
-        {
-            ROS_ERROR("%s",ex.what());
-        }
-    }
+    local_ref_path_ = convertPathtoLocalFrame(ref_path_);
     pub_local_path_.publish(local_ref_path_);
 
     /*********** NEAREST POINT FINDING **********/
-    int closest_index = 0;
-    double min_dist = sqrt(local_ref_path_.poses.at(closest_index).pose.position.x*local_ref_path_.poses.at(closest_index).pose.position.x +
-                            local_ref_path_.poses.at(closest_index).pose.position.y*local_ref_path_.poses.at(closest_index).pose.position.y);
-    for (int i = 2; i < local_ref_path_.poses.size(); i++)
-    {
-        double dist = sqrt(local_ref_path_.poses.at(i).pose.position.x*local_ref_path_.poses.at(i).pose.position.x +
-                        local_ref_path_.poses.at(i).pose.position.y*local_ref_path_.poses.at(i).pose.position.y);
-        if (dist < min_dist)
-        {
-            min_dist = dist;
-            closest_index = i;
-        }
-    }
-    if (ref_path_.poses.size() - 1 < closest_index) closest_index = ref_path_.poses.size() - 1;
-    ROS_DEBUG ("Nearest index: %d", closest_index);
+    int nearest_pose_index = nearestPointIndexFind(local_ref_path_);
+    ROS_DEBUG ("Nearest index: %d", nearest_pose_index);
 
     /******** STEERING CONTROL *********/  
     std_msgs::Float32 debug_p;
@@ -209,21 +225,11 @@ void DockingControl::controllerCal()
     pure_pursuit_control.setOdom(odom_sub_);
     pure_pursuit_control.setRefPath(local_ref_path_);
     pure_pursuit_control.setRefVel(final_ref_vel_);
-    pure_pursuit_control.setClosestPoint(closest_index);
+    pure_pursuit_control.setClosestPoint(nearest_pose_index);
     if (!approaching_done_.data) pure_pursuit_control.setLookaheadTime(pp_look_ahead_time_);
     else pure_pursuit_control.setLookaheadTime(pp_look_ahead_time_straigh_line_);
     pure_pursuit_control.calControl();
 
-    // Publish PP steering for debug 
-    std_msgs::Float32 pp_steer;
-    pp_steer.data = pure_pursuit_control.PP_steering_angle_;
-    pub_pp_steering_.publish(pp_steer);     // pp steering angle before being added PID
-
-    pp_lkh_pose_ = pure_pursuit_control.pp_lookahead_pose_;
-    pp_lkh_pose_.header.frame_id = path_frame_;
-    pp_lkh_pose_.header.stamp = ros::Time::now();
-    pub_pp_lookahead_pose_.publish(pp_lkh_pose_);
-    
     steering_angle_ = pure_pursuit_control.getSteeringAngle();
 
     // Smooth the steering output. Limit steering speed
@@ -231,6 +237,11 @@ void DockingControl::controllerCal()
     if (steering_speed > max_steering_speed_) steering_speed = max_steering_speed_;
     if (steering_speed < min_steering_speed_) steering_speed = min_steering_speed_;
     steering_ = steering_ + steering_speed * dt_;
+
+    // Publish PP steering for debug 
+    std_msgs::Float32 pp_steer;
+    pp_steer.data = pure_pursuit_control.PP_steering_angle_;
+    pub_pp_steering_.publish(pp_steer);     // pp steering angle before being added PID
 
     // Visualize PP lookahead distance and lookahead angle
     std_msgs::Float32 pp_lkh_distance, pp_lkh_angle, pp_lkh_curve;
@@ -243,6 +254,11 @@ void DockingControl::controllerCal()
     pp_lkh_curve.data = pure_pursuit_control.look_ahead_curvature_;
     pub_pp_lookahead_curvature_.publish(pp_lkh_curve);
 
+    pp_lkh_pose_ = pure_pursuit_control.pp_lookahead_pose_;
+    pp_lkh_pose_.header.frame_id = path_frame_;
+    pp_lkh_pose_.header.stamp = ros::Time::now();
+    pub_pp_lookahead_pose_.publish(pp_lkh_pose_);
+
     /******** VELOCITY CONTROL ****/
     int lk_index;
     double fuzzy_lk_dis = fuzzy_lookahead_dis_;
@@ -250,7 +266,7 @@ void DockingControl::controllerCal()
                         + local_ref_path_.poses.at(local_ref_path_.poses.size()-1).pose.position.y*local_ref_path_.poses.at(local_ref_path_.poses.size()-1).pose.position.y);
     
     if (fuzzy_lk_dis > max_dist) fuzzy_lk_dis = max_dist;
-    for (lk_index = closest_index; lk_index < local_ref_path_.poses.size(); lk_index++)
+    for (lk_index = nearest_pose_index; lk_index < local_ref_path_.poses.size(); lk_index++)
     {
         if (abs(fuzzy_lk_dis) <= sqrt(local_ref_path_.poses.at(lk_index).pose.position.x*local_ref_path_.poses.at(lk_index).pose.position.x
                                     + local_ref_path_.poses.at(lk_index).pose.position.y*local_ref_path_.poses.at(lk_index).pose.position.y)) break;  
@@ -326,8 +342,8 @@ void DockingControl::controllerCal()
     point_pp.x = local_ref_path_.poses.at(pure_pursuit_control.point_index_).pose.position.x;
     point_pp.y = local_ref_path_.poses.at(pure_pursuit_control.point_index_).pose.position.y;
     point_pp.z = 0;
-    closest_point.x = local_ref_path_.poses.at(closest_index).pose.position.x;
-    closest_point.y = local_ref_path_.poses.at(closest_index).pose.position.y;
+    closest_point.x = local_ref_path_.poses.at(nearest_pose_index).pose.position.x;
+    closest_point.y = local_ref_path_.poses.at(nearest_pose_index).pose.position.y;
     closest_point.z = 0;
 
     std::vector<geometry_msgs::Point> my_points;

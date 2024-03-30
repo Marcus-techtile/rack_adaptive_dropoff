@@ -38,7 +38,7 @@ private:
     ros::Publisher pub_debug_;
     ros::Publisher pub_pp_lookahead_distance_;
     ros::Publisher pub_pp_lookahead_angle_;
-    ros::Publisher pub_pp_lookahead_pose_;
+    ros::Publisher pub_pp_lookahead_pose_, pub_nearest_pose_;;
     ros::Publisher pub_pp_lookahead_curvature_;
     ros::Publisher marker_pub_;
     boost::shared_ptr <dynamic_reconfigure::Server<config> > srv_;
@@ -103,16 +103,6 @@ private:
     /* Limit angular rate */
     double max_angular_vel_;
 
-public:
-    DockingControl(ros::NodeHandle &paramGet);
-    ~DockingControl();
-
-    /* Functions */
-    void resetController();
-    bool checkData();
-    void controllerCal();
-    void reconfigCallback(pallet_docking_xsquare::purePursuitReconfigConfig &config, uint32_t level);
-
     /* Callback function */
     void odomCallback(const nav_msgs::Odometry::ConstPtr& msg_odom);
     void JointStateCallBack(const sensor_msgs::JointState::ConstPtr &msg);
@@ -120,6 +110,19 @@ public:
     void goalPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg);
     void controllerOnCallback(const std_msgs::Bool::ConstPtr& msg);
     void approachingStatusCallback(const std_msgs::Bool::ConstPtr& msg);
+
+public:
+    DockingControl(ros::NodeHandle &paramGet);
+    ~DockingControl();
+
+    /* Functions */
+    void resetController();
+    bool checkData();
+    nav_msgs::Path convertPathtoLocalFrame(nav_msgs::Path global_path);
+    int nearestPointIndexFind(nav_msgs::Path local_path);
+    void controllerCal();
+    void reconfigCallback(pallet_docking_xsquare::purePursuitReconfigConfig &config, uint32_t level);
+
 
 
 };
