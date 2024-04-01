@@ -39,7 +39,7 @@
   <!-- Goal tolerance -->
    <param name="distance_tolerance" value="0.1"/>  <!-- meter -->
    <param name="angle_tolerance" value="0.05"/>     <!-- radian -->  
-   <param name="final_angle_tolerance" value="0.02"/>     <!-- radian -->  
+   <param name="final_angle_tolerance" value="0.03"/>     <!-- radian -->  
    <param name="x_tolerance" value="0.03"/> <!-- meter -->  
    <param name="final_x_tolerance" value="0.01"/> <!-- meter -->   
    <param name="y_tolerance" value="0.03"/> <!-- meter -->    
