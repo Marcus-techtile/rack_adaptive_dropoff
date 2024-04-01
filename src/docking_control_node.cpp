@@ -223,7 +223,7 @@ void DockingControl::controllerCal()
 
     /******** STEERING CONTROL *********/  
     std_msgs::Float32 debug_p;
-    debug_p.data = pure_pursuit_control.lateral_error_.data;
+    debug_p.data = pure_pursuit_control.lateral_heading_error_.data;
     pub_debug_.publish(debug_p);
     pure_pursuit_control.setOdom(odom_sub_);
     pure_pursuit_control.setRefPath(local_ref_path_);
@@ -241,7 +241,7 @@ void DockingControl::controllerCal()
     } 
     pure_pursuit_control.calControl();
 
-    steering_angle_ = pure_pursuit_control.getSteeringAngle();
+    steering_angle_ = pure_pursuit_control.steering_angle_;
 
     // Smooth the steering output. Limit steering speed
     double steering_speed = (steering_angle_ - steering_)/dt_;

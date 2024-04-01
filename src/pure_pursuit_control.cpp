@@ -8,7 +8,6 @@ PurePursuitController::PurePursuitController(ros::NodeHandle &paramGet)
     paramGet.param<double>("docking_freq", freq_, 0.0);
     dt_ = 1/freq_;
     paramGet.param("/forklift_params/wheel_base", l_wheelbase_, 1.311);
-    paramGet.param<double>("look_ahead_time", look_ahead_time_, 0.8);
     paramGet.param<double>("look_ahead_reverse_time", look_ahead_reverse_time_, 1.2);
     paramGet.param<double>("min_look_ahead_dis", min_look_ahead_dis_, 0.4);
     paramGet.param<double>("max_look_ahead_dis", max_look_ahead_dis_, 1.5);
@@ -45,11 +44,6 @@ void PurePursuitController::setOdom(nav_msgs::Odometry odom)
 void PurePursuitController::setRefPath(nav_msgs::Path path)
 {
     path_ = path;
-}
-
-double PurePursuitController::getSteeringAngle()
-{
-    return steering_angle_;
 }
 
 void PurePursuitController::setRefVel(double ref_vel)
@@ -143,53 +137,44 @@ geometry_msgs::PoseStamped PurePursuitController::calLookaheadPoint(int nearest_
     return *point_it;
 }
 
-
 void PurePursuitController::calControl()
 {
-    if(path_.poses.size() == 0) return;
-    double distance_to_goal = sqrt(path_.poses.at(path_.poses.size()-1).pose.position.x*path_.poses.at(path_.poses.size()-1).pose.position.x
-                            + path_.poses.at(path_.poses.size()-1).pose.position.y*path_.poses.at(path_.poses.size()-1).pose.position.y);
-
+    // Lookahead Distance computation
     look_ahead_distance_ = calLookaheadDistance(lk_time, cur_vel_);
 
+    // Get Lookahead Pose and Point
     pp_lookahead_pose_ = calLookaheadPoint(closest_index_, look_ahead_distance_, path_);
     point_lkh = pp_lookahead_pose_.pose.position;
 
+    // Lookahead Curvature Computation
     look_ahead_curvature_ = calLookaheadCurvature(point_lkh);
     
+    // Recalculate lookahead distance with actual point
     if (re_cal_lookahead_dis_ && min_look_ahead_dis_ < 0.35)
      look_ahead_distance_ = sqrt(point_lkh.x*point_lkh.x + point_lkh.y*point_lkh.y);
 
-    // Calculate alpha and set the ending condition to avoid the singularity
+    // Calculate the reference lookahead angle
     if (use_ref_angle_from_path_) alpha_ = tf2::getYaw(path_.poses.at(point_index_).pose.orientation);
     else
     {
+        double distance_to_goal = hypot(path_.poses.at(path_.poses.size()-1).pose.position.x,
+                                path_.poses.at(path_.poses.size()-1).pose.position.y);
         if (abs(distance_to_goal) > goal_correct_yaw_) alpha_= atan(point_lkh.y/ point_lkh.x);
         else alpha_ = tf2::getYaw(path_.poses.at(point_index_).pose.orientation);
     }
     
-    // Visualize the lookahead pose
-    pp_lookahead_pose_.pose.position.x = point_lkh.x;
-    pp_lookahead_pose_.pose.position.y = point_lkh.y;
-    pp_lookahead_pose_.pose.position.z = 0;
+    // Correct the lookahead pose angle
     pp_lookahead_pose_.pose.orientation = rpyToQuaternion(0, 0, alpha_);
 
-    lateral_heading_error_.data = point_lkh.y;
-    // lateral_heading_error_.data = path_.poses.at(closest_index_).pose.position.y;
-    lateral_error_.data = path_.poses.at(closest_index_).pose.position.y;
-    
-    // if (distance_to_goal <= goal_correct_yaw_)
-    // {
-    //     quaternionToRPY(path_.poses.at(path_.poses.size()-1).pose.orientation, roll_tmp, pitch_tmp, alpha_);
-    // }
-        
-    
+    // Change sign angle if moving backward
     if (ref_vel_ < 0) alpha_ = -alpha_;  
 
+    // Calculate the output steering
     PP_steering_angle_ = atan(2*l_wheelbase_*sin(alpha_)/look_ahead_distance_);
 
+    // PID control for support the convergence to reference path
+    lateral_heading_error_.data = point_lkh.y;
     sum_e_la += lateral_heading_error_.data * dt_;
-
     double steering_angle_corrected = PP_steering_angle_ + kp_*lateral_heading_error_.data 
                                             + ki_*sum_e_la;
 
