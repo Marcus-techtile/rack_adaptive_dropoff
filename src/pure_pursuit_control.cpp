@@ -15,6 +15,8 @@ PurePursuitController::PurePursuitController(ros::NodeHandle &paramGet)
     paramGet.param<double>("goal_correct_yaw", goal_correct_yaw_, 0.3);
     paramGet.param<double>("kp", kp_, 0.0);
     paramGet.param<double>("ki", ki_, 0.0);
+    paramGet.param<double>("path_lateral_offset", path_lateral_offset_, 0.01);
+    paramGet.param<bool>("use_track_path_pid", use_track_path_pid_, true);
     paramGet.param<bool>("use_point_interpolate", use_point_interpolate_, true);
     paramGet.param<bool>("use_ref_angle_from_path", use_ref_angle_from_path_, true);
     paramGet.param<bool>("re_cal_lookahead_dis", re_cal_lookahead_dis_, true);
@@ -170,9 +172,17 @@ void PurePursuitController::calControl()
 
     // PID control for support the convergence to reference path
     lateral_heading_error_.data = point_lkh.y;
-    sum_e_la += lateral_heading_error_.data * dt_;
-    double steering_angle_corrected = PP_steering_angle_ + kp_*lateral_heading_error_.data 
-                                            + ki_*sum_e_la;
+    double pid_error;
+    if (use_track_path_pid_)
+    {
+        double path_lateral_tracking_error = path_.poses.at(closest_index_).pose.position.y;
+        if (abs(path_lateral_tracking_error) > path_lateral_offset_) pid_error = path_lateral_tracking_error;
+        else pid_error = lateral_heading_error_.data;
+    }
+    else pid_error = lateral_heading_error_.data;
+
+    sum_e_la += pid_error * dt_;
+    double steering_angle_corrected = PP_steering_angle_ + kp_*pid_error + ki_*sum_e_la;
 
     steering_angle_ = steering_angle_corrected;
 

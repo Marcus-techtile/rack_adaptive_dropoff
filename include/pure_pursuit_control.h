@@ -34,6 +34,8 @@ private:
     // PID control
     double kp_, ki_;
     double sum_e_la{0};
+    bool use_track_path_pid_;
+    double path_lateral_offset_;
 
     /* PP varibales */
     int closest_index_;
