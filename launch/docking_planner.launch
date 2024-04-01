@@ -43,7 +43,7 @@
    <param name="x_tolerance" value="0.03"/> <!-- meter -->  
    <param name="final_x_tolerance" value="0.01"/> <!-- meter -->   
    <param name="y_tolerance" value="0.03"/> <!-- meter -->    
-   <param name="final_y_tolerance" value="0.015"/> <!-- meter -->    
+   <param name="final_y_tolerance" value="0.025"/> <!-- meter -->    
 
   <!-- PID control for sideshift control -->
     <param name="kp" value="12.0"/>
