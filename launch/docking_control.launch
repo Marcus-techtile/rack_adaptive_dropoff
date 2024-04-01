@@ -14,12 +14,14 @@
     <param name="look_ahead_time_straigh_line" value="3.6"/>   
     <param name="min_look_ahead_dis" value="0.1"/>  
     <param name="max_look_ahead_dis" value="2.5"/> 
+    <param name="pp_min_lk_distance_approaching" value="0.2"/> 
+    <param name="pp_min_lk_distance_docking" value="0.5"/> 
     <param name="max_steering" value="1.57"/>     
     <param name="min_steering" value="-1.57"/> 
     <param name="max_steering_speed" value="0.7"/> 
     <param name="min_steering_speed" value="-0.7"/>  
     <param name="kp" value="2.0"/>     
-    <param name="ki" value="1.0"/> 
+    <param name="ki" value="0.1"/> 
     <param name="goal_correct_yaw" value="0.2"/>  
     <param name="max_angular_vel" value="0.5"/>  <!-- change from the stable branch -->
     

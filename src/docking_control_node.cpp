@@ -13,6 +13,8 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     
     paramGet.param<double>("look_ahead_time", pp_look_ahead_time_, 3.0);
     paramGet.param<double>("look_ahead_time_straigh_line", pp_look_ahead_time_straigh_line_, 5.0);
+    paramGet.param<double>("pp_min_lk_distance_approaching", pp_min_lk_distance_approaching_, 0.2);
+    paramGet.param<double>("pp_min_lk_distance_docking", pp_min_lk_distance_docking_, 0.4);
     paramGet.param<double>("max_steering", max_steering_, 1.5);
     paramGet.param<double>("min_steering", min_steering_, -1.5);
     paramGet.param<double>("max_steering_speed", max_steering_speed_, 0.2);
@@ -227,8 +229,16 @@ void DockingControl::controllerCal()
     pure_pursuit_control.setRefPath(local_ref_path_);
     pure_pursuit_control.setRefVel(final_ref_vel_);
     pure_pursuit_control.setClosestPoint(nearest_pose_index);
-    if (!approaching_done_.data) pure_pursuit_control.setLookaheadTime(pp_look_ahead_time_);
-    else pure_pursuit_control.setLookaheadTime(pp_look_ahead_time_straigh_line_);
+    if (!approaching_done_.data)
+    {
+        pure_pursuit_control.setLookaheadTime(pp_look_ahead_time_);
+        pure_pursuit_control.limitLookaheadDistance(pp_min_lk_distance_approaching_, 2.5);
+    } 
+    else
+    {
+        pure_pursuit_control.setLookaheadTime(pp_look_ahead_time_straigh_line_);
+        pure_pursuit_control.limitLookaheadDistance(pp_min_lk_distance_docking_, 2.5);
+    } 
     pure_pursuit_control.calControl();
 
     steering_angle_ = pure_pursuit_control.getSteeringAngle();

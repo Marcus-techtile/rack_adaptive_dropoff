@@ -93,6 +93,10 @@ private:
     double max_pocket_dock_vel_;
     double max_pocket_dock_steering_;
 
+    /* Limit PP lookahead distance */
+    double pp_min_lk_distance_approaching_;
+    double pp_min_lk_distance_docking_;
+
     /* Output control command */
     geometry_msgs::Twist cmd_vel_;   // command velocity
 

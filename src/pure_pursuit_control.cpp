@@ -93,6 +93,12 @@ void PurePursuitController::setLookaheadTime(double lk_t)
     lk_time = lk_t;
 }
 
+void PurePursuitController::limitLookaheadDistance(double min_dis, double max_dis)
+{
+    this->min_look_ahead_dis_ = min_dis;
+    this->max_look_ahead_dis_ = max_dis;
+}
+
 double PurePursuitController::calLookaheadDistance(double lk_t, double cur_spd)
 {
     double lk_dis = abs(cur_spd) * lk_time;     // adaptive lookahead distance
@@ -151,7 +157,7 @@ void PurePursuitController::calControl()
 
     look_ahead_curvature_ = calLookaheadCurvature(point_lkh);
     
-    if (re_cal_lookahead_dis_)
+    if (re_cal_lookahead_dis_ && min_look_ahead_dis_ < 0.35)
      look_ahead_distance_ = sqrt(point_lkh.x*point_lkh.x + point_lkh.y*point_lkh.y);
 
     // Calculate alpha and set the ending condition to avoid the singularity
@@ -182,7 +188,7 @@ void PurePursuitController::calControl()
 
     PP_steering_angle_ = atan(2*l_wheelbase_*sin(alpha_)/look_ahead_distance_);
 
-    sum_e_la += lateral_heading_error_.data * 0.02;
+    sum_e_la += lateral_heading_error_.data * dt_;
 
     double steering_angle_corrected = PP_steering_angle_ + kp_*lateral_heading_error_.data 
                                             + ki_*sum_e_la;
