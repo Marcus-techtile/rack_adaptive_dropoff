@@ -25,7 +25,6 @@ private:
     double lpf_output_{0.0};
 
     /* PP tune parameters */
-    double look_ahead_reverse_time_;
     double min_look_ahead_dis_;
     double max_look_ahead_dis_;
     double max_steering_;   // max steering wheel angle
@@ -65,7 +64,6 @@ public:
 
     int point_index_;         // lookahead point index
     std_msgs::Float32 lateral_heading_error_;
-
 
     geometry_msgs::PoseStamped pp_lookahead_pose_;
     double look_ahead_distance_;

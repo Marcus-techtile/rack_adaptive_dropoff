@@ -8,17 +8,13 @@ PurePursuitController::PurePursuitController(ros::NodeHandle &paramGet)
     paramGet.param<double>("docking_freq", freq_, 0.0);
     dt_ = 1/freq_;
     paramGet.param("/forklift_params/wheel_base", l_wheelbase_, 1.311);
-    paramGet.param<double>("look_ahead_reverse_time", look_ahead_reverse_time_, 1.2);
     paramGet.param<double>("min_look_ahead_dis", min_look_ahead_dis_, 0.4);
     paramGet.param<double>("max_look_ahead_dis", max_look_ahead_dis_, 1.5);
-
-    paramGet.param<double>("kp", kp_, 0.0);
-    paramGet.param<double>("ki", ki_, 0.0);
-
     paramGet.param<double>("max_steering", max_steering_, 1.5);
     paramGet.param<double>("min_steering", min_steering_, -1.5);
-
     paramGet.param<double>("goal_correct_yaw", goal_correct_yaw_, 0.3);
+    paramGet.param<double>("kp", kp_, 0.0);
+    paramGet.param<double>("ki", ki_, 0.0);
     paramGet.param<bool>("use_point_interpolate", use_point_interpolate_, true);
     paramGet.param<bool>("use_ref_angle_from_path", use_ref_angle_from_path_, true);
     paramGet.param<bool>("re_cal_lookahead_dis", re_cal_lookahead_dis_, true);
