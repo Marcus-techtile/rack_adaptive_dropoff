@@ -108,6 +108,7 @@ private:
     double max_angular_vel_;
 
     bool limit_sp_curve_;
+    bool adaptive_ref_angle_;
 
     /* Callback function */
     void odomCallback(const nav_msgs::Odometry::ConstPtr& msg_odom);

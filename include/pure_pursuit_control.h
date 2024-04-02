@@ -57,6 +57,7 @@ public:
     void setRefVel(double ref_vel);
     void setClosestPoint(int closest_index);
     void setLookaheadTime(double lk_t);
+    void setRefAngleMode(bool use_angle_from_path);
     void limitLookaheadDistance(double min_dis, double max_dis);
 
     double calLookaheadDistance(double lk_t, double cur_spd);

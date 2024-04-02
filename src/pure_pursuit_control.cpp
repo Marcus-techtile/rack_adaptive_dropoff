@@ -86,6 +86,11 @@ void PurePursuitController::setLookaheadTime(double lk_t)
     lk_time = lk_t;
 }
 
+void PurePursuitController::setRefAngleMode(bool use_angle_from_path)
+{
+    this->use_ref_angle_from_path_ = use_angle_from_path;
+}
+
 void PurePursuitController::limitLookaheadDistance(double min_dis, double max_dis)
 {
     this->min_look_ahead_dis_ = min_dis;
@@ -180,16 +185,19 @@ void PurePursuitController::calControl()
         if (abs(path_lateral_tracking_error) > path_lateral_offset_) pid_error_ = path_lateral_tracking_error;
         else pid_error_ = lateral_heading_error_.data;
         // if (distance_to_goal_ < goal_correct_yaw_) pid_error_ = lateral_heading_error_.data;
+        if (pid_error_*pre_pid_error_ < 0 && abs(pid_error_ - pre_pid_error_) > i_sw_offset_) i_part_ = 0;
     }
     else pid_error_ = lateral_heading_error_.data;
-    if (pid_error_*pre_pid_error_ < 0 && abs(pid_error_ - pre_pid_error_) > i_sw_offset_) i_part_ = 0;
+    
 
     p_part_ = kp_*pid_error_;
     i_part_ += ki_*pid_error_ * dt_;
     pre_pid_error_ = pid_error_;
     double steering_angle_corrected = PP_steering_angle_ + p_part_ + i_part_;
 
-    steering_angle_ = steering_angle_corrected;
+    if (use_ref_angle_from_path_)
+        steering_angle_ = steering_angle_corrected;
+    else steering_angle_ = PP_steering_angle_;
 
     if (steering_angle_ > max_steering_) steering_angle_ = max_steering_;
     if (steering_angle_ < min_steering_) steering_angle_ = min_steering_;

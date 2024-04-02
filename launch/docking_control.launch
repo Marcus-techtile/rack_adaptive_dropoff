@@ -14,7 +14,7 @@
     <param name="look_ahead_time_straigh_line" value="3.6"/>   
     <param name="min_look_ahead_dis" value="0.1"/>  
     <param name="max_look_ahead_dis" value="2.5"/> 
-    <param name="pp_min_lk_distance_approaching" value="0.2"/> 
+    <param name="pp_min_lk_distance_approaching" value="0.3"/> 
     <param name="pp_min_lk_distance_docking" value="0.3"/> 
     <param name="max_steering" value="1.57"/>     
     <param name="min_steering" value="-1.57"/> 
@@ -28,16 +28,18 @@
 
     <param name="max_angular_vel" value="0.5"/>  <!-- change from the stable branch -->
     
-    <param name="use_track_path_pid" value="true"/> 
-    <param name="use_point_interpolate" value="true"/> 
+    <param name="adaptive_ref_angle" value="true"/> 
     <param name="use_ref_angle_from_path" value="false"/> 
+
+    <param name="use_track_path_pid" value="false"/> 
+    <param name="use_point_interpolate" value="true"/> 
     <param name="re_cal_lookahead_dis" value="true"/> 
 
    <!-- Fuzzy controller parameters -->
     <param name="fuzzy_lookahead_dis" value="1.0"/>      <!-- ZERO value for output velocity --> 
     <param name="limit_sp_curve" value="true"/> 
 
-    <param name="min_vel" value="0.00"/>      
+    <param name="min_vel" value="0.01"/>      
     <param name="output_VS" value="0.05"/>    
     <param name="output_S" value="0.1"/>     
     <param name="output_M" value="0.15"/>     

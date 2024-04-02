@@ -23,6 +23,7 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     paramGet.param<double>("min_vel", min_vel_, 0.15);
     paramGet.param<double>("goal_correct_yaw", goal_correct_yaw_, 0.3);
     paramGet.param<double>("max_angular_vel", max_angular_vel_, 0.2);
+    paramGet.param<bool>("adaptive_ref_angle", adaptive_ref_angle_, true);
 
     paramGet.param<double>("fuzzy_lookahead_dis", fuzzy_lookahead_dis_, 0.3);
     paramGet.param<bool>("limit_sp_curve", limit_sp_curve_, true);
@@ -233,11 +234,13 @@ void DockingControl::controllerCal()
     {
         pure_pursuit_control.setLookaheadTime(pp_look_ahead_time_);
         pure_pursuit_control.limitLookaheadDistance(pp_min_lk_distance_approaching_, 2.5);
+        if (adaptive_ref_angle_) pure_pursuit_control.setRefAngleMode(false);
     } 
     else
     {
         pure_pursuit_control.setLookaheadTime(pp_look_ahead_time_straigh_line_);
         pure_pursuit_control.limitLookaheadDistance(pp_min_lk_distance_docking_, 2.5);
+        if (adaptive_ref_angle_) pure_pursuit_control.setRefAngleMode(true);
     } 
     pure_pursuit_control.calControl();
 
