@@ -15,6 +15,7 @@ PurePursuitController::PurePursuitController(ros::NodeHandle &paramGet)
     paramGet.param<double>("goal_correct_yaw", goal_correct_yaw_, 0.3);
     paramGet.param<double>("kp", kp_, 0.0);
     paramGet.param<double>("ki", ki_, 0.0);
+    paramGet.param<double>("i_sw_offset", i_sw_offset_, 0.01);
     paramGet.param<double>("path_lateral_offset", path_lateral_offset_, 0.01);
     paramGet.param<bool>("use_track_path_pid", use_track_path_pid_, true);
     paramGet.param<bool>("use_point_interpolate", use_point_interpolate_, true);
@@ -24,7 +25,7 @@ PurePursuitController::PurePursuitController(ros::NodeHandle &paramGet)
 
 void PurePursuitController::resetPP()
 {
-    sum_e_la = 0;
+    i_part_ = 0;
     steering_angle_ = 0;
     alpha_ = 0;
 }
@@ -155,9 +156,9 @@ void PurePursuitController::calControl()
     if (use_ref_angle_from_path_) alpha_ = tf2::getYaw(path_.poses.at(point_index_).pose.orientation);
     else
     {
-        double distance_to_goal = hypot(path_.poses.at(path_.poses.size()-1).pose.position.x,
+        distance_to_goal_ = hypot(path_.poses.at(path_.poses.size()-1).pose.position.x,
                                 path_.poses.at(path_.poses.size()-1).pose.position.y);
-        if (abs(distance_to_goal) > goal_correct_yaw_) alpha_= atan(point_lkh.y/ point_lkh.x);
+        if (abs(distance_to_goal_) > goal_correct_yaw_) alpha_= atan(point_lkh.y/ point_lkh.x);
         else alpha_ = tf2::getYaw(path_.poses.at(point_index_).pose.orientation);
     }
     
@@ -172,17 +173,21 @@ void PurePursuitController::calControl()
 
     // PID control for support the convergence to reference path
     lateral_heading_error_.data = point_lkh.y;
-    double pid_error;
+
     if (use_track_path_pid_)
     {
         double path_lateral_tracking_error = path_.poses.at(closest_index_).pose.position.y;
-        if (abs(path_lateral_tracking_error) > path_lateral_offset_) pid_error = path_lateral_tracking_error;
-        else pid_error = lateral_heading_error_.data;
+        if (abs(path_lateral_tracking_error) > path_lateral_offset_) pid_error_ = path_lateral_tracking_error;
+        else pid_error_ = lateral_heading_error_.data;
+        // if (distance_to_goal_ < goal_correct_yaw_) pid_error_ = lateral_heading_error_.data;
     }
-    else pid_error = lateral_heading_error_.data;
+    else pid_error_ = lateral_heading_error_.data;
+    if (pid_error_*pre_pid_error_ < 0 && abs(pid_error_ - pre_pid_error_) > i_sw_offset_) i_part_ = 0;
 
-    sum_e_la += pid_error * dt_;
-    double steering_angle_corrected = PP_steering_angle_ + kp_*pid_error + ki_*sum_e_la;
+    p_part_ = kp_*pid_error_;
+    i_part_ += ki_*pid_error_ * dt_;
+    pre_pid_error_ = pid_error_;
+    double steering_angle_corrected = PP_steering_angle_ + p_part_ + i_part_;
 
     steering_angle_ = steering_angle_corrected;
 

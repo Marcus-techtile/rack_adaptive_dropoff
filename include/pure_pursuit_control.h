@@ -33,11 +33,14 @@ private:
 
     // PID control
     double kp_, ki_;
-    double sum_e_la{0};
+    double pid_error_, pre_pid_error_;
+    double i_sw_offset_;
+    double p_part_, i_part_{0};
     bool use_track_path_pid_;
     double path_lateral_offset_;
 
     /* PP varibales */
+    double distance_to_goal_;
     int closest_index_;
     double lk_time;
     geometry_msgs::Point point_lkh;
