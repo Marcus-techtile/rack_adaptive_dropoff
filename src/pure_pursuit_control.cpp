@@ -28,6 +28,10 @@ void PurePursuitController::resetPP()
     i_part_ = 0;
     steering_angle_ = 0;
     alpha_ = 0;
+    pre_pid_error_ = 0;
+    pid_error_ = 0;
+    p_part_ = 0;
+    i_part_ = 0;
 }
 
 void PurePursuitController::setOdom(nav_msgs::Odometry odom)
@@ -189,7 +193,6 @@ void PurePursuitController::calControl()
     }
     else pid_error_ = lateral_heading_error_.data;
     
-
     p_part_ = kp_*pid_error_;
     i_part_ += ki_*pid_error_ * dt_;
     pre_pid_error_ = pid_error_;
