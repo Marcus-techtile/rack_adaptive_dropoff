@@ -114,6 +114,7 @@ void DockingManager::dockingServerGoalCallback(const pallet_dock_msgs::PalletDoc
         dis_docking_offset_ = -dis_docking_offset_;
     }
     approaching_min_dis_ = docking_server_goal_.goal.move_back_distance;  // enable moveback motion for pallet docking
+    lateral_pallet_offset_ = docking_server_goal_.goal.pallet_lateral_offset;
     pallet_pose_avai_ = true;
     ROS_INFO("Receive docking goal");
 }
@@ -177,7 +178,7 @@ void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStampe
         quaternionToRPY(local_pallet_pose.pose.orientation, r_tmp, p_tmp, y_tmp);
         // ROS_INFO("Relative yaw: %f", y_tmp*180/M_PI);
 
-        local_pallet_pose.pose.position.y  = local_pallet_pose.pose.position.y; //offset for ifm cam
+        local_pallet_pose.pose.position.y  = local_pallet_pose.pose.position.y + lateral_pallet_offset_; //offset for ifm cam
 
         local_static_goal_pose_.pose.position.x = local_pallet_pose.pose.position.x - 
                                                         distance_pallet*cos(y_tmp);

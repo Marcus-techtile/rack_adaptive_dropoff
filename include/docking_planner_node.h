@@ -78,6 +78,7 @@ private:
     double dis_approach_offset_; // Offset from pallet to approaching goal
     double dis_docking_offset_;  // Offset from pallet to docking goal
     double moveback_straight_distance_;
+    double lateral_pallet_offset_;
     geometry_msgs::Vector3 goal_pose_;      // pose of the goal, vector3 type x:x; y:y, z:yaw
     geometry_msgs::PoseStamped  global_goal_pose_;         // goal pose in global_frame_ 
     geometry_msgs::PoseStamped  local_static_goal_pose_;   // goal pose in path_frame_
