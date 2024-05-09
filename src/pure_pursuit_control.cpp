@@ -156,7 +156,14 @@ void PurePursuitController::calControl()
 
     // Lookahead Curvature Computation
     look_ahead_curvature_ = calLookaheadCurvature(point_lkh);
-    
+    if (abs(look_ahead_curvature_) > 2.0) 
+    {
+        look_ahead_distance_ = path_lateral_offset_;
+        // Get Lookahead Pose and Point
+        pp_lookahead_pose_ = calLookaheadPoint(closest_index_, look_ahead_distance_, path_);
+        point_lkh = pp_lookahead_pose_.pose.position;
+    }
+        
     // Recalculate lookahead distance with actual point
     if (re_cal_lookahead_dis_ && min_look_ahead_dis_ < 0.35)
      look_ahead_distance_ = sqrt(point_lkh.x*point_lkh.x + point_lkh.y*point_lkh.y);
@@ -186,7 +193,7 @@ void PurePursuitController::calControl()
     if (use_track_path_pid_)
     {
         double path_lateral_tracking_error = path_.poses.at(closest_index_).pose.position.y;
-        if (abs(path_lateral_tracking_error) > path_lateral_offset_) pid_error_ = path_lateral_tracking_error;
+        if (abs(path_lateral_tracking_error) > 0.0001) pid_error_ = path_lateral_tracking_error;
         else pid_error_ = lateral_heading_error_.data;
         // if (distance_to_goal_ < goal_correct_yaw_) pid_error_ = lateral_heading_error_.data;
         if (pid_error_*pre_pid_error_ < 0 && abs(pid_error_ - pre_pid_error_) > i_sw_offset_) i_part_ = 0;
