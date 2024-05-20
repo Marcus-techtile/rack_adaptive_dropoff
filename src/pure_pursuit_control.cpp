@@ -156,7 +156,7 @@ void PurePursuitController::calControl()
 
     // Lookahead Curvature Computation
     look_ahead_curvature_ = calLookaheadCurvature(point_lkh);
-    if (abs(look_ahead_curvature_) > 2.0) 
+    if (abs(look_ahead_curvature_) > 1.0) 
     {
         look_ahead_distance_ = path_lateral_offset_;
         // Get Lookahead Pose and Point

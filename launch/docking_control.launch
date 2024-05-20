@@ -39,13 +39,13 @@
     <param name="fuzzy_lookahead_dis" value="1.0"/>      <!-- ZERO value for output velocity --> 
     <param name="limit_sp_curve" value="true"/> 
 
-    <param name="min_vel" value="0.01"/>      
+    <param name="min_vel" value="0.00"/>      
     <param name="output_VS" value="0.05"/>    
     <param name="output_S" value="0.1"/>     
     <param name="output_M" value="0.15"/>     
     <param name="max_vel" value="0.2"/>       
 
-    <param name="min_dis" value="0.0"/>      <!-- SMALL distance for input -->
+    <param name="min_dis" value="0.01"/>      <!-- SMALL distance for input -->
     <param name="goal_M_b" value="0.35"/>      <!-- MEDIUM distance for input -->
     <param name="max_dis" value="0.5"/>      <!-- BIG distance for input -->
 
