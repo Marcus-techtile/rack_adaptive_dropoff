@@ -32,8 +32,6 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     pub_docking_error_ = nh_.advertise<geometry_msgs::Vector3>("/pallet_docking/docking_error", 1);
 
     /* Subscriber */
-    sub_pallet_pose_ = nh_.subscribe<geometry_msgs::PoseStamped>("/pallet_detection_relay/pallet_pose", 1, &DockingManager::palletPoseCallback, this);
-
     sub_docking_server_result_ = nh.subscribe<pallet_dock_msgs::PalletDockingActionResult>("/pallet_dock_action_server/pallet_docking/result", 1, &DockingManager::dockingServerResultCallback, this);
     sub_docking_server_goal_ = nh_.subscribe<pallet_dock_msgs::PalletDockingActionGoal>("/pallet_dock_action_server/pallet_docking/goal", 1, &DockingManager::dockingServerGoalCallback, this);
 
@@ -51,25 +49,6 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
 }
 
 DockingManager::~ DockingManager(){}
-
-/***** PALLET POSE CALLBACK ******/
-void DockingManager::palletPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
-{
-    if (get_pallet_pose_)
-    {
-        pallet_pose_ = *msg;
-        double r, p, yaw;
-        quaternionToRPY(pallet_pose_.pose.orientation, r, p, yaw);
-        yaw = yaw - M_PI;
-        pallet_pose_.pose.orientation = rpyToQuaternion(r, p, yaw);
-        if (!pallet_pose_.header.frame_id.empty())
-        {
-            get_pallet_pose_ = false;
-            pallet_pose_avai_ = true;
-        }
-        else ROS_INFO ("Pallet pose is low quality !!!");
-    }
-}
 
 /***** DOCKING SERVER RESULT CALLBACK ******/
 void DockingManager::dockingServerResultCallback(const pallet_dock_msgs::PalletDockingActionResult::ConstPtr& msg)
@@ -252,6 +231,7 @@ void DockingManager::updateGoal()
 
 void DockingManager::checkGoalReach()
 {
+    std::lock_guard<std::mutex> lock_goal_reack_check(mutex_);
     double error_x = goal_pose_.x;
     double error_y = goal_pose_.y;
     double error_yaw = goal_pose_.z;
@@ -339,7 +319,6 @@ void DockingManager::initDocking()
     count_outside_goal_range_ = 0;
 
     // reset the transition state
-    get_pallet_pose_ = false;
     pallet_pose_avai_ = false;
     approach_done_ = false;     // transition from APPROACHING to DOCKING, to SET_GOAL
     docking_done_ = false;       // transition from DOCKING to SET_GOAL
@@ -384,19 +363,8 @@ void DockingManager::dockingFSM()
     switch(current_pallet_docking_state_)
     {   case IDLE:
             docking_state.data = "IDLE";
-            if (start_pallet_docking_ || start_returning_) current_pallet_docking_state_ = GET_PALLET_POSE;
+            if (start_pallet_docking_ || start_returning_) current_pallet_docking_state_ = APPROACHING;
             else  break;
-            break;
-        case GET_PALLET_POSE:
-            docking_state.data = "GET_PALLET_POSE";
-            if (!get_pallet_pose_) get_pallet_pose_ = true;             
-            if (pallet_pose_avai_)
-            {
-                current_pallet_docking_state_ = APPROACHING;
-                pallet_pose_avai_ = false;
-                get_pallet_pose_ = false;  
-                break;
-            }
             break;
         case APPROACHING:
             docking_state.data = "APPROACHING";

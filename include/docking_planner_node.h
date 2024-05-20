@@ -12,6 +12,7 @@
 #include <visualization_msgs/Marker.h>
 #include <string.h>
 #include <map>
+#include <mutex>
 
 #include <std_srvs/SetBool.h>
 #include <std_srvs/Trigger.h>
@@ -42,8 +43,6 @@ private:
 
     /* Subscriber */
     ros::Subscriber sub_cmd_vel;
-    ros::Subscriber sub_pallet_pose_;
-    ros::Subscriber sub_pallet_pose_ready_;
     ros::Subscriber sub_move_back_;
 
     /* Docking Service*/
@@ -99,9 +98,8 @@ private:
     bool start_pallet_docking_, start_returning_;
     std_msgs::Bool returning_mode_;             // Mode returning back to the pre-docking position
     bool start_docking_FSM{false};
-    enum docking_state {IDLE, GET_PALLET_POSE, APPROACHING, DOCKING, 
+    enum docking_state {IDLE, APPROACHING, DOCKING, 
                         SET_GOAL, UPDATE_GOAL, SIDESHIFT_CONTROL, GEN_PATH_AND_PUB_CONTROL, STOP, RECOVER, END, FAILURE};
-    bool get_pallet_pose_{false}; // transition to start GET_PALLET_POSE
     bool pallet_pose_avai_{false};  // transition from GET_PALLET_POSE to APPROACH
     bool approach_done_{false};     // transition from APPROACHING to DOCKING, to SET_GOAL
     bool docking_done_{false};       // transition from DOCKING to SET_GOAL
@@ -124,9 +122,11 @@ private:
     tf2_ros::Buffer docking_tf_buffer;
     tf2_ros::TransformListener docking_listener{docking_tf_buffer};
 
+    /* Mutex */
+    std::mutex mutex_;
+
     /* Callback function */
     bool dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
-    void palletPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
     void dockingServerResultCallback(const pallet_dock_msgs::PalletDockingActionResult::ConstPtr& msg);
     void dockingServerGoalCallback(const pallet_dock_msgs::PalletDockingActionGoal::ConstPtr& msg);
 
