@@ -136,8 +136,29 @@ private:
 public:
     DockingManager(ros::NodeHandle &nh);
     ~ DockingManager();
+    void setParam(ros::NodeHandle &nh);
 
     void initDocking();
     void resetPlanAndControl();
+
+    // Planner state transition
+    void idleState();
+    void approachingState();
+    void dockingState();
+
+    void ExtendApproachingDistance();
+    void setGoalState();
+
+    void quinticPlannerSetup();
+    void goalReachHandling();
+    void goalFailHandling();
+    void genPathAndPubControlState();
+
+    void stopState();
+    void recoverState();
+    void endState();
+    void failureState();
+
+    bool startFSM();
     void dockingFSM();
 };

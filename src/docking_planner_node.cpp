@@ -2,24 +2,7 @@
 
 DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh)
 {
-    /* Get Param */
-    nh_.param<std::string>("global_frame", global_frame_, "odom");
-    nh_.param<std::string>("path_frame", path_frame_, "base_link_p");
-
-    /* Goal params */
-    nh_.param<double>("approaching_min_dis", approaching_min_dis_, 1.2);
-    nh_.param<double>("dis_approach_offset", dis_approach_offset_, 1.5);
-    nh_.param<double>("dis_docking_offset", dis_docking_offset_, 0.5);
-    nh_.param<double>("moveback_straight_distance", moveback_straight_distance_, 1.0);
-
-    /* Tolerance params */
-    nh_.param<double>("distance_tolerance", distance_tolerance_, 0.08);
-    nh_.param<double>("angle_tolerance", angle_tolerance_, 5*180/M_PI);
-    nh_.param<double>("final_angle_tolerance", final_angle_tolerance_, 1*180/M_PI);
-    nh_.param<double>("x_tolerance", x_tolerance_, 0.05);
-    nh_.param<double>("final_x_tolerance", final_x_tolerance_, 0.05);
-    nh_.param<double>("y_tolerance", y_tolerance_, 0.04);
-    nh_.param<double>("final_y_tolerance", final_y_tolerance_, 0.04);
+    setParam(nh_);
     
     /* Publisher */
     pub_docking_state = nh_.advertise<std_msgs::String>("/pallet_docking/docking_state", 1);
@@ -39,8 +22,6 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
     service_ = nh_.advertiseService("/pallet_docking_service", &DockingManager::dockingServiceCb, this);
     
     /*Define failure cases */
-    failure_map_[0] = "CANNOT_CALL_DETECTION_SERVICE";
-    failure_map_[1] = "CANNOT_DETECT_PALLET";
     failure_map_[2] = "PATH_IS_NOT_FEASIBLE";
     failure_map_[3] = "BAD_DOCKING_ACCURACY";
 
@@ -49,6 +30,30 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh
 }
 
 DockingManager::~ DockingManager(){}
+
+/***** SET DOCKING PARAMS ******/
+void DockingManager::setParam(ros::NodeHandle &nh)
+{
+    /* Get Param */
+    nh_.param<std::string>("global_frame", global_frame_, "odom");
+    nh_.param<std::string>("path_frame", path_frame_, "base_link_p");
+
+    /* Goal params */
+    nh_.param<double>("approaching_min_dis", approaching_min_dis_, 1.2);
+    nh_.param<double>("dis_approach_offset", dis_approach_offset_, 1.5);
+    nh_.param<double>("dis_docking_offset", dis_docking_offset_, 0.5);
+    nh_.param<double>("moveback_straight_distance", moveback_straight_distance_, 1.0);
+
+    /* Tolerance params */
+    /* TODO: Get tolerances from the action server */
+    nh_.param<double>("distance_tolerance", distance_tolerance_, 0.08);
+    nh_.param<double>("angle_tolerance", angle_tolerance_, 5*180/M_PI);
+    nh_.param<double>("final_angle_tolerance", final_angle_tolerance_, 1*180/M_PI);
+    nh_.param<double>("x_tolerance", x_tolerance_, 0.05);
+    nh_.param<double>("final_x_tolerance", final_x_tolerance_, 0.05);
+    nh_.param<double>("y_tolerance", y_tolerance_, 0.04);
+    nh_.param<double>("final_y_tolerance", final_y_tolerance_, 0.04);
+}
 
 /***** DOCKING SERVER RESULT CALLBACK ******/
 void DockingManager::dockingServerResultCallback(const pallet_dock_msgs::PalletDockingActionResult::ConstPtr& msg)
@@ -338,19 +343,222 @@ void DockingManager::resetPlanAndControl()
     count_outside_goal_range_ = 0;
 }
 
+/***** PLANNER STATE ******/
+////// Idle State /////
+void DockingManager::idleState()
+{
+    docking_state.data = "IDLE";
+    if (start_pallet_docking_ || start_returning_) current_pallet_docking_state_ = APPROACHING;
+    else return;
+}
+
+////// Approaching State /////
+void DockingManager::approachingState()
+{
+    docking_state.data = "APPROACHING";
+    if (!approach_done_)
+    {
+        goal_distance = dis_approach_offset_;
+        current_pallet_docking_state_ = SET_GOAL;  
+    }
+    else 
+    {
+        approaching_done.data = true;
+        current_pallet_docking_state_ = DOCKING;
+    }
+}
+
+////// Docking State /////
+void DockingManager::dockingState()
+{
+    docking_state.data = "DOCKING";
+    goal_distance = dis_docking_offset_;
+    current_pallet_docking_state_ = SET_GOAL;
+}
+
+////// Set goal State /////
+void DockingManager::ExtendApproachingDistance()
+{
+    if (check_approaching_goal_distance_ < approaching_min_dis_ 
+                        && !approach_done_ && !returning_mode_.data)  // Move back to increase the distance
+    {   
+        // goalSetup(goal_distance, pallet_pose_);
+        updateGoal();
+        double r_tm, p_tm, yaw_tm;
+        quaternionToRPY(local_update_goal_pose_.pose.orientation, r_tm, p_tm, yaw_tm);
+        /* TODO: Update the calculation for approaching distance
+        */
+        if (abs(local_update_goal_pose_.pose.position.x*cos(yaw_tm)) < approaching_min_dis_)
+        {
+            ROS_INFO_ONCE("MOVE BACKWARD. THE MOVEMENT DISTANCE IS TOO SHORT !!!");
+            geometry_msgs::Twist cmd_fw;
+            cmd_fw.linear.x = -0.2;
+            cmd_fw.angular.z = 0.0;
+            pub_cmd_vel.publish(cmd_fw);
+            return;
+        }
+        else
+        {
+            ROS_INFO("Perpendicular distance to the approaching goal: %f", abs(local_update_goal_pose_.pose.position.x*cos(yaw_tm)));
+        }
+    }
+
+}
+
+void DockingManager::setGoalState()
+{
+    docking_state.data = "SET_GOAL";
+    if (!goal_setup_)
+    {
+        goalSetup(goal_distance, pallet_pose_);
+        double yaw_tm;
+        yaw_tm = tf::getYaw(local_static_goal_pose_.pose.orientation);
+        check_approaching_goal_distance_ = abs(local_static_goal_pose_.pose.position.x*cos(yaw_tm));
+    } 
+    ExtendApproachingDistance();
+    if (goal_setup_)
+    {
+        current_pallet_docking_state_ = GEN_PATH_AND_PUB_CONTROL;
+        goal_setup_ = false;
+    } 
+}
+
+////// Gen Path State /////
+void DockingManager::quinticPlannerSetup()
+{
+    if (returning_mode_.data)
+    {
+        if (quintic_planner.starting_vel_ > 0) quintic_planner.starting_vel_ = -quintic_planner.starting_vel_;
+        if (quintic_planner.stopping_vel_ > 0) quintic_planner.stopping_vel_ = -quintic_planner.stopping_vel_;
+    }
+    else
+    {
+        if (quintic_planner.starting_vel_ < 0) quintic_planner.starting_vel_ = -quintic_planner.starting_vel_;
+        if (quintic_planner.stopping_vel_ < 0) quintic_planner.stopping_vel_ = -quintic_planner.stopping_vel_;
+    }
+    quintic_planner.setParams(0.0, 0.0, 0.0, quintic_planner.starting_vel_, quintic_planner.starting_acc_,
+                            goal_pose_.x, goal_pose_.y, goal_pose_.z,
+                            quintic_planner.stopping_vel_, quintic_planner.stopping_acc_);
+    if (!quintic_planner.path_avai_)
+        quintic_planner.genPath();
+    quintic_planner.visualize(global_pallet_pose_);
+}
+
+void DockingManager::goalReachHandling()
+{
+    resetPlanAndControl();
+    goal_reach_ = false;
+    ROS_INFO("Goal reach !!!");
+    if (!approach_done_) approach_done_ = true;
+    else docking_done_ = true;
+    current_pallet_docking_state_ = STOP;
+    quintic_planner.resetPlanner();
+}
+
+void DockingManager::goalFailHandling()
+{
+    failure_code_ = 3;
+    current_pallet_docking_state_ = FAILURE;
+    ROS_INFO("Goal failed !!!");
+    quintic_planner.resetPlanner();
+}
+
+void DockingManager::genPathAndPubControlState()
+{
+    docking_state.data = "GEN_PATH_AND_PUB_CONTROL";
+    updateGoal();
+    if (!goal_avai_) return;
+    checkGoalReach();
+
+    quinticPlannerSetup();
+    if (!quintic_planner.path_feasible_)
+    {
+        ROS_WARN("PATH IS NOT FEASIBLE");
+        failure_code_ = 2;
+        current_pallet_docking_state_ = FAILURE;
+        return;
+    } 
+  
+    // Start the controller
+    if (!controller_on_.data)
+    {
+        controller_on_.data = true;
+        pub_controller_on_.publish(controller_on_);
+    }
+    
+    if (goal_reach_)
+    {
+        goalReachHandling();
+        return;
+    } 
+    if (goal_failed_)
+    {
+        goalFailHandling();
+        return;
+    } 
+}
+
+////// Recover State /////
+void DockingManager::recoverState()
+{
+    docking_state.data = "RECOVER";
+}
+
+////// End State /////
+void DockingManager::endState()
+{
+    docking_state.data = "END";
+    docking_done.data = true;
+}
+
+////// Stop State /////
+void DockingManager::stopState()
+{
+    docking_state.data = "STOP";
+    // Stop the controller
+    resetPlanAndControl();
+    ros::Duration(1.0).sleep();
+    if (docking_done_) current_pallet_docking_state_ = END;
+    else 
+    {
+        current_pallet_docking_state_ = APPROACHING;
+        ros::Duration(1.0).sleep();
+    }
+}
+
+////// Failure State /////
+void DockingManager::failureState()
+{
+    resetPlanAndControl();
+    ROS_INFO_ONCE("FAILURE: %s. ABORTED!", failure_map_[failure_code_].c_str());
+    docking_state.data = "FAILURE: " + failure_map_[failure_code_];
+}
+
+////// FSM setup ///////
+bool DockingManager::startFSM()
+{
+    if (!start_docking_FSM) return false;
+    if (start_pallet_docking_ && !start_returning_) 
+    {
+        returning_mode_.data = false;        //docking
+        return true;
+    }
+    else if (!start_pallet_docking_ && start_returning_) 
+    {
+        returning_mode_.data = true;             // returning. move back
+        return true;
+    } 
+    else
+    {
+        ROS_WARN("BAD DOCKING STATE! Both pallet docking and returning is turned on or off!");
+        return false;
+    } 
+}
+
 /***** DOCKING FSM ******/
 void DockingManager::dockingFSM()
 {
-    if (!start_docking_FSM) return;
-    
-    if (!start_pallet_docking_ && !start_returning_) {}
-    else if (start_pallet_docking_ && start_returning_)
-    {
-        ROS_WARN("BAD DOCKING STATE! Both pallet docking and returning is turned on!");
-        return;
-    }
-    else if (start_pallet_docking_ && !start_returning_) returning_mode_.data = false;        //docking
-    else returning_mode_.data = true;             // returning. move back
+    if (!startFSM()) return;            // check FSM starting state and FSM mode
 
     if (old_docking_state.data != docking_state.data)
     {
@@ -362,151 +570,31 @@ void DockingManager::dockingFSM()
     // FM transition
     switch(current_pallet_docking_state_)
     {   case IDLE:
-            docking_state.data = "IDLE";
-            if (start_pallet_docking_ || start_returning_) current_pallet_docking_state_ = APPROACHING;
-            else  break;
+            idleState();
             break;
         case APPROACHING:
-            docking_state.data = "APPROACHING";
-            if (!approach_done_)
-            {
-                goal_distance = dis_approach_offset_;
-                current_pallet_docking_state_ = SET_GOAL;  
-            }
-            else 
-            {
-                approaching_done.data = true;
-                current_pallet_docking_state_ = DOCKING;
-            }
+            approachingState();
             break;
         case DOCKING:
-            docking_state.data = "DOCKING";
-            goal_distance = dis_docking_offset_;
-            current_pallet_docking_state_ = SET_GOAL;
+            dockingState();
             break;
         case SET_GOAL:
-            docking_state.data = "SET_GOAL";
-            if (!goal_setup_)
-            {
-                goalSetup(goal_distance, pallet_pose_);
-                double r_tm, p_tm, yaw_tm;
-                quaternionToRPY(local_static_goal_pose_.pose.orientation, r_tm, p_tm, yaw_tm);
-                check_approaching_goal_distance_ = abs(local_static_goal_pose_.pose.position.x*cos(yaw_tm));
-            } 
-
-            if (check_approaching_goal_distance_ < approaching_min_dis_ 
-                                && !approach_done_ && !returning_mode_.data)  // Move back to increase the distance
-            {   
-                // goalSetup(goal_distance, pallet_pose_);
-                updateGoal();
-                double r_tm, p_tm, yaw_tm;
-                quaternionToRPY(local_update_goal_pose_.pose.orientation, r_tm, p_tm, yaw_tm);
-                /* TODO: Update the calculation for approaching distance
-                */
-                if (abs(local_update_goal_pose_.pose.position.x*cos(yaw_tm)) < approaching_min_dis_)
-                {
-                    ROS_INFO_ONCE("MOVE BACKWARD. THE MOVEMENT DISTANCE IS TOO SHORT !!!");
-                    geometry_msgs::Twist cmd_fw;
-                    cmd_fw.linear.x = -0.2;
-                    cmd_fw.angular.z = 0.0;
-                    pub_cmd_vel.publish(cmd_fw);
-                    break;
-                }
-                else
-                {
-                    ROS_INFO("Perpendicular distance to the approaching goal: %f", abs(local_update_goal_pose_.pose.position.x*cos(yaw_tm)));
-                }
-            }
-            if (goal_setup_)
-            {
-                current_pallet_docking_state_ = GEN_PATH_AND_PUB_CONTROL;
-                goal_setup_ = false;
-            } 
+            setGoalState();
             break;
         case GEN_PATH_AND_PUB_CONTROL:
-            docking_state.data = "GEN_PATH_AND_PUB_CONTROL";
-            updateGoal();
-            if (!goal_avai_) break;
-            checkGoalReach();
-            if (returning_mode_.data)
-            {
-                if (quintic_planner.starting_vel_ > 0) quintic_planner.starting_vel_ = -quintic_planner.starting_vel_;
-                if (quintic_planner.stopping_vel_ > 0) quintic_planner.stopping_vel_ = -quintic_planner.stopping_vel_;
-            }
-            else
-            {
-                if (quintic_planner.starting_vel_ < 0) quintic_planner.starting_vel_ = -quintic_planner.starting_vel_;
-                if (quintic_planner.stopping_vel_ < 0) quintic_planner.stopping_vel_ = -quintic_planner.stopping_vel_;
-            }
-            quintic_planner.setParams(0.0, 0.0, 0.0, quintic_planner.starting_vel_, quintic_planner.starting_acc_,
-                                    goal_pose_.x, goal_pose_.y, goal_pose_.z,
-                                    quintic_planner.stopping_vel_, quintic_planner.stopping_acc_);
-            if (!quintic_planner.path_avai_)
-                quintic_planner.genPath();
-            quintic_planner.visualize(global_pallet_pose_);
-            if (!quintic_planner.path_feasible_)
-            {
-                ROS_WARN("PATH IS NOT FEASIBLE");
-                failure_code_ = 2;
-                current_pallet_docking_state_ = FAILURE;
-                break;
-            } 
-            else    // path feasible
-            {   
-                // Start the controller
-                if (!controller_on_.data)
-                {
-                    controller_on_.data = true;
-                    pub_controller_on_.publish(controller_on_);
-                }
-            } 
-            if (goal_reach_)
-            {
-                resetPlanAndControl();
-                goal_reach_ = false;
-                ROS_INFO("Goal reach !!!");
-                if (!approach_done_) approach_done_ = true;
-                else docking_done_ = true;
-                current_pallet_docking_state_ = STOP;
-                quintic_planner.resetPlanner();
-                break;
-            } 
-            if (goal_failed_)
-            {
-                failure_code_ = 3;
-                current_pallet_docking_state_ = FAILURE;
-                ROS_INFO("Goal failed !!!");
-                quintic_planner.resetPlanner();
-                break;
-            } 
+            genPathAndPubControlState();
             break;
         case STOP:
-            docking_state.data = "STOP";
-            // Stop the controller
-            resetPlanAndControl();
-            ros::Duration(1.0).sleep();
-            if (docking_done_) current_pallet_docking_state_ = END;
-            else 
-            {
-                // docking_state = quintic_planner.GET_PALLET_POSE;
-                current_pallet_docking_state_ = APPROACHING;
-                ros::Duration(1.0).sleep();
-            }
+            stopState();
             break;
         case RECOVER:
-            docking_state.data = "RECOVER";
-            // Stop the controller
-            // resetPlanAndControl();
-            
+            recoverState();
             break;
         case END:
-            docking_state.data = "END";
-            docking_done.data = true;
+            endState();
             break;
         case FAILURE:
-            resetPlanAndControl();
-            ROS_INFO_ONCE("FAILURE: %s. ABORTED!", failure_map_[failure_code_].c_str());
-            docking_state.data = "FAILURE: " + failure_map_[failure_code_];
+            failureState();
             break;
         default:
             break; 
