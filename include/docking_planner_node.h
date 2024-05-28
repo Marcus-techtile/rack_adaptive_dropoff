@@ -1,4 +1,5 @@
 #include "quintic_planner.h"
+#include "docking_control.h"
 
 #include <std_msgs/String.h>
 #include <tf/transform_broadcaster.h>
@@ -65,6 +66,7 @@ private:
 
     /* Auxiliary class*/
     QuinticPlanner quintic_planner;
+    DockingControl docking_control;
 
     /* Turn on controller */
     std_msgs::Bool controller_on_;      // on/off signal for controller

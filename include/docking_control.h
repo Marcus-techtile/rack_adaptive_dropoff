@@ -17,8 +17,6 @@
 #include "fuzzy_control.h"
 #include "pure_pursuit_control.h"
 
-typedef pallet_docking_xsquare::purePursuitReconfigConfig config;
-
 class DockingControl
 {
 private:
@@ -41,7 +39,6 @@ private:
     ros::Publisher pub_pp_lookahead_pose_, pub_nearest_pose_;;
     ros::Publisher pub_pp_lookahead_curvature_;
     ros::Publisher marker_pub_;
-    boost::shared_ptr <dynamic_reconfigure::Server<config> > srv_;
 
     /* Odometry sub */
     nav_msgs::Odometry odom_sub_;
@@ -119,6 +116,7 @@ private:
     void approachingStatusCallback(const std_msgs::Bool::ConstPtr& msg);
 
 public:
+    DockingControl();
     DockingControl(ros::NodeHandle &paramGet);
     ~DockingControl();
 

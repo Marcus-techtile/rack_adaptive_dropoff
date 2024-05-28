@@ -1,4 +1,7 @@
-#include "docking_control_node.h"
+#include "docking_control.h"
+
+DockingControl::DockingControl(){};
+
 
 DockingControl::DockingControl(ros::NodeHandle &paramGet)
 {
@@ -57,12 +60,6 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     /* Define the Controller */
     fuzzy_controller = FuzzyControl(paramGet);
     pure_pursuit_control = PurePursuitController(paramGet);
-
-    // dynamic reconfigure server
-    srv_ = boost::make_shared <dynamic_reconfigure::Server<config> > (paramGet);
-    dynamic_reconfigure::Server<config>::CallbackType f;
-    f = boost::bind(&DockingControl::reconfigCallback, this, _1, _2);
-    srv_->setCallback(f);
 
     /* Initialize parameters */
     init_reconfig_ = true;
@@ -409,23 +406,3 @@ void DockingControl::reconfigCallback(pallet_docking_xsquare::purePursuitReconfi
     }
 }
 
-
-int main(int argc, char** argv)
-{
-    ros::init(argc, argv, "docking_control");
-    ros::NodeHandle n ("~");
-    double docking_frequency;
-    n.param<double>("docking_freq", docking_frequency, 50);
-    ros::Rate loop_rate(docking_frequency);
-
-    DockingControl docking_controller(n);
-
-    while(ros::ok())
-    {
-        docking_controller.controllerCal();
-
-        ros::spinOnce();
-        loop_rate.sleep();
-    }
-    return 0;
-}

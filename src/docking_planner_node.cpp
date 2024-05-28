@@ -1,6 +1,6 @@
 #include "docking_planner_node.h"
 
-DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh)
+DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh), docking_control(nh)
 {
     setParam(nh_);
     
@@ -582,6 +582,7 @@ void DockingManager::dockingFSM()
     } 
     pub_docking_done.publish(docking_done); 
     pub_approaching_done.publish(approaching_done);
+    docking_control.controllerCal();
 }
 
 

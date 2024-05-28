@@ -36,24 +36,20 @@ link_directories(${catkin_LIBRARY_DIRS})
 add_library(utils_lib src/utils.cpp )
 target_link_libraries(utils_lib ${catkin_LIBRARIES})
 
-add_executable(docking_planner src/quintic_planner.cpp src/docking_planner_node.cpp)
+add_executable(docking_planner  src/quintic_planner.cpp 
+                                src/fuzzy_control.cpp
+                                src/pure_pursuit_control.cpp 
+                                src/docking_control.cpp 
+                                src/docking_planner_node.cpp)
 target_link_libraries(docking_planner ${catkin_LIBRARIES} utils_lib)
 add_dependencies(docking_planner ${PROJECT_NAME}_gencfg)
 add_dependencies(docking_planner ${catkin_EXPORTED_TARGETS})
 
-add_executable(docking_control src/docking_control_node.cpp src/fuzzy_control.cpp src/pure_pursuit_control.cpp)
-target_link_libraries(docking_control ${catkin_LIBRARIES} utils_lib)
-add_dependencies(docking_control ${PROJECT_NAME}_gencfg)
-
-
-
-# add_executable(sideshift_control src/sideshift_control.cpp)
-# target_link_libraries(sideshift_control ${catkin_LIBRARIES})
 install(TARGETS utils_lib
    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )
 
-install(TARGETS docking_planner docking_control
+install(TARGETS docking_planner
    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
