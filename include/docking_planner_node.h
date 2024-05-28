@@ -66,19 +66,20 @@ private:
     /* Auxiliary class*/
     QuinticPlanner quintic_planner;
 
-    double goal_distance;       // setup distance from the goal to the pallet pose
+    /* Turn on controller */
+    std_msgs::Bool controller_on_;      // on/off signal for controller
 
+    /* Docking state of each stage*/
     std_msgs::Bool docking_done;        // Docking process done or not
     std_msgs::Bool approaching_done;    // Approaching process done or not
 
-    std_msgs::Bool controller_on_;      // on/off signal for controller
-
     /* goal point */
-    double dis_approach_offset_; // Offset from pallet to approaching goal
-    double dis_docking_offset_;  // Offset from pallet to docking goal
+    geometry_msgs::PoseStamped approaching_goal_pose_;
+    geometry_msgs::PoseStamped docking_goal_pose_;
+    
     double moveback_straight_distance_;
-    double lateral_pallet_offset_;
-    geometry_msgs::Vector3 goal_pose_;      // pose of the goal, vector3 type x:x; y:y, z:yaw
+    
+    // geometry_msgs::Vector3 goal_pose_;      // pose of the goal, vector3 type x:x; y:y, z:yaw
     geometry_msgs::PoseStamped  global_goal_pose_;         // goal pose in global_frame_ 
     geometry_msgs::PoseStamped  local_static_goal_pose_;   // goal pose in path_frame_
     geometry_msgs::PoseStamped  local_update_goal_pose_;   // goal pose in path_frame_. Updated each period
@@ -130,10 +131,11 @@ private:
     void dockingServerResultCallback(const pallet_dock_msgs::PalletDockingActionResult::ConstPtr& msg);
     void dockingServerGoalCallback(const pallet_dock_msgs::PalletDockingActionGoal::ConstPtr& msg);
 
-    void goalSetup(double distance_pallet, geometry_msgs::PoseStamped pallet_pose);
+    void goalSetup(geometry_msgs::PoseStamped pallet_pose);
     void updateGoal();
     void checkGoalReach();
 public:
+    // DockingManager();
     DockingManager(ros::NodeHandle &nh);
     ~ DockingManager();
     void setParam(ros::NodeHandle &nh);
@@ -146,7 +148,7 @@ public:
     void approachingState();
     void dockingState();
 
-    void ExtendApproachingDistance();
+    bool ExtendApproachingDistance();
     void setGoalState();
 
     void quinticPlannerSetup();

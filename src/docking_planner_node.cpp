@@ -40,8 +40,6 @@ void DockingManager::setParam(ros::NodeHandle &nh)
 
     /* Goal params */
     nh_.param<double>("approaching_min_dis", approaching_min_dis_, 1.2);
-    nh_.param<double>("dis_approach_offset", dis_approach_offset_, 1.5);
-    nh_.param<double>("dis_docking_offset", dis_docking_offset_, 0.5);
     nh_.param<double>("moveback_straight_distance", moveback_straight_distance_, 1.0);
 
     /* Tolerance params */
@@ -90,15 +88,7 @@ void DockingManager::dockingServerGoalCallback(const pallet_dock_msgs::PalletDoc
     }
     pub_global_goal_pose_.publish(pallet_pose_);
 
-    dis_approach_offset_ = docking_server_goal_.goal.approaching_distance;
-    dis_docking_offset_ = docking_server_goal_.goal.pallet_depth_offset;
-    if (dis_docking_offset_ > 0)
-    {
-        ROS_WARN("Docking offset is positive. This param should be negative to ensure the docking depth. Revert it to negative!");
-        dis_docking_offset_ = -dis_docking_offset_;
-    }
     approaching_min_dis_ = docking_server_goal_.goal.move_back_distance;  // enable moveback motion for pallet docking
-    lateral_pallet_offset_ = docking_server_goal_.goal.pallet_lateral_offset;
     pallet_pose_avai_ = true;
     ROS_INFO("Receive docking goal");
 }
@@ -127,7 +117,7 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
 }
 
 /***** SETUP GOAL FOR DOCKING *****/
-void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStamped pallet_pose)
+void DockingManager::goalSetup(geometry_msgs::PoseStamped pallet_pose)
 {
     pallet_pose.header.stamp = ros::Time(0);
     geometry_msgs::PoseStamped local_pallet_pose;
@@ -162,13 +152,11 @@ void DockingManager::goalSetup(double distance_pallet, geometry_msgs::PoseStampe
         quaternionToRPY(local_pallet_pose.pose.orientation, r_tmp, p_tmp, y_tmp);
         // ROS_INFO("Relative yaw: %f", y_tmp*180/M_PI);
 
-        local_pallet_pose.pose.position.y  = local_pallet_pose.pose.position.y + lateral_pallet_offset_; //offset for ifm cam
+        local_pallet_pose.pose.position.y  = local_pallet_pose.pose.position.y; //offset for ifm cam
 
-        local_static_goal_pose_.pose.position.x = local_pallet_pose.pose.position.x - 
-                                                        distance_pallet*cos(y_tmp);
+        local_static_goal_pose_.pose.position.x = local_pallet_pose.pose.position.x;
         
-        local_static_goal_pose_.pose.position.y = local_pallet_pose.pose.position.y - 
-                                                        distance_pallet*sin(y_tmp);
+        local_static_goal_pose_.pose.position.y = local_pallet_pose.pose.position.y;
         local_static_goal_pose_.pose.orientation = local_pallet_pose.pose.orientation;
     }
     else                                    // returning mode
@@ -218,15 +206,6 @@ void DockingManager::updateGoal()
         ROS_ERROR("%s",ex.what());
     }
 
-    double r_tmp, p_tmp, y_tmp;
-    quaternionToRPY(local_update_goal_pose_.pose.orientation, r_tmp, p_tmp, y_tmp);
-
-    goal_pose_.x = local_update_goal_pose_.pose.position.x;
-    goal_pose_.y = local_update_goal_pose_.pose.position.y;
-    goal_pose_.z = y_tmp;
-
-    local_update_goal_pose_.pose.position.z = 0;
-
     geometry_msgs::PoseWithCovarianceStamped goal_pose_pub;
     goal_pose_pub.header = local_update_goal_pose_.header;
     goal_pose_pub.pose.pose = local_update_goal_pose_.pose;
@@ -237,9 +216,9 @@ void DockingManager::updateGoal()
 void DockingManager::checkGoalReach()
 {
     std::lock_guard<std::mutex> lock_goal_reack_check(mutex_);
-    double error_x = goal_pose_.x;
-    double error_y = goal_pose_.y;
-    double error_yaw = goal_pose_.z;
+    double error_x = local_update_goal_pose_.pose.position.x;
+    double error_y = local_update_goal_pose_.pose.position.y;
+    double error_yaw = tf::getYaw(local_update_goal_pose_.pose.orientation);
     double error_sq = sqrt(error_x*error_x + error_y*error_y);
     geometry_msgs::Vector3 docking_error;
     docking_error.x = error_x;
@@ -358,7 +337,7 @@ void DockingManager::approachingState()
     docking_state.data = "APPROACHING";
     if (!approach_done_)
     {
-        goal_distance = dis_approach_offset_;
+        // goal_distance = dis_approach_offset_;
         current_pallet_docking_state_ = SET_GOAL;  
     }
     else 
@@ -372,12 +351,12 @@ void DockingManager::approachingState()
 void DockingManager::dockingState()
 {
     docking_state.data = "DOCKING";
-    goal_distance = dis_docking_offset_;
+    // goal_distance = dis_docking_offset_;
     current_pallet_docking_state_ = SET_GOAL;
 }
 
 ////// Set goal State /////
-void DockingManager::ExtendApproachingDistance()
+bool DockingManager::ExtendApproachingDistance()
 {
     if (check_approaching_goal_distance_ < approaching_min_dis_ 
                         && !approach_done_ && !returning_mode_.data)  // Move back to increase the distance
@@ -395,14 +374,15 @@ void DockingManager::ExtendApproachingDistance()
             cmd_fw.linear.x = -0.2;
             cmd_fw.angular.z = 0.0;
             pub_cmd_vel.publish(cmd_fw);
-            return;
+            return false;
         }
         else
         {
             ROS_INFO("Perpendicular distance to the approaching goal: %f", abs(local_update_goal_pose_.pose.position.x*cos(yaw_tm)));
+            return true;
         }
     }
-
+    return true;
 }
 
 void DockingManager::setGoalState()
@@ -410,13 +390,14 @@ void DockingManager::setGoalState()
     docking_state.data = "SET_GOAL";
     if (!goal_setup_)
     {
-        goalSetup(goal_distance, pallet_pose_);
+        goalSetup(pallet_pose_);
         double yaw_tm;
         yaw_tm = tf::getYaw(local_static_goal_pose_.pose.orientation);
         check_approaching_goal_distance_ = abs(local_static_goal_pose_.pose.position.x*cos(yaw_tm));
+        goal_setup_ = true;
     } 
-    ExtendApproachingDistance();
-    if (goal_setup_)
+    
+    if (goal_setup_ && ExtendApproachingDistance())
     {
         current_pallet_docking_state_ = GEN_PATH_AND_PUB_CONTROL;
         goal_setup_ = false;
@@ -437,8 +418,8 @@ void DockingManager::quinticPlannerSetup()
         if (quintic_planner.stopping_vel_ < 0) quintic_planner.stopping_vel_ = -quintic_planner.stopping_vel_;
     }
     quintic_planner.setParams(0.0, 0.0, 0.0, quintic_planner.starting_vel_, quintic_planner.starting_acc_,
-                            goal_pose_.x, goal_pose_.y, goal_pose_.z,
-                            quintic_planner.stopping_vel_, quintic_planner.stopping_acc_);
+            local_update_goal_pose_.pose.position.x, local_update_goal_pose_.pose.position.y, tf::getYaw(local_update_goal_pose_.pose.orientation),
+            quintic_planner.stopping_vel_, quintic_planner.stopping_acc_);
     if (!quintic_planner.path_avai_)
         quintic_planner.genPath();
     quintic_planner.visualize(global_pallet_pose_);
@@ -602,6 +583,7 @@ void DockingManager::dockingFSM()
     pub_docking_done.publish(docking_done); 
     pub_approaching_done.publish(approaching_done);
 }
+
 
 int main(int argc, char** argv)
 {
