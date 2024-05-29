@@ -62,7 +62,7 @@ private:
     /* Control general variable */
     std::string path_frame_;
     bool init_reconfig_{true};
-    std_msgs::Bool controller_on_, approaching_done_;
+    std_msgs::Bool approaching_done_;
     bool pub_stop_{false};
 
     /* PP tune parameters */
@@ -126,8 +126,6 @@ public:
     nav_msgs::Path convertPathtoLocalFrame(nav_msgs::Path global_path);
     int nearestPointIndexFind(nav_msgs::Path local_path);
     void controllerCal();
-    void reconfigCallback(pallet_docking_xsquare::purePursuitReconfigConfig &config, uint32_t level);
 
-
-
+    std_msgs::Bool controller_on_;
 };

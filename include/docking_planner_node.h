@@ -137,7 +137,7 @@ private:
     void updateGoal();
     void checkGoalReach();
 public:
-    // DockingManager();
+    DockingManager();
     DockingManager(ros::NodeHandle &nh);
     ~ DockingManager();
     void setParam(ros::NodeHandle &nh);

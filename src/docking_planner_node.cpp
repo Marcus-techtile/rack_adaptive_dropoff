@@ -1,5 +1,7 @@
 #include "docking_planner_node.h"
 
+DockingManager::DockingManager(){}
+
 DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh), docking_control(nh)
 {
     setParam(nh_);
@@ -294,9 +296,7 @@ void DockingManager::initDocking()
     docking_done.data = false;          
     approaching_done.data = false;
 
-    controller_on_.data = false;
-    pub_controller_on_.publish(controller_on_);
-
+    docking_control.resetController();
     quintic_planner.resetPlanner();
 
     check_inside_goal_range_ = false;
@@ -315,8 +315,7 @@ void DockingManager::initDocking()
 /***** RESET PLANNING AND CONTROL ******/
 void DockingManager::resetPlanAndControl()
 {
-    controller_on_.data = false;
-    pub_controller_on_.publish(controller_on_);
+    docking_control.resetController();
     quintic_planner.resetPlanner();
     goal_setup_ = false;
     count_outside_goal_range_ = 0;
@@ -363,11 +362,10 @@ bool DockingManager::ExtendApproachingDistance()
     {   
         // goalSetup(goal_distance, pallet_pose_);
         updateGoal();
-        double r_tm, p_tm, yaw_tm;
-        quaternionToRPY(local_update_goal_pose_.pose.orientation, r_tm, p_tm, yaw_tm);
         /* TODO: Update the calculation for approaching distance
         */
-        if (abs(local_update_goal_pose_.pose.position.x*cos(yaw_tm)) < approaching_min_dis_)
+       double abs_dis = abs(local_update_goal_pose_.pose.position.x)*tf::getYaw(local_update_goal_pose_.pose.orientation);
+        if (abs_dis < approaching_min_dis_)
         {
             ROS_INFO_ONCE("MOVE BACKWARD. THE MOVEMENT DISTANCE IS TOO SHORT !!!");
             geometry_msgs::Twist cmd_fw;
@@ -378,7 +376,7 @@ bool DockingManager::ExtendApproachingDistance()
         }
         else
         {
-            ROS_INFO("Perpendicular distance to the approaching goal: %f", abs(local_update_goal_pose_.pose.position.x*cos(yaw_tm)));
+            ROS_INFO("Perpendicular distance to the approaching goal: %f", abs_dis);
             return true;
         }
     }
@@ -433,15 +431,14 @@ void DockingManager::goalReachHandling()
     if (!approach_done_) approach_done_ = true;
     else docking_done_ = true;
     current_pallet_docking_state_ = STOP;
-    quintic_planner.resetPlanner();
 }
 
 void DockingManager::goalFailHandling()
 {
+    resetPlanAndControl();
     failure_code_ = 3;
     current_pallet_docking_state_ = FAILURE;
     ROS_INFO("Goal failed !!!");
-    quintic_planner.resetPlanner();
 }
 
 void DockingManager::genPathAndPubControlState()
@@ -461,10 +458,10 @@ void DockingManager::genPathAndPubControlState()
     } 
   
     // Start the controller
-    if (!controller_on_.data)
+    if (!docking_control.controller_on_.data)
     {
-        controller_on_.data = true;
-        pub_controller_on_.publish(controller_on_);
+        docking_control.controller_on_.data = true;
+        // pub_controller_on_.publish(controller_on_);
     }
     
     if (goal_reach_)
@@ -496,7 +493,6 @@ void DockingManager::endState()
 void DockingManager::stopState()
 {
     docking_state.data = "STOP";
-    // Stop the controller
     resetPlanAndControl();
     ros::Duration(1.0).sleep();
     if (docking_done_) current_pallet_docking_state_ = END;

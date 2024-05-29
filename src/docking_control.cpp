@@ -117,6 +117,7 @@ void DockingControl::approachingStatusCallback(const std_msgs::Bool::ConstPtr& m
 /***** Control Function *****/
 void DockingControl::resetController()
 {
+    controller_on_.data = false;
     cmd_vel_.linear.x = 0.0;
     cmd_vel_.angular.z = 0.0;
     pub_cmd_vel_.publish(cmd_vel_);
@@ -197,19 +198,11 @@ int DockingControl::nearestPointIndexFind(nav_msgs::Path local_path)
 
 void DockingControl::controllerCal()
 {
-    if (!controller_on_.data)
-    {
-        if (!pub_stop_)
-        {
-            resetController();
-            pub_stop_ = true;
-        }
-        return;
-    }
-    pub_stop_ = false;
-
     /********* Check input data ***********/
     if (!checkData()) return;
+
+    /********* Check controller is turned on/off **********/
+    if (!controller_on_.data) return;
 
     /*********** CONVERT GLOBAL PATH TO BASE_LINK PATH ***********/ 
     local_ref_path_ = convertPathtoLocalFrame(ref_path_);
@@ -329,7 +322,6 @@ void DockingControl::controllerCal()
     {
         ROS_ERROR("NAN NUMBER ! RESET CONTROLLER");
         controller_on_.data = false;
-        pub_stop_ = false;
         resetController();
         return;
     }
@@ -388,21 +380,4 @@ void DockingControl::controllerCal()
     marker_pub_.publish(points);
 }
 
-void DockingControl::reconfigCallback(pallet_docking_xsquare::purePursuitReconfigConfig &config, uint32_t level)
-{
-    if (init_reconfig_)
-    {
-        ROS_INFO("Get init param from launch file");
-        init_reconfig_ = false;
-    }
-    else
-    {
-        ROS_INFO("Reconfigure Request");
-        max_steering_ = config.max_steering;
-        min_steering_ = config.min_steering;
-        max_vel_ = config.max_vel;
-        min_vel_ = config.min_vel;
-        goal_correct_yaw_ = config.goal_correct_yaw;
-    }
-}
 
