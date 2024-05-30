@@ -56,10 +56,13 @@ private:
     pallet_dock_msgs::PalletDockingActionGoal docking_server_goal_;
     bool docking_goal_avai_;
 
-        // Pallet pose
+        // goal pose
     geometry_msgs::PoseStamped pallet_pose_;
     geometry_msgs::PoseStamped global_pallet_pose_;
     bool global_pallet_pose_setup_;
+
+    geometry_msgs::PoseStamped approaching_goal_;
+    geometry_msgs::PoseStamped docking_goal_;
 
         // Docking Mode
     bool docking_mode_;
@@ -76,6 +79,7 @@ private:
     std_msgs::Bool approaching_done;    // Approaching process done or not
 
     /* goal point */
+    bool pose_setup_;
     geometry_msgs::PoseStamped approaching_goal_pose_;
     geometry_msgs::PoseStamped docking_goal_pose_;
     
@@ -133,7 +137,7 @@ private:
     void dockingServerResultCallback(const pallet_dock_msgs::PalletDockingActionResult::ConstPtr& msg);
     void dockingServerGoalCallback(const pallet_dock_msgs::PalletDockingActionGoal::ConstPtr& msg);
 
-    void goalSetup(geometry_msgs::PoseStamped pallet_pose);
+    void goalSetup(bool input_goal);
     void updateGoal();
     void checkGoalReach();
 public:
@@ -144,6 +148,9 @@ public:
 
     void initDocking();
     void resetPlanAndControl();
+
+    void setupPoses(geometry_msgs::PoseStamped approaching_pose,
+                geometry_msgs::PoseStamped docking_pose);
 
     // Planner state transition
     void idleState();

@@ -88,7 +88,7 @@ void DockingManager::dockingServerGoalCallback(const pallet_dock_msgs::PalletDoc
         start_returning_ = true;
         pallet_pose_ = docking_server_goal_.goal.docking_pose;
     }
-    pub_global_goal_pose_.publish(pallet_pose_);
+    // pub_global_goal_pose_.publish(pallet_pose_);
 
     approaching_min_dis_ = docking_server_goal_.goal.move_back_distance;  // enable moveback motion for pallet docking
     pallet_pose_avai_ = true;
@@ -119,77 +119,31 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
 }
 
 /***** SETUP GOAL FOR DOCKING *****/
-void DockingManager::goalSetup(geometry_msgs::PoseStamped pallet_pose)
+void DockingManager::setupPoses(geometry_msgs::PoseStamped approaching_pose,
+                    geometry_msgs::PoseStamped docking_pose)
 {
-    pallet_pose.header.stamp = ros::Time(0);
-    geometry_msgs::PoseStamped local_pallet_pose;
+    if (approaching_pose.header.frame_id == "" || docking_pose.header.frame_id == "" )
+        pose_setup_ = false;
+    else
+    {
+        approaching_goal_ = approaching_pose;
+        docking_goal_ = docking_pose;
+        pose_setup_ = true;
+    }   
+}
 
-    if (!global_pallet_pose_setup_)        // Convert pallet pose to global_frame
+void DockingManager::goalSetup(bool input_goal)
+{   
+    if (!input_goal)
     {
-        try
-        {
-            global_pallet_pose_ = docking_tf_buffer.transform(pallet_pose, global_frame_, ros::Duration(1));
-        }
-        catch (tf2::TransformException ex)
-        {
-            ROS_ERROR("%s", ex.what());
-        }
-        global_pallet_pose_setup_ = true;
+        ROS_WARN("Goal poses are not setup");
+        goal_setup_ = false;
+        return;
     }
-
-    global_pallet_pose_.header.stamp = ros::Time(0);  
-    try                                     // Convert pallet pose to local_frame
-    {
-        local_pallet_pose = docking_tf_buffer.transform(global_pallet_pose_, path_frame_, ros::Duration(1));
-    }
-    catch (tf2::TransformException ex)
-    {
-        ROS_ERROR("%s", ex.what());
-    }
-
-    if (docking_mode_ == 0)                 // pallet docking mode
-    {
-            /* Calculate the goal in local frame */
-        double r_tmp, p_tmp, y_tmp;
-        quaternionToRPY(local_pallet_pose.pose.orientation, r_tmp, p_tmp, y_tmp);
-        // ROS_INFO("Relative yaw: %f", y_tmp*180/M_PI);
-
-        local_pallet_pose.pose.position.y  = local_pallet_pose.pose.position.y; //offset for ifm cam
-
-        local_static_goal_pose_.pose.position.x = local_pallet_pose.pose.position.x;
-        
-        local_static_goal_pose_.pose.position.y = local_pallet_pose.pose.position.y;
-        local_static_goal_pose_.pose.orientation = local_pallet_pose.pose.orientation;
-    }
-    else                                    // returning mode
-    {
-        if (!approach_done_)
-        {
-            local_static_goal_pose_.pose.position.x = -moveback_straight_distance_;
-            local_static_goal_pose_.pose.position.y = 0.0;
-            local_static_goal_pose_.pose.orientation = rpyToQuaternion(0.0, 0.0, 0.0);
-        }
-        else
-        {
-            local_static_goal_pose_.pose.position.x = local_pallet_pose.pose.position.x;
-            local_static_goal_pose_.pose.position.y = local_pallet_pose.pose.position.y;
-            local_static_goal_pose_.pose.orientation = local_pallet_pose.pose.orientation;
-        }
-    } 
-            
-    /* Convert the goal to global frame */
-    local_static_goal_pose_.header.stamp = ros::Time(0);;
-    local_static_goal_pose_.header.frame_id = path_frame_;
-
-    try
-    {
-        global_goal_pose_ = docking_tf_buffer.transform(local_static_goal_pose_, global_frame_, ros::Duration(1));
-    }
-    catch (tf2::TransformException ex)
-    {
-        ROS_ERROR("%s", ex.what());
-    }
-    // pub_global_goal_pose_.publish(global_goal_pose_);
+    // Setup goal pose for each stage
+    if (!approach_done_) global_goal_pose_ = approaching_goal_;
+    else global_goal_pose_ = docking_goal_;
+    pub_global_goal_pose_.publish(global_goal_pose_);
     goal_setup_ = true;  
 }
 
@@ -388,7 +342,7 @@ void DockingManager::setGoalState()
     docking_state.data = "SET_GOAL";
     if (!goal_setup_)
     {
-        goalSetup(pallet_pose_);
+        goalSetup(pose_setup_);
         double yaw_tm;
         yaw_tm = tf::getYaw(local_static_goal_pose_.pose.orientation);
         check_approaching_goal_distance_ = abs(local_static_goal_pose_.pose.position.x*cos(yaw_tm));
