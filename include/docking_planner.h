@@ -74,21 +74,21 @@ private:
     /* Turn on controller */
     std_msgs::Bool controller_on_;      // on/off signal for controller
 
-    /* Docking state of each stage*/
-    std_msgs::Bool docking_done;        // Docking process done or not
-    std_msgs::Bool approaching_done;    // Approaching process done or not
-
     /* goal point */
     bool pose_setup_;
     geometry_msgs::PoseStamped approaching_goal_pose_;
     geometry_msgs::PoseStamped docking_goal_pose_;
+    geometry_msgs::PoseStamped tf_approaching_goal_;
+    geometry_msgs::PoseStamped tf_docking_goal_;
+    bool norm_goal_frame_;
     
     double moveback_straight_distance_;
     
-    // geometry_msgs::Vector3 goal_pose_;      // pose of the goal, vector3 type x:x; y:y, z:yaw
     geometry_msgs::PoseStamped  global_goal_pose_;         // goal pose in global_frame_ 
     geometry_msgs::PoseStamped  local_static_goal_pose_;   // goal pose in path_frame_
     geometry_msgs::PoseStamped  local_update_goal_pose_;   // goal pose in path_frame_. Updated each period
+
+    
 
     double check_approaching_goal_distance_;                // distance from robot to approaching pose
     double approaching_min_dis_; //minimum necessary distance (perpendicular distance) to start approaching. Less than it, the forklift will move backward to increase the distance
@@ -149,7 +149,7 @@ public:
     void initDocking();
     void resetPlanAndControl();
 
-    void setupPoses(geometry_msgs::PoseStamped approaching_pose,
+    bool setupPoses(geometry_msgs::PoseStamped approaching_pose,
                 geometry_msgs::PoseStamped docking_pose);
 
     // Planner state transition
@@ -172,4 +172,9 @@ public:
 
     bool startFSM();
     void dockingFSM();
+
+    /* Docking state of each stage*/
+    std_msgs::Bool docking_done;        // Docking process done or not
+    std_msgs::Bool approaching_done;    // Approaching process done or not
+    std_msgs::Bool docking_failed;
 };

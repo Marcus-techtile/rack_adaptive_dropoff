@@ -1,4 +1,4 @@
-#include "docking_planner_node.h"
+#include "docking_planner.h"
 
 DockingManager::DockingManager(){}
 
@@ -119,16 +119,21 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
 }
 
 /***** SETUP GOAL FOR DOCKING *****/
-void DockingManager::setupPoses(geometry_msgs::PoseStamped approaching_pose,
+bool DockingManager::setupPoses(geometry_msgs::PoseStamped approaching_pose,
                     geometry_msgs::PoseStamped docking_pose)
 {
     if (approaching_pose.header.frame_id == "" || docking_pose.header.frame_id == "" )
+        
+    {
         pose_setup_ = false;
+        return false;
+    }
     else
     {
         approaching_goal_ = approaching_pose;
         docking_goal_ = docking_pose;
         pose_setup_ = true;
+        return true;
     }   
 }
 
@@ -140,6 +145,27 @@ void DockingManager::goalSetup(bool input_goal)
         goal_setup_ = false;
         return;
     }
+
+    // Normalize the frame into a consistent one
+    if (!norm_goal_frame_)
+    {
+        approaching_goal_.header.stamp = ros::Time(0);
+        docking_goal_.header.stamp = ros::Time(0);
+        try
+        {
+            tf_approaching_goal_ = docking_tf_buffer.transform(approaching_goal_, global_frame_, ros::Duration(1));
+            tf_docking_goal_ = docking_tf_buffer.transform(docking_goal_, global_frame_, ros::Duration(1));
+        }
+        catch (tf2::TransformException ex)
+        {
+            ROS_ERROR("%s",ex.what());
+        }
+        norm_goal_frame_ = true;
+    }
+
+    approaching_goal_ = tf_approaching_goal_;
+    docking_goal_ = tf_docking_goal_;
+       
     // Setup goal pose for each stage
     if (!approach_done_) global_goal_pose_ = approaching_goal_;
     else global_goal_pose_ = docking_goal_;
@@ -245,10 +271,11 @@ void DockingManager::initDocking()
     start_pallet_docking_ = false;
     start_returning_ = false;
 
-    global_pallet_pose_setup_ = false;
+    norm_goal_frame_ = false;
     
     docking_done.data = false;          
     approaching_done.data = false;
+    docking_failed.data = false;
 
     docking_control.resetController();
     quintic_planner.resetPlanner();
@@ -417,6 +444,13 @@ void DockingManager::genPathAndPubControlState()
         docking_control.controller_on_.data = true;
         // pub_controller_on_.publish(controller_on_);
     }
+    docking_control.controllerCal();
+    if (docking_control.invalid_control_signal_)
+    {
+        docking_state.data = "FAILURE";
+        current_pallet_docking_state_ = FAILURE;
+        return;
+    }
     
     if (goal_reach_)
     {
@@ -463,6 +497,7 @@ void DockingManager::failureState()
     resetPlanAndControl();
     ROS_INFO_ONCE("FAILURE: %s. ABORTED!", failure_map_[failure_code_].c_str());
     docking_state.data = "FAILURE: " + failure_map_[failure_code_];
+    docking_failed.data = true;
 }
 
 ////// FSM setup ///////
@@ -532,23 +567,22 @@ void DockingManager::dockingFSM()
     } 
     pub_docking_done.publish(docking_done); 
     pub_approaching_done.publish(approaching_done);
-    docking_control.controllerCal();
 }
 
 
-int main(int argc, char** argv)
-{
-    ros::init(argc, argv, "docking_manager");
-    ros::NodeHandle n ("~");
-    ros::Rate loop_rate(20);
+// int main(int argc, char** argv)
+// {
+//     ros::init(argc, argv, "docking_manager");
+//     ros::NodeHandle n ("~");
+//     ros::Rate loop_rate(20);
 
-    DockingManager docking_magager(n);
-    while(ros::ok())
-    {
-        docking_magager.dockingFSM();
-        ros::spinOnce();
-        loop_rate.sleep();
-    }
+//     DockingManager docking_magager(n);
+//     while(ros::ok())
+//     {
+//         docking_magager.dockingFSM();
+//         ros::spinOnce();
+//         loop_rate.sleep();
+//     }
   
-  return 0;
-}
+//   return 0;
+// }
