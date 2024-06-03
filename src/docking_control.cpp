@@ -117,6 +117,7 @@ void DockingControl::approachingStatusCallback(const std_msgs::Bool::ConstPtr& m
 /***** Control Function *****/
 void DockingControl::resetController()
 {
+    invalid_control_signal_ = false;
     controller_on_.data = false;
     cmd_vel_.linear.x = 0.0;
     cmd_vel_.angular.z = 0.0;
@@ -167,7 +168,7 @@ nav_msgs::Path DockingControl::convertPathtoLocalFrame(nav_msgs::Path global_pat
         {
             local_ref_path.poses.push_back(tf_buffer_c.transform(global_path.poses.at(i), path_frame_, ros::Duration(1)));
         }
-        catch (tf::LookupException ex)
+        catch (tf2::TransformException ex)
         {
             ROS_ERROR("%s",ex.what());
         }
@@ -320,6 +321,7 @@ void DockingControl::controllerCal()
     /*********** NAN OUTPUT HANDLE *************/
     if(isnan(steering_) || isnan(final_ref_vel_))
     {
+        invalid_control_signal_ = true;
         ROS_ERROR("NAN NUMBER ! RESET CONTROLLER");
         controller_on_.data = false;
         resetController();

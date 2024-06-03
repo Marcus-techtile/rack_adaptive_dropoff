@@ -13,7 +13,6 @@
 #include <sensor_msgs/JointState.h>
 #include <visualization_msgs/Marker.h>
 
-#include "utils.h"
 #include "fuzzy_control.h"
 #include "pure_pursuit_control.h"
 
@@ -128,4 +127,5 @@ public:
     void controllerCal();
 
     std_msgs::Bool controller_on_;
+    bool invalid_control_signal_;
 };
