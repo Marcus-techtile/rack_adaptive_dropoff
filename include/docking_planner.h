@@ -40,7 +40,8 @@ private:
     ros::Publisher pub_controller_on_;
     ros::Publisher pub_docking_error_;
     ros::Publisher pub_global_goal_pose_;
-    ros::Publisher pub_goal_pose_;
+    ros::Publisher pub_local_goal_pose_;
+    ros::Publisher pub_goal_pose_array_;
 
     /* Subscriber */
     ros::Subscriber sub_cmd_vel;
@@ -137,7 +138,7 @@ private:
     void dockingServerResultCallback(const pallet_dock_msgs::PalletDockingActionResult::ConstPtr& msg);
     void dockingServerGoalCallback(const pallet_dock_msgs::PalletDockingActionGoal::ConstPtr& msg);
 
-    void goalSetup(bool input_goal);
+    void goalSetup();
     void updateGoal();
     void checkGoalReach();
 public:
