@@ -30,7 +30,7 @@ public:
                                     const geometry_msgs::TwistStamped &velocity, 
                                     geometry_msgs::Twist &cmd_vel,
                                     std::string &message);
-    uint32_t ExecuteControlLoop();
+    uint32_t ExecuteControlLoop(geometry_msgs::Twist &cmd_vel);
     bool IsGoalReached();
 
     // Addition methods

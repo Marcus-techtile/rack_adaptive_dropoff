@@ -91,9 +91,6 @@ private:
     double pp_min_lk_distance_approaching_;
     double pp_min_lk_distance_docking_;
 
-    /* Output control command */
-    geometry_msgs::Twist cmd_vel_;   // command velocity
-
     /* tf conversion */
     tf2_ros::Buffer tf_buffer_c;
     tf2_ros::TransformListener listener{tf_buffer_c};
@@ -125,6 +122,10 @@ public:
     int nearestPointIndexFind(nav_msgs::Path local_path);
     void controllerCal();
 
+    /* Output control command */
+    geometry_msgs::Twist cmd_vel_;   // command velocity
+
     std_msgs::Bool controller_on_;
     bool invalid_control_signal_;
+    bool publish_cmd_{false};
 };

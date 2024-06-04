@@ -173,6 +173,8 @@ public:
     bool startFSM();
     void dockingFSM();
 
+    geometry_msgs::Twist getCmdVel();
+
     /* Docking state of each stage*/
     std_msgs::Bool docking_done;        // Docking process done or not
     std_msgs::Bool approaching_done;    // Approaching process done or not

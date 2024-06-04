@@ -11,6 +11,7 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     paramGet.param<std::string>("path_frame", path_frame_, "base_link_p");
     paramGet.param("/forklift_params/wheel_base", l_wheelbase_, 1.311);
     
+    paramGet.param<bool>("publish_cmd", publish_cmd_, false);
     paramGet.param<double>("look_ahead_time", pp_look_ahead_time_, 3.0);
     paramGet.param<double>("look_ahead_time_straigh_line", pp_look_ahead_time_straigh_line_, 5.0);
     paramGet.param<double>("pp_min_lk_distance_approaching", pp_min_lk_distance_approaching_, 0.2);
@@ -317,7 +318,8 @@ void DockingControl::controllerCal()
 
     cmd_vel_.linear.x = final_ref_vel_;
     cmd_vel_.angular.z = steering_;
-    pub_cmd_vel_.publish(cmd_vel_);
+
+    if (publish_cmd_) pub_cmd_vel_.publish(cmd_vel_);
 
     /********** VISUALIZE LOOKAHEAD POINT MARKER ************/
     visualization_msgs::Marker points;

@@ -568,6 +568,11 @@ void DockingManager::dockingFSM()
     pub_approaching_done.publish(approaching_done);
 }
 
+geometry_msgs::Twist DockingManager::getCmdVel()
+{
+    return docking_control.cmd_vel_;
+}
+
 
 // int main(int argc, char** argv)
 // {
