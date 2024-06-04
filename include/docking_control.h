@@ -15,6 +15,7 @@
 
 #include "fuzzy_control.h"
 #include "pure_pursuit_control.h"
+#include <mutex>
 
 class DockingControl
 {
@@ -24,7 +25,6 @@ private:
     /* Subscriber */
     ros::Subscriber sub_odom_, sub_steering_;
     ros::Subscriber sub_ref_path_;
-    ros::Subscriber sub_goal_pose_;
     ros::Subscriber sub_controller_on_, sub_approaching_status_;
     ros::Subscriber joint_states_sub_;
 
@@ -52,8 +52,6 @@ private:
     /* Ref path */
     nav_msgs::Path ref_path_, local_ref_path_;
     bool ref_path_avai_{false};
-    geometry_msgs::PoseWithCovarianceStamped goal_pose_;
-    bool goal_avai_{false};
 
     /* Forklift parameters */
     double l_wheelbase_;
@@ -106,11 +104,13 @@ private:
     bool limit_sp_curve_;
     bool adaptive_ref_angle_;
 
+    /* Mutex */
+    std::mutex mutex_;
+
     /* Callback function */
     void odomCallback(const nav_msgs::Odometry::ConstPtr& msg_odom);
     void JointStateCallBack(const sensor_msgs::JointState::ConstPtr &msg);
     void refPathCallback(const nav_msgs::Path::ConstPtr& msg);
-    void goalPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg);
     void controllerOnCallback(const std_msgs::Bool::ConstPtr& msg);
     void approachingStatusCallback(const std_msgs::Bool::ConstPtr& msg);
 

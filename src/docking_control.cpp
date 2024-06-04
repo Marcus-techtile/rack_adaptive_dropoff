@@ -52,7 +52,6 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     /* ROS Subscriber */
     sub_odom_ = nh_.subscribe<nav_msgs::Odometry>("/gazebo/forklift_controllers/odom", 1, &DockingControl::odomCallback, this);
     sub_ref_path_ = nh_.subscribe<nav_msgs::Path>("/pallet_docking/quintic_path", 1, &DockingControl::refPathCallback, this);
-    sub_goal_pose_ = nh_.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/pallet_docking/goal_pose", 1, &DockingControl::goalPoseCallback, this);
     sub_controller_on_ = nh_.subscribe<std_msgs::Bool>("/pallet_docking/controller_turn_on", 1, &DockingControl::controllerOnCallback, this);
     sub_approaching_status_ = nh_.subscribe<std_msgs::Bool>("/pallet_docking/pallet_approaching_done", 1, &DockingControl::approachingStatusCallback, this);
     joint_states_sub_ = nh_.subscribe<sensor_msgs::JointState>("/joint_states", 1, &DockingControl::JointStateCallBack, this);
@@ -64,7 +63,6 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     /* Initialize parameters */
     init_reconfig_ = true;
     ref_path_avai_ = false;
-    goal_avai_ = false;
     controller_on_.data = false;
     approaching_done_.data = false;
     pub_stop_ = false;
@@ -94,13 +92,9 @@ void DockingControl::JointStateCallBack(const sensor_msgs::JointState::ConstPtr 
 void DockingControl::refPathCallback(const nav_msgs::Path::ConstPtr& msg)
 {
     ref_path_ = *msg;
-    ref_path_avai_ = true;
-}
-
-void DockingControl::goalPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
-{
-    goal_pose_ = *msg;
-    goal_avai_ = true;
+    if (ref_path_.poses.size() > 1)
+        ref_path_avai_ = true;
+    else ref_path_avai_ = false;
 }
 
 void DockingControl::controllerOnCallback(const std_msgs::Bool::ConstPtr& msg)
@@ -139,17 +133,12 @@ bool DockingControl::checkData()
     }
     if (!ref_path_avai_)
     {
-        ROS_WARN("No ref path!!!");
-        return false;
-    }
-    if (!goal_avai_)
-    {
-        ROS_WARN("No goal!!!");
+        ROS_DEBUG("No ref path!!!");
         return false;
     }
     if (ref_path_.poses.size() < 1)
     {
-        ROS_WARN("Path is not feasible for the controller");
+        ROS_DEBUG("Path is not feasible for the controller");
         return false;
     }
     return true;
@@ -199,11 +188,12 @@ int DockingControl::nearestPointIndexFind(nav_msgs::Path local_path)
 
 void DockingControl::controllerCal()
 {
-    /********* Check input data ***********/
-    if (!checkData()) return;
-
+    std::lock_guard<std::mutex> lock_controller_exec(mutex_);
     /********* Check controller is turned on/off **********/
     if (!controller_on_.data) return;
+
+    /********* Check input data ***********/
+    if (!checkData()) return;
 
     /*********** CONVERT GLOBAL PATH TO BASE_LINK PATH ***********/ 
     local_ref_path_ = convertPathtoLocalFrame(ref_path_);
