@@ -54,8 +54,6 @@ double QuinticPolynominal::cal_jerk(double ti)
 }
 
 /* Quintic Planner Class */
-QuinticPlanner::QuinticPlanner(){}
-
 QuinticPlanner::QuinticPlanner(ros::NodeHandle &paramGet)
 {
     /* Get Param */

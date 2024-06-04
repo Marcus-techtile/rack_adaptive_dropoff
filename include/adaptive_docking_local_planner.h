@@ -10,7 +10,7 @@ class AdaptiveDockingLocalPlanner
 private:
     ros::NodeHandle nh_;
 
-    DockingManager docking_manager;
+    DockingManager docking_manager{nh_};
 
 public:
     AdaptiveDockingLocalPlanner(ros::NodeHandle &nh);

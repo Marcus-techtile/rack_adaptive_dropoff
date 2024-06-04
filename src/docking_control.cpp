@@ -1,8 +1,5 @@
 #include "docking_control.h"
 
-DockingControl::DockingControl(){};
-
-
 DockingControl::DockingControl(ros::NodeHandle &paramGet)
 {
     /* Get Param */

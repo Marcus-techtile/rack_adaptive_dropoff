@@ -2,7 +2,7 @@
 
 using namespace techtile;
 
-AdaptiveDockingLocalPlanner::AdaptiveDockingLocalPlanner(ros::NodeHandle &nh) : nh_(nh), docking_manager(nh)
+AdaptiveDockingLocalPlanner::AdaptiveDockingLocalPlanner(ros::NodeHandle &nh) : nh_(nh)
 {
     initialize();
 }
@@ -11,6 +11,7 @@ AdaptiveDockingLocalPlanner::~AdaptiveDockingLocalPlanner(){}
 
 void AdaptiveDockingLocalPlanner::initialize()
 {
+    // docking_manager = std::make_shared<DockingManager>(nh_);
     docking_manager.initDocking();
 }
 

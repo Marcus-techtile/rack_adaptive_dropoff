@@ -115,7 +115,6 @@ private:
     void approachingStatusCallback(const std_msgs::Bool::ConstPtr& msg);
 
 public:
-    DockingControl();
     DockingControl(ros::NodeHandle &paramGet);
     ~DockingControl();
 

@@ -69,8 +69,8 @@ private:
     bool docking_mode_;
 
     /* Auxiliary class*/
-    QuinticPlanner quintic_planner;
-    DockingControl docking_control;
+    QuinticPlanner quintic_planner{nh_};
+    DockingControl docking_control{nh_};
 
     /* Turn on controller */
     std_msgs::Bool controller_on_;      // on/off signal for controller
@@ -142,7 +142,6 @@ private:
     void updateGoal();
     void checkGoalReach();
 public:
-    DockingManager();
     DockingManager(ros::NodeHandle &nh);
     ~ DockingManager();
     void setParam(ros::NodeHandle &nh);

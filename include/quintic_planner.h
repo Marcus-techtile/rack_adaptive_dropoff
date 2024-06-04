@@ -76,7 +76,6 @@ private:
 
 public:
     /* function */
-    QuinticPlanner();
     QuinticPlanner(ros::NodeHandle &paramGet);
 
     /* Quintic planner */

@@ -1,8 +1,6 @@
 #include "docking_planner.h"
 
-DockingManager::DockingManager(){}
-
-DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh), quintic_planner(nh), docking_control(nh)
+DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh)
 {
     setParam(nh_);
     
