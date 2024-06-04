@@ -293,26 +293,30 @@ void QuinticPlanner::genPath()
         path_feasible_ = false;
         return;
     }
-    else path_avai_ = true;
-    
-    /* Convert path to global frame "odom" */ 
-    local_quintic_path_.poses.clear();
-    local_quintic_path_.header.frame_id = "odom";
-    for (int i = 0; i < quintic_path_.poses.size(); i++)
+    else
     {
-        quintic_path_.poses.at(i).header.stamp = ros::Time(0);
-        try
+        /* Convert path to global frame "odom" */ 
+        local_quintic_path_.poses.clear();
+        local_quintic_path_.header.frame_id = "odom";
+        for (int i = 0; i < quintic_path_.poses.size(); i++)
         {
-            local_quintic_path_.poses.push_back(tf_buffer.transform(quintic_path_.poses.at(i), "odom", ros::Duration(1)));
+            quintic_path_.poses.at(i).header.stamp = ros::Time(0);
+            try
+            {
+                local_quintic_path_.poses.push_back(tf_buffer.transform(quintic_path_.poses.at(i), "odom", ros::Duration(1)));
+            }
+            catch (tf2::TransformException ex)
+            {
+                ROS_ERROR("%s",ex.what());
+            }
         }
-        catch (tf::LookupException ex)
-        {
-            ROS_ERROR("%s",ex.what());
-        }
-    }
 
-    pub_quintic_path_.publish(local_quintic_path_);
-    pub_quintic_pose_.publish(quintic_pose_);
+        pub_quintic_path_.publish(local_quintic_path_);
+        pub_quintic_pose_.publish(quintic_pose_);
+        path_avai_ = true;
+    } 
+    
+
 }
 
 void QuinticPlanner::resetPlanner()
@@ -322,8 +326,8 @@ void QuinticPlanner::resetPlanner()
     path_avai_ = false;
     quintic_path_.poses.clear();
     quintic_pose_.poses.clear();
-    pub_quintic_path_.publish(quintic_path_);
-    pub_quintic_pose_.publish(quintic_pose_);
+    // pub_quintic_path_.publish(quintic_path_);
+    // pub_quintic_pose_.publish(quintic_pose_);
 }
 
 void QuinticPlanner::visualize(geometry_msgs::PoseStamped pallet_pose)
@@ -336,7 +340,7 @@ void QuinticPlanner::visualize(geometry_msgs::PoseStamped pallet_pose)
     {
         local_pallet_pose_vs = tf_buffer.transform(pallet_pose, path_frame_, ros::Duration(1));
     }
-    catch (tf::LookupException ex)
+    catch (tf2::TransformException ex)
     {
         ROS_ERROR("%s", ex.what());
     }
