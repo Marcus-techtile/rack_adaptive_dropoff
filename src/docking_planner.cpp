@@ -334,33 +334,33 @@ void DockingManager::goalSetup()
     goal_setup_ = true;  
 }
 
-bool DockingManager::ExtendApproachingDistance()
-{
-    if (check_approaching_goal_distance_ < approaching_min_dis_ 
-                        && !approach_done_ && !returning_mode_.data)  // Move back to increase the distance
-    {   
-        // goalSetup(goal_distance, pallet_pose_);
-        updateGoal();
-        /* TODO: Update the calculation for approaching distance
-        */
-       double abs_dis = abs(local_update_goal_pose_.pose.position.x)*tf::getYaw(local_update_goal_pose_.pose.orientation);
-        if (abs_dis < approaching_min_dis_)
-        {
-            ROS_INFO_ONCE("MOVE BACKWARD. THE MOVEMENT DISTANCE IS TOO SHORT !!!");
-            geometry_msgs::Twist cmd_fw;
-            cmd_fw.linear.x = -0.2;
-            cmd_fw.angular.z = 0.0;
-            pub_cmd_vel.publish(cmd_fw);
-            return false;
-        }
-        else
-        {
-            ROS_INFO("Perpendicular distance to the approaching goal: %f", abs_dis);
-            return true;
-        }
-    }
-    return true;
-}
+// bool DockingManager::ExtendApproachingDistance()
+// {
+//     if (check_approaching_goal_distance_ < approaching_min_dis_ 
+//                         && !approach_done_ && !returning_mode_.data)  // Move back to increase the distance
+//     {   
+//         // goalSetup(goal_distance, pallet_pose_);
+//         updateGoal();
+//         /* TODO: Update the calculation for approaching distance
+//         */
+//        double abs_dis = abs(local_update_goal_pose_.pose.position.x)*tf::getYaw(local_update_goal_pose_.pose.orientation);
+//         if (abs_dis < approaching_min_dis_)
+//         {
+//             ROS_INFO_ONCE("MOVE BACKWARD. THE MOVEMENT DISTANCE IS TOO SHORT !!!");
+//             geometry_msgs::Twist cmd_fw;
+//             cmd_fw.linear.x = -0.2;
+//             cmd_fw.angular.z = 0.0;
+//             pub_cmd_vel.publish(cmd_fw);
+//             return false;
+//         }
+//         else
+//         {
+//             ROS_INFO("Perpendicular distance to the approaching goal: %f", abs_dis);
+//             return true;
+//         }
+//     }
+//     return true;
+// }
 
 void DockingManager::setGoalState()
 {
@@ -369,13 +369,14 @@ void DockingManager::setGoalState()
     if (!goal_setup_)
     {
         goalSetup();
-        double yaw_tm;
+        // double yaw_tm;
         // yaw_tm = tf::getYaw(local_update_goal_pose_.pose.orientation);
         // check_approaching_goal_distance_ = abs(local_update_goal_pose_.pose.position.x*cos(yaw_tm));
         goal_setup_ = true;
     } 
     
-    if (goal_setup_ && ExtendApproachingDistance())
+    // if (goal_setup_ && ExtendApproachingDistance())
+    if (goal_setup_)
     {
         current_pallet_docking_state_ = GEN_PATH_AND_PUB_CONTROL;
         goal_setup_ = false;
