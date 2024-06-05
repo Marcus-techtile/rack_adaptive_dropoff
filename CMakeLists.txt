@@ -10,7 +10,6 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   tf2_ros
   dynamic_reconfigure
-  forklift_msgs
   pallet_dock_msgs
   mbf_msgs
 )

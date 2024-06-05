@@ -21,8 +21,6 @@
 #include "pallet_dock_msgs/PalletDockingAction.h"
 #include "pallet_dock_msgs/LiftPositionAction.h"
 #include "pallet_dock_msgs/LiftPositionActionGoal.h"
-#include "forklift_msgs/CmdLiftMastActionGoal.h"
-#include "forklift_msgs/CmdLiftMastAction.h"
 
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/client/terminal_state.h>
