@@ -20,6 +20,7 @@ bool AdaptiveDockingLocalPlanner::setPlan (const std_msgs::Header &header,
                 const geometry_msgs::PoseStamped &approaching_pose, 
                 const geometry_msgs::PoseStamped &docking_pose)
 {
+    docking_manager.initDocking();
     return docking_manager.setupPoses(approaching_pose, docking_pose);
 }
 
@@ -27,6 +28,7 @@ bool AdaptiveDockingLocalPlanner::setPlan (const std_msgs::Header &header,
             const geometry_msgs::PoseStamped &approaching_pose, 
             const geometry_msgs::PoseStamped &docking_pose)
 {
+    docking_manager.initDocking();
     return docking_manager.setupPoses(approaching_pose, docking_pose);
 }
 
