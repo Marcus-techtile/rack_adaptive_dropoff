@@ -113,7 +113,7 @@ void DockingControl::resetController()
     controller_on_.data = false;
     cmd_vel_.linear.x = 0.0;
     cmd_vel_.angular.z = 0.0;
-    pub_cmd_vel_.publish(cmd_vel_);
+    if(publish_cmd_) pub_cmd_vel_.publish(cmd_vel_);
     pure_pursuit_control.resetPP();
     ref_path_.poses.clear();
     ref_path_avai_ = false;
