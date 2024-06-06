@@ -11,7 +11,6 @@
 #include <eigen3/Eigen/Dense>
 #include "utils.h"
 
-#include <dynamic_reconfigure/server.h>
 #include <pallet_docking_xsquare/quinticPlannerReconfigConfig.h>
 #include <std_srvs/SetBool.h>
 
@@ -50,8 +49,6 @@ private:
 
     /* Publisher */
     ros::Publisher pub_quintic_pose_, pub_quintic_path_, marker_pub_;
-
-    boost::shared_ptr <dynamic_reconfigure::Server<config> > srv_;
 
     bool init_reconfig_{true};
 
@@ -110,7 +107,6 @@ public:
     std::vector<double> curv_;
 
     void odomCallback(const nav_msgs::Odometry::ConstPtr& msg_odom);
-    void reconfigCallback(pallet_docking_xsquare::quinticPlannerReconfigConfig &config, uint32_t level);
 
     void setParams(double sx, double sy, double syaw, double sv, double sa,
                     double gx, double gy, double gyaw, double gv, double ga);

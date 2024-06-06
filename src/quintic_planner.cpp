@@ -85,12 +85,6 @@ QuinticPlanner::QuinticPlanner(ros::NodeHandle &paramGet)
     /* ROS Subscriber */
     sub_odom_ = nh_.subscribe<nav_msgs::Odometry>("/gazebo/forklift_controllers/odom", 1, &QuinticPlanner::odomCallback, this);
 
-    // dynamic reconfigure server
-    srv_ = boost::make_shared <dynamic_reconfigure::Server<config> > (paramGet);
-    dynamic_reconfigure::Server<config>::CallbackType f;
-    f = boost::bind(&QuinticPlanner::reconfigCallback, this, _1, _2);
-    srv_->setCallback(f);
-
     /* Initialize parameters */
     quintic_pose_.header.frame_id = path_frame_;
     quintic_path_.header.frame_id = path_frame_;
@@ -119,32 +113,6 @@ void QuinticPlanner::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_odom)
     odom_yaw_ = yaw;
     if(yaw > M_PI) {yaw = yaw - 2*M_PI;}
     if(yaw < -M_PI) {yaw = yaw + 2*M_PI;}
-}
-
-void QuinticPlanner::reconfigCallback(pallet_docking_xsquare::quinticPlannerReconfigConfig &config, uint32_t level)
-{
-    if (init_reconfig_)
-    {
-        ROS_INFO("Get init param from launch file");
-        init_reconfig_ = false;
-    }
-    else
-    {
-        ROS_INFO("Reconfigure Request");
-        max_curv_ = config.max_path_curvature;
-        max_yaw_rate_ = config.max_yaw_rate;
-        starting_vel_ = config.starting_vel;
-        starting_acc_ = config.starting_acc;
-        stopping_vel_ = config.stopping_vel;
-        stopping_acc_ = config.stopping_acc;
-        max_accel_ = config.max_acc;
-        max_ax_ = config.max_ax;
-        max_ay_ = config.max_ay;
-        max_jerk_ = config.max_jerk;
-        min_t_ = config.min_t;
-        max_t_ = config.max_t;
-        dt_ = config.dt;
-    }
 }
 
 void QuinticPlanner::setParams(double sx, double sy, double syaw, double sv, double sa,

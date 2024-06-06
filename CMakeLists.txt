@@ -9,14 +9,8 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   tf2_ros
-  dynamic_reconfigure
   pallet_dock_msgs
   mbf_msgs
-)
-
-generate_dynamic_reconfigure_options(
-  cfg/purePursuitReconfig.cfg
-  cfg/quinticPlannerReconfig.cfg
 )
 
 catkin_package(
@@ -68,7 +62,6 @@ add_library(docking_planner src/docking_planner.cpp )
 target_link_libraries(docking_planner quintic_planner docking_control ${catkin_LIBRARIES})
 add_dependencies(docking_planner
                 ${${PROJECT_NAME}_EXPORTED_TARGETS}
-                ${PROJECT_NAME}_gencfg
                 ${catkin_EXPORTED_TARGETS})
 
 add_library(adaptive_docking_local_planner src/adaptive_docking_local_planner.cpp )

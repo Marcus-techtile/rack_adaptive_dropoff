@@ -7,7 +7,6 @@
 #include "geometry_msgs/Twist.h"
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
-#include <dynamic_reconfigure/server.h>
 #include <pallet_docking_xsquare/purePursuitReconfigConfig.h>
 
 #include <sensor_msgs/JointState.h>
