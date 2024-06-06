@@ -53,6 +53,7 @@ public:
     PurePursuitController(ros::NodeHandle &paramGet);
     void resetPP();
     void setOdom(nav_msgs::Odometry odom);
+    void setSpeed(geometry_msgs::Twist cur_speed);
     void setRefPath(nav_msgs::Path path);
     void setRefVel(double ref_vel);
     void setClosestPoint(int closest_index);

@@ -384,6 +384,11 @@ void DockingManager::setGoalState()
 }
 
 ////// Gen Path State /////
+void DockingManager::setRobotSpeed(geometry_msgs::Twist robot_speed)
+{
+    docking_control.setVel(robot_speed);
+}
+
 void DockingManager::quinticPlannerSetup()
 {
     if (returning_mode_.data)

@@ -44,6 +44,15 @@ void PurePursuitController::setOdom(nav_msgs::Odometry odom)
     cur_vel_ = abs(lpf_output_);
 }
 
+void PurePursuitController::setSpeed(geometry_msgs::Twist cur_speed)
+{
+    raw_cur_vel_ = cur_speed.linear.x;
+    double cut_off = 0.1;
+    double lpf_gain = 1 - exp(-0.025 * 2 * M_PI * cut_off);
+    lpf_output_ += (raw_cur_vel_ - lpf_output_) * lpf_gain;
+    cur_vel_ = abs(lpf_output_);
+}
+
 void PurePursuitController::setRefPath(nav_msgs::Path path)
 {
     path_ = path;

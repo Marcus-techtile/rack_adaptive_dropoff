@@ -32,12 +32,13 @@ bool AdaptiveDockingLocalPlanner::setPlan (const std_msgs::Header &header,
     return docking_manager.setupPoses(approaching_pose, docking_pose);
 }
 
-// uint32_t AdaptiveDockingLocalPlanner::ExecuteControlLoop(const geometry_msgs::PoseStamped &pose,
-//                                 const geometry_msgs::TwistStamped &velocity, 
-//                                 geometry_msgs::Twist &cmd_vel,
-//                                 std::string &message)
-uint32_t AdaptiveDockingLocalPlanner::ExecuteControlLoop(geometry_msgs::Twist &cmd_vel)
+uint32_t AdaptiveDockingLocalPlanner::ExecuteControlLoop(const geometry_msgs::PoseStamped &pose,
+                                const geometry_msgs::TwistStamped &velocity, 
+                                geometry_msgs::Twist &cmd_vel,
+                                std::string &message)
+// uint32_t AdaptiveDockingLocalPlanner::ExecuteControlLoop(geometry_msgs::Twist &cmd_vel)
 {
+    docking_manager.setRobotSpeed(velocity.twist);
     docking_manager.dockingFSM();
     if (docking_manager.docking_failed.data)
         return mbf_msgs::ExePathResult::FAILURE;

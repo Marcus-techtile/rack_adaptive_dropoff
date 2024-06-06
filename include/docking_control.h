@@ -55,6 +55,7 @@ private:
 
     /* Forklift parameters */
     double l_wheelbase_;
+    geometry_msgs::Twist robot_speed_;
 
     /* Control general variable */
     std::string path_frame_;
@@ -118,6 +119,7 @@ public:
     /* Functions */
     void resetController();
     bool checkData();
+    void setVel(geometry_msgs::Twist robot_speed);
     nav_msgs::Path convertPathtoLocalFrame(nav_msgs::Path global_path);
     int nearestPointIndexFind(nav_msgs::Path local_path);
     void controllerCal();

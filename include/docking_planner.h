@@ -161,6 +161,7 @@ public:
     void quinticPlannerSetup();
     void goalReachHandling();
     void goalFailHandling();
+    void setRobotSpeed(geometry_msgs::Twist robot_speed);
     void genPathAndPubControlState();
 
     void stopState();

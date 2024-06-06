@@ -106,6 +106,11 @@ void DockingControl::approachingStatusCallback(const std_msgs::Bool::ConstPtr& m
     approaching_done_.data = msg->data;
 }
 
+void DockingControl::setVel(geometry_msgs::Twist robot_speed)
+{
+    robot_speed_ = robot_speed;
+}
+
 /***** Control Function *****/
 void DockingControl::resetController()
 {
@@ -205,7 +210,8 @@ void DockingControl::controllerCal()
     std_msgs::Float32 debug_p;
     debug_p.data = pure_pursuit_control.lateral_heading_error_.data;
     pub_debug_.publish(debug_p);
-    pure_pursuit_control.setOdom(odom_sub_);
+    // pure_pursuit_control.setOdom(odom_sub_); // not use odom to get robot speed
+    pure_pursuit_control.setSpeed(robot_speed_);
     pure_pursuit_control.setRefPath(local_ref_path_);
     pure_pursuit_control.setRefVel(final_ref_vel_);
     pure_pursuit_control.setClosestPoint(nearest_pose_index);
