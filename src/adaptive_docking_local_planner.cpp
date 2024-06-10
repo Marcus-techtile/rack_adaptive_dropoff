@@ -43,7 +43,6 @@ uint32_t AdaptiveDockingLocalPlanner::ExecuteControlLoop(const geometry_msgs::Po
     if (docking_manager.docking_failed.data)
         return mbf_msgs::ExePathResult::FAILURE;
     cmd_vel = docking_manager.getCmdVel();
-    std::cout << cmd_vel << std::endl;
     return mbf_msgs::ExePathResult::SUCCESS;
 }
 
