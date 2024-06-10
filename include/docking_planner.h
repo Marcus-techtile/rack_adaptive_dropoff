@@ -94,9 +94,10 @@ private:
 
     /* Tolerance (in local frame) */
     double distance_tolerance_;       // absolute tolerance of distance = sqrt(x^2+y^2)
-    double angle_tolerance_, final_angle_tolerance_;    // absolute tolerance of yaw
-    double x_tolerance_, final_x_tolerance_;
-    double y_tolerance_, final_y_tolerance_;              // absolute tolerance of x
+    double app_angle_tolerance_, docking_angle_tolerance_;    // absolute tolerance of yaw
+    double app_x_tolerance_, docking_x_tolerance_;
+    double app_y_tolerance_, docking_y_tolerance_;              // absolute tolerance of x
+    double x_tolerance_, y_tolerance_, angle_tolerance_;
     bool check_inside_goal_range_{false};       // if the distance error < distance tol -> inside goal range
     int count_outside_goal_range_;
 
@@ -149,6 +150,9 @@ public:
 
     bool setupPoses(geometry_msgs::PoseStamped approaching_pose,
                 geometry_msgs::PoseStamped docking_pose);
+    void setGoalTolerance(double approaching_x, double approaching_y, double approaching_yaw,
+                          double docking_x, double docking_y, double docking_yaw,
+                          double distance_tolerance);
 
     // Planner state transition
     void idleState();
@@ -172,6 +176,7 @@ public:
     bool startFSM();
     void dockingFSM();
 
+    bool isGoalReach();
     geometry_msgs::Twist getCmdVel();
 
     /* Docking state of each stage*/

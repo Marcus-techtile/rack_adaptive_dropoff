@@ -42,16 +42,6 @@ void DockingManager::setParam(ros::NodeHandle &nh)
     /* Goal params */
     nh_.param<double>("approaching_min_dis", approaching_min_dis_, 1.2);
     nh_.param<double>("moveback_straight_distance", moveback_straight_distance_, 1.0);
-
-    /* Tolerance params */
-    /* TODO: Get tolerances from the action server */
-    nh_.param<double>("distance_tolerance", distance_tolerance_, 0.08);
-    nh_.param<double>("angle_tolerance", angle_tolerance_, 5*180/M_PI);
-    nh_.param<double>("final_angle_tolerance", final_angle_tolerance_, 1*180/M_PI);
-    nh_.param<double>("x_tolerance", x_tolerance_, 0.05);
-    nh_.param<double>("final_x_tolerance", final_x_tolerance_, 0.05);
-    nh_.param<double>("y_tolerance", y_tolerance_, 0.04);
-    nh_.param<double>("final_y_tolerance", final_y_tolerance_, 0.04);
 }
 
 /***** DOCKING SERVER RESULT CALLBACK ******/
@@ -117,6 +107,18 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
     return true;
 }
 
+void DockingManager::setGoalTolerance(double approaching_x, double approaching_y, double approaching_yaw,
+                        double docking_x, double docking_y, double docking_yaw,
+                        double distance_tolerance)
+{
+    app_x_tolerance_ = approaching_x;
+    app_y_tolerance_ = approaching_y;
+    app_angle_tolerance_ = approaching_yaw;
+    docking_x_tolerance_ = docking_x;
+    docking_y_tolerance_ = docking_y;
+    docking_angle_tolerance_ = docking_yaw;
+    distance_tolerance_ = distance_tolerance;
+}
 
 /***** UPDATE GOAL EACH CONTROL PERIOD *****/
 void DockingManager::updateGoal()
@@ -155,24 +157,22 @@ void DockingManager::checkGoalReach()
     {
         if (!approach_done_)        // tolerance for approaching
         {
-            ros::param::get("/docking_planner/x_tolerance", x_tolerance_);
-            ros::param::get("/docking_planner/y_tolerance", y_tolerance_);
-            ros::param::get("/docking_planner/angle_tolerance", angle_tolerance_);
-        
+            x_tolerance_ = app_x_tolerance_;
+            y_tolerance_ = app_y_tolerance_;
+            angle_tolerance_ = app_angle_tolerance_;
         }
         else                        // tolerance for final docking
         {
-            ros::param::get("/docking_planner/final_x_tolerance", x_tolerance_);
-            ros::param::get("/docking_planner/final_y_tolerance", y_tolerance_);
-            ros::param::get("/docking_planner/final_angle_tolerance", angle_tolerance_);
+            x_tolerance_ = docking_x_tolerance_;
+            y_tolerance_ = docking_y_tolerance_;
+            angle_tolerance_ = docking_angle_tolerance_;
         }
     }
     else                            // returning mode
     {
-        // Relax the tolerance with returning motion
-        ros::param::get("/docking_planner/x_tolerance", x_tolerance_);
-        ros::param::get("/docking_planner/y_tolerance", y_tolerance_);
-        ros::param::get("/docking_planner/angle_tolerance", angle_tolerance_);
+        x_tolerance_ = app_x_tolerance_;
+        y_tolerance_ = app_y_tolerance_;
+        angle_tolerance_ = app_angle_tolerance_;
     }
 
     if (error_sq <= distance_tolerance_) 
@@ -203,6 +203,12 @@ void DockingManager::checkGoalReach()
             return; 
         }
     }
+}
+
+bool DockingManager::isGoalReach()
+{
+    if (approaching_done.data && docking_done.data) return true;
+    else return false;
 }
 
 /***** RESET PALLET DOCKING ******/

@@ -31,7 +31,9 @@ public:
                                     geometry_msgs::Twist &cmd_vel,
                                     std::string &message);
     uint32_t ExecuteControlLoop(geometry_msgs::Twist &cmd_vel);
-    bool IsGoalReached();
+    bool IsGoalReached(double app_tol_x, double app_tol_y, double app_tol_yaw,
+                       double docking_tol_x, double docking_tol_y, double docking_tol_yaw,
+                       double distance_tol);
 
     // Addition methods
     void SetDockingTolerance (const double dx, const double dy, const double dyaw);

@@ -46,9 +46,12 @@ uint32_t AdaptiveDockingLocalPlanner::ExecuteControlLoop(const geometry_msgs::Po
     return mbf_msgs::ExePathResult::SUCCESS;
 }
 
-bool AdaptiveDockingLocalPlanner::IsGoalReached()
+bool AdaptiveDockingLocalPlanner::IsGoalReached(double app_tol_x, double app_tol_y, double app_tol_yaw,
+                       double docking_tol_x, double docking_tol_y, double docking_tol_yaw,
+                       double distance_tol)
 {
-    if (docking_manager.approaching_done.data && docking_manager.docking_done.data) 
-        return true;
-    else return false;
+    docking_manager.setGoalTolerance(app_tol_x, app_tol_y, app_tol_yaw,
+                            docking_tol_x, docking_tol_y, docking_tol_yaw,
+                            distance_tol);
+    return docking_manager.isGoalReach();
 }
