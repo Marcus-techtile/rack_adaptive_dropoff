@@ -57,7 +57,7 @@ double QuinticPolynominal::cal_jerk(double ti)
 QuinticPlanner::QuinticPlanner(ros::NodeHandle &paramGet)
 {
     /* Get Param */
-    paramGet.param<std::string>("odom_topic", odom_topic_, "odom");
+    paramGet.param<std::string>("global_frame", global_frame_, "base_link");
     paramGet.param<std::string>("path_frame", path_frame_, "base_link");
     paramGet.param<double>("starting_vel", starting_vel_, 0.01);
     paramGet.param<double>("starting_acc", starting_acc_, 0.01);
@@ -82,9 +82,6 @@ QuinticPlanner::QuinticPlanner(ros::NodeHandle &paramGet)
     pub_quintic_path_ = nh_.advertise<nav_msgs::Path>("pallet_docking/quintic_path", 1);
     marker_pub_ = nh_.advertise<visualization_msgs::Marker>("pallet_docking/visualization_marker", 10);
 
-    /* ROS Subscriber */
-    sub_odom_ = nh_.subscribe<nav_msgs::Odometry>("/gazebo/forklift_controllers/odom", 1, &QuinticPlanner::odomCallback, this);
-
     /* Initialize parameters */
     quintic_pose_.header.frame_id = path_frame_;
     quintic_path_.header.frame_id = path_frame_;
@@ -94,25 +91,6 @@ QuinticPlanner::QuinticPlanner(ros::NodeHandle &paramGet)
     // controller_on_.data = false;
 
     resetPlanner();
-}
-
-void QuinticPlanner::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_odom)
-{
-    odom_.pose = msg_odom->pose;
-    odom_.twist = msg_odom->twist;
-
-    cur_vel_ = odom_.twist.twist.linear.x;
-
-    // convert quaternion to RPY
-    tf::Quaternion q(msg_odom->pose.pose.orientation.x, msg_odom->pose.pose.orientation.y,
-                    msg_odom->pose.pose.orientation.z, msg_odom->pose.pose.orientation.w);
-    q.normalize();
-    tf::Matrix3x3 m(q);
-    double roll, pitch, yaw;
-    m.getRPY(roll, pitch, yaw);
-    odom_yaw_ = yaw;
-    if(yaw > M_PI) {yaw = yaw - 2*M_PI;}
-    if(yaw < -M_PI) {yaw = yaw + 2*M_PI;}
 }
 
 void QuinticPlanner::setParams(double sx, double sy, double syaw, double sv, double sa,
@@ -261,15 +239,15 @@ void QuinticPlanner::genPath()
     }
     else
     {
-        /* Convert path to global frame "odom" */ 
+        /* Convert path to global frame global_frame_ */ 
         local_quintic_path_.poses.clear();
-        local_quintic_path_.header.frame_id = "odom";
+        local_quintic_path_.header.frame_id = global_frame_;
         for (int i = 0; i < quintic_path_.poses.size(); i++)
         {
             quintic_path_.poses.at(i).header.stamp = ros::Time(0);
             try
             {
-                local_quintic_path_.poses.push_back(tf_buffer.transform(quintic_path_.poses.at(i), "odom", ros::Duration(1)));
+                local_quintic_path_.poses.push_back(tf_buffer.transform(quintic_path_.poses.at(i), global_frame_, ros::Duration(1)));
             }
             catch (tf2::TransformException ex)
             {

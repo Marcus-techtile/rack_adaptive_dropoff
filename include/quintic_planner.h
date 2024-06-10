@@ -44,9 +44,6 @@ class QuinticPlanner
 private:
     ros::NodeHandle nh_;
 
-    /* Subscriber */
-    ros::Subscriber sub_odom_, sub_pallet_pose_, sub_pallet_pose_ready_;
-
     /* Publisher */
     ros::Publisher pub_quintic_pose_, pub_quintic_path_, marker_pub_;
 
@@ -77,8 +74,8 @@ public:
 
     /* Quintic planner */
     bool set_param_{false};
-    std::string odom_topic_;
     std::string path_frame_;
+    std::string global_frame_;
     geometry_msgs::PoseArray quintic_pose_;
     nav_msgs::Path quintic_path_, local_quintic_path_; 
 
@@ -92,11 +89,6 @@ public:
     /* ending constraint */
     double stopping_vel_;
     double stopping_acc_;
-
-    /* odom */
-    nav_msgs::Odometry odom_;
-    double cur_vel_;
-    bool odom_avai_{false};
 
     /* path variables*/
     bool path_feasible_{false};
