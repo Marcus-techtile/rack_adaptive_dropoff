@@ -153,6 +153,7 @@ public:
     void setGoalTolerance(double approaching_x, double approaching_y, double approaching_yaw,
                           double docking_x, double docking_y, double docking_yaw,
                           double distance_tolerance);
+    void setLocalFrame(std::string local_frame);
 
     // Planner state transition
     void idleState();

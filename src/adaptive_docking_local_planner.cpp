@@ -15,6 +15,11 @@ void AdaptiveDockingLocalPlanner::initialize()
     docking_manager.initDocking();
 }
 
+void AdaptiveDockingLocalPlanner::setLocalFrame(std::string local_frame)
+{
+    docking_manager.setLocalFrame(local_frame);
+}
+
 bool AdaptiveDockingLocalPlanner::setPlan (const std_msgs::Header &header, 
                 const geometry_msgs::PoseStamped &starting_pose,
                 const geometry_msgs::PoseStamped &approaching_pose, 

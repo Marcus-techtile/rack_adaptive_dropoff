@@ -120,6 +120,11 @@ void DockingManager::setGoalTolerance(double approaching_x, double approaching_y
     distance_tolerance_ = distance_tolerance;
 }
 
+void DockingManager::setLocalFrame(std::string local_frame)
+{
+    path_frame_ = local_frame;
+}
+
 /***** UPDATE GOAL EACH CONTROL PERIOD *****/
 void DockingManager::updateGoal()
 {

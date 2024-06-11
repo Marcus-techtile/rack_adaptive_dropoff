@@ -36,7 +36,7 @@ public:
                        double distance_tol);
 
     // Addition methods
-    void SetDockingTolerance (const double dx, const double dy, const double dyaw);
+    void setLocalFrame(std::string local_frame);
     void SetApproachingTolerance (const double dx, const double dy, const double dyaw);
     void SetMaxSpeed(const double max_linear_speed);
 
