@@ -31,11 +31,11 @@ public:
                                     geometry_msgs::Twist &cmd_vel,
                                     std::string &message);
     uint32_t ExecuteControlLoop(geometry_msgs::Twist &cmd_vel);
-    bool IsGoalReached(double app_tol_x, double app_tol_y, double app_tol_yaw,
-                       double docking_tol_x, double docking_tol_y, double docking_tol_yaw,
-                       double distance_tol);
+    bool IsApproachingReached(double dx, double dy, double dyaw);
+    bool IsGoalReached(double dx, double dy, double dyaw);
 
     // Addition methods
+    void setGoalRange(double dd);
     void setLocalFrame(std::string local_frame);
     void SetApproachingTolerance (const double dx, const double dy, const double dyaw);
     void SetMaxSpeed(const double max_linear_speed);

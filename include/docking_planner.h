@@ -93,11 +93,11 @@ private:
     double approaching_min_dis_; //minimum necessary distance (perpendicular distance) to start approaching. Less than it, the forklift will move backward to increase the distance
 
     /* Tolerance (in local frame) */
-    double distance_tolerance_;       // absolute tolerance of distance = sqrt(x^2+y^2)
-    double app_angle_tolerance_, docking_angle_tolerance_;    // absolute tolerance of yaw
-    double app_x_tolerance_, docking_x_tolerance_;
-    double app_y_tolerance_, docking_y_tolerance_;              // absolute tolerance of x
-    double x_tolerance_, y_tolerance_, angle_tolerance_;
+    double goal_range_{0.1};       // absolute distance = sqrt(x^2+y^2) is consider inside goal range
+    double app_angle_tolerance_{0.05}, docking_angle_tolerance_;    // absolute tolerance of yaw
+    double app_x_tolerance_{0.03}, docking_x_tolerance_{0.01};
+    double app_y_tolerance_{0.03}, docking_y_tolerance_{0.025};              // absolute tolerance of x
+    double x_tolerance_, y_tolerance_, angle_tolerance_{0.03};
     bool check_inside_goal_range_{false};       // if the distance error < distance tol -> inside goal range
     int count_outside_goal_range_;
 
@@ -150,9 +150,9 @@ public:
 
     bool setupPoses(geometry_msgs::PoseStamped approaching_pose,
                 geometry_msgs::PoseStamped docking_pose);
-    void setGoalTolerance(double approaching_x, double approaching_y, double approaching_yaw,
-                          double docking_x, double docking_y, double docking_yaw,
-                          double distance_tolerance);
+    void setGoalRange(double dd);
+    void setApproachingTolerance(double dx, double dy, double dyaw);
+    void setDockingTolerance(double dx, double dy, double dyaw);
     void setLocalFrame(std::string local_frame);
 
     // Planner state transition
@@ -177,6 +177,7 @@ public:
     bool startFSM();
     void dockingFSM();
 
+    bool isApproachingReach();
     bool isGoalReach();
     geometry_msgs::Twist getCmdVel();
 

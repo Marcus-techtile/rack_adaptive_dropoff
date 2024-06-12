@@ -41,7 +41,6 @@ uint32_t AdaptiveDockingLocalPlanner::ExecuteControlLoop(const geometry_msgs::Po
                                 const geometry_msgs::TwistStamped &velocity, 
                                 geometry_msgs::Twist &cmd_vel,
                                 std::string &message)
-// uint32_t AdaptiveDockingLocalPlanner::ExecuteControlLoop(geometry_msgs::Twist &cmd_vel)
 {
     docking_manager.setRobotSpeed(velocity.twist);
     docking_manager.dockingFSM();
@@ -51,12 +50,19 @@ uint32_t AdaptiveDockingLocalPlanner::ExecuteControlLoop(const geometry_msgs::Po
     return mbf_msgs::ExePathResult::SUCCESS;
 }
 
-bool AdaptiveDockingLocalPlanner::IsGoalReached(double app_tol_x, double app_tol_y, double app_tol_yaw,
-                       double docking_tol_x, double docking_tol_y, double docking_tol_yaw,
-                       double distance_tol)
+void AdaptiveDockingLocalPlanner::setGoalRange(double dd)
 {
-    docking_manager.setGoalTolerance(app_tol_x, app_tol_y, app_tol_yaw,
-                            docking_tol_x, docking_tol_y, docking_tol_yaw,
-                            distance_tol);
+    docking_manager.setGoalRange(dd);
+}
+
+bool AdaptiveDockingLocalPlanner::IsApproachingReached(double dx, double dy, double dyaw)
+{
+    docking_manager.setApproachingTolerance(dx, dy, dyaw);
+    return docking_manager.isApproachingReach();
+}
+
+bool AdaptiveDockingLocalPlanner::IsGoalReached(double dx, double dy, double dyaw)
+{
+    docking_manager.setDockingTolerance(dx, dy, dyaw);
     return docking_manager.isGoalReach();
 }

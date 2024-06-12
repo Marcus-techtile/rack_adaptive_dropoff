@@ -42,6 +42,8 @@ void DockingManager::setParam(ros::NodeHandle &nh)
     /* Goal params */
     nh_.param<double>("approaching_min_dis", approaching_min_dis_, 1.2);
     nh_.param<double>("moveback_straight_distance", moveback_straight_distance_, 1.0);
+
+    nh_.param<double>("dis", moveback_straight_distance_, 1.0);
 }
 
 /***** DOCKING SERVER RESULT CALLBACK ******/
@@ -107,17 +109,23 @@ bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs:
     return true;
 }
 
-void DockingManager::setGoalTolerance(double approaching_x, double approaching_y, double approaching_yaw,
-                        double docking_x, double docking_y, double docking_yaw,
-                        double distance_tolerance)
+void DockingManager::setGoalRange(double dd)
 {
-    app_x_tolerance_ = approaching_x;
-    app_y_tolerance_ = approaching_y;
-    app_angle_tolerance_ = approaching_yaw;
-    docking_x_tolerance_ = docking_x;
-    docking_y_tolerance_ = docking_y;
-    docking_angle_tolerance_ = docking_yaw;
-    distance_tolerance_ = distance_tolerance;
+    goal_range_ = dd;
+}
+
+void DockingManager::setApproachingTolerance(double dx, double dy, double dyaw)
+{
+    app_x_tolerance_ = dx;
+    app_y_tolerance_ = dy;
+    app_angle_tolerance_ = dyaw;
+}
+
+void DockingManager::setDockingTolerance(double dx, double dy, double dyaw)
+{
+    docking_x_tolerance_ = dx;
+    docking_y_tolerance_ = dy;
+    docking_angle_tolerance_ = dyaw;
 }
 
 void DockingManager::setLocalFrame(std::string local_frame)
@@ -180,7 +188,7 @@ void DockingManager::checkGoalReach()
         angle_tolerance_ = app_angle_tolerance_;
     }
 
-    if (error_sq <= distance_tolerance_) 
+    if (error_sq <= goal_range_) 
     {
         check_inside_goal_range_ = true;
         if (abs(error_yaw) < angle_tolerance_ && abs(error_x) < x_tolerance_ && abs(error_y) < y_tolerance_)
@@ -195,7 +203,7 @@ void DockingManager::checkGoalReach()
     if (check_inside_goal_range_)
     {
         if (!approach_done_)
-            if (error_sq > distance_tolerance_) count_outside_goal_range_++;
+            if (error_sq > goal_range_) count_outside_goal_range_++;
         else
             if (error_x < 0) count_outside_goal_range_++;
         if (count_outside_goal_range_ > 10)      // Prevent jumping in and out goal range
@@ -208,6 +216,12 @@ void DockingManager::checkGoalReach()
             return; 
         }
     }
+}
+
+bool DockingManager::isApproachingReach()
+{
+    if (approaching_done.data) return true;
+    else return false;
 }
 
 bool DockingManager::isGoalReach()
