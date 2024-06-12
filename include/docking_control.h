@@ -7,7 +7,6 @@
 #include "geometry_msgs/Twist.h"
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
-#include <pallet_docking_xsquare/purePursuitReconfigConfig.h>
 
 #include <sensor_msgs/JointState.h>
 #include <visualization_msgs/Marker.h>
@@ -58,7 +57,6 @@ private:
 
     /* Control general variable */
     std::string path_frame_;
-    bool init_reconfig_{true};
     std_msgs::Bool approaching_done_;
     bool pub_stop_{false};
 

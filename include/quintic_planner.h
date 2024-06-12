@@ -11,10 +11,7 @@
 #include <eigen3/Eigen/Dense>
 #include "utils.h"
 
-#include <pallet_docking_xsquare/quinticPlannerReconfigConfig.h>
 #include <std_srvs/SetBool.h>
-
-typedef pallet_docking_xsquare::quinticPlannerReconfigConfig config;
 
 class QuinticPolynominal
 {
@@ -46,8 +43,6 @@ private:
 
     /* Publisher */
     ros::Publisher pub_quintic_pose_, pub_quintic_path_, marker_pub_;
-
-    bool init_reconfig_{true};
 
     /* Quintic parameters */
     double sx_, sy_, syaw_, sv_, sa_;

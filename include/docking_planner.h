@@ -18,10 +18,6 @@
 #include <std_srvs/SetBool.h>
 #include <std_srvs/Trigger.h>
 
-#include "pallet_dock_msgs/PalletDockingAction.h"
-#include "pallet_dock_msgs/LiftPositionAction.h"
-#include "pallet_dock_msgs/LiftPositionActionGoal.h"
-
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/client/terminal_state.h>
 
@@ -51,8 +47,6 @@ private:
         // Pallet docking action server
     ros::Subscriber sub_docking_server_result_;
     ros::Subscriber sub_docking_server_goal_;
-    pallet_dock_msgs::PalletDockingActionResult docking_server_result_;
-    pallet_dock_msgs::PalletDockingActionGoal docking_server_goal_;
     bool docking_goal_avai_;
 
         // goal pose
@@ -134,8 +128,6 @@ private:
 
     /* Callback function */
     bool dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
-    void dockingServerResultCallback(const pallet_dock_msgs::PalletDockingActionResult::ConstPtr& msg);
-    void dockingServerGoalCallback(const pallet_dock_msgs::PalletDockingActionGoal::ConstPtr& msg);
 
     void goalSetup();
     void updateGoal();

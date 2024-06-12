@@ -59,7 +59,6 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     pure_pursuit_control = PurePursuitController(paramGet);
 
     /* Initialize parameters */
-    init_reconfig_ = true;
     ref_path_avai_ = false;
     controller_on_.data = false;
     approaching_done_.data = false;

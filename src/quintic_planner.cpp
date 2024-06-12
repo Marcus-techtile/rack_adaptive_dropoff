@@ -87,7 +87,6 @@ QuinticPlanner::QuinticPlanner(ros::NodeHandle &paramGet)
     quintic_path_.header.frame_id = path_frame_;
 
     set_param_ = false;
-    init_reconfig_ = true;
     // controller_on_.data = false;
 
     resetPlanner();

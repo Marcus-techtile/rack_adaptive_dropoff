@@ -15,10 +15,6 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh)
     pub_local_goal_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("/pallet_docking/local_goal_pose", 10);
     pub_docking_error_ = nh_.advertise<geometry_msgs::Vector3>("/pallet_docking/docking_error", 1);
 
-    /* Subscriber */
-    sub_docking_server_result_ = nh.subscribe<pallet_dock_msgs::PalletDockingActionResult>("/pallet_dock_action_server/pallet_docking/result", 1, &DockingManager::dockingServerResultCallback, this);
-    sub_docking_server_goal_ = nh_.subscribe<pallet_dock_msgs::PalletDockingActionGoal>("/pallet_dock_action_server/pallet_docking/goal", 1, &DockingManager::dockingServerGoalCallback, this);
-
     /* Service*/
     service_ = nh_.advertiseService("/pallet_docking_service", &DockingManager::dockingServiceCb, this);
     
@@ -44,46 +40,6 @@ void DockingManager::setParam(ros::NodeHandle &nh)
     nh_.param<double>("moveback_straight_distance", moveback_straight_distance_, 1.0);
 
     nh_.param<double>("dis", moveback_straight_distance_, 1.0);
-}
-
-/***** DOCKING SERVER RESULT CALLBACK ******/
-void DockingManager::dockingServerResultCallback(const pallet_dock_msgs::PalletDockingActionResult::ConstPtr& msg)
-{
-    docking_server_result_ = *msg;
-    if (docking_server_result_.result.code >= 2)
-    {
-        initDocking();
-        ROS_WARN("Failure Result from Docking action server! Stop the FSM!");
-    }
-}
-
-/***** DOCKING SERVER GOAL CALLBACK ******/
-void DockingManager::dockingServerGoalCallback(const pallet_dock_msgs::PalletDockingActionGoal::ConstPtr& msg)
-{
-    docking_server_goal_ = *msg;
-    docking_mode_ = docking_server_goal_.goal.mode;
-    if (docking_mode_ == 0)         // mode pallet docking
-    {
-        start_pallet_docking_ = true;
-        start_returning_ = false;
-        pallet_pose_ = docking_server_goal_.goal.docking_pose;
-        // rotate angle 180 degree
-        double r, p, yaw;
-        quaternionToRPY(pallet_pose_.pose.orientation, r, p, yaw);
-        yaw = yaw - M_PI;
-        pallet_pose_.pose.orientation = rpyToQuaternion(r, p, yaw);
-    }
-    else                            // mode returning
-    {
-        start_pallet_docking_ = false;
-        start_returning_ = true;
-        pallet_pose_ = docking_server_goal_.goal.docking_pose;
-    }
-    // pub_global_goal_pose_.publish(pallet_pose_);
-
-    approaching_min_dis_ = docking_server_goal_.goal.move_back_distance;  // enable moveback motion for pallet docking
-    pallet_pose_avai_ = true;
-    ROS_INFO("Receive docking goal");
 }
 
 /***** DOCKING SERVICE CALLBACK *****/
