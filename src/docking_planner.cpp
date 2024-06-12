@@ -19,8 +19,9 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh)
     service_ = nh_.advertiseService("/pallet_docking_service", &DockingManager::dockingServiceCb, this);
     
     /*Define failure cases */
-    failure_map_[2] = "PATH_IS_NOT_FEASIBLE";
-    failure_map_[3] = "BAD_DOCKING_ACCURACY";
+    failure_map_[0] = "PATH_IS_NOT_FEASIBLE";
+    failure_map_[1] = "BAD_DOCKING_ACCURACY";
+    failure_map_[2] = "TF_ERROR";
 
     // Init the Docking
     initDocking();
@@ -40,6 +41,51 @@ void DockingManager::setParam(ros::NodeHandle &nh)
     nh_.param<double>("moveback_straight_distance", moveback_straight_distance_, 1.0);
 
     nh_.param<double>("dis", moveback_straight_distance_, 1.0);
+}
+
+/***** RESET PALLET DOCKING ******/
+void DockingManager::initDocking()
+{
+    current_pallet_docking_state_ = IDLE;
+    docking_state.data = "IDLE";
+    pub_docking_state.publish(docking_state);
+
+    docking_result = dockingResult::PROCESS;
+    
+    start_pallet_docking_ = false;
+    start_returning_ = false;
+
+    pose_setup_ = false;
+
+    norm_goal_frame_ = false;
+    
+    docking_done.data = false;          
+    approaching_done.data = false;
+    docking_failed.data = false;
+
+    docking_control.resetController();
+    quintic_planner.resetPlanner();
+
+    check_inside_goal_range_ = false;
+    count_outside_goal_range_ = 0;
+
+    // reset the transition state
+    pallet_pose_avai_ = false;
+    approach_done_ = false;     // transition from APPROACHING to DOCKING, to SET_GOAL
+    docking_done_ = false;       // transition from DOCKING to SET_GOAL
+    goal_setup_ = false;        // transition from SET_GOAL to UPDATE_GOAL
+    goal_avai_ = false;         // transition from UPDATE_GOAL to GEN_PATH
+    goal_reach_ = false;         // transition from GEN_PATH to STOP
+    goal_failed_ = false;        // transition from GEN_PATH to RECOVER
+}
+
+/***** RESET PLANNING AND CONTROL ******/
+void DockingManager::resetPlanAndControl()
+{
+    docking_control.resetController();
+    quintic_planner.resetPlanner();
+    goal_setup_ = false;
+    count_outside_goal_range_ = 0;
 }
 
 /***** DOCKING SERVICE CALLBACK *****/
@@ -88,6 +134,8 @@ void DockingManager::setLocalFrame(std::string local_frame)
 {
     path_frame_ = local_frame;
 }
+
+uint8_t DockingManager::getDockingResult() {return static_cast<int>(docking_result);}
 
 /***** UPDATE GOAL EACH CONTROL PERIOD *****/
 void DockingManager::updateGoal()
@@ -186,48 +234,7 @@ bool DockingManager::isGoalReach()
     else return false;
 }
 
-/***** RESET PALLET DOCKING ******/
-void DockingManager::initDocking()
-{
-    current_pallet_docking_state_ = IDLE;
-    docking_state.data = "IDLE";
-    pub_docking_state.publish(docking_state);
-    
-    start_pallet_docking_ = false;
-    start_returning_ = false;
 
-    pose_setup_ = false;
-
-    norm_goal_frame_ = false;
-    
-    docking_done.data = false;          
-    approaching_done.data = false;
-    docking_failed.data = false;
-
-    docking_control.resetController();
-    quintic_planner.resetPlanner();
-
-    check_inside_goal_range_ = false;
-    count_outside_goal_range_ = 0;
-
-    // reset the transition state
-    pallet_pose_avai_ = false;
-    approach_done_ = false;     // transition from APPROACHING to DOCKING, to SET_GOAL
-    docking_done_ = false;       // transition from DOCKING to SET_GOAL
-    goal_setup_ = false;        // transition from SET_GOAL to UPDATE_GOAL
-    goal_avai_ = false;         // transition from UPDATE_GOAL to GEN_PATH
-    goal_reach_ = false;         // transition from GEN_PATH to STOP
-    goal_failed_ = false;        // transition from GEN_PATH to RECOVER
-}
-
-/***** RESET PLANNING AND CONTROL ******/
-void DockingManager::resetPlanAndControl()
-{
-    docking_control.resetController();
-    quintic_planner.resetPlanner();
-    goal_setup_ = false;
-    count_outside_goal_range_ = 0;
-}
 
 /***** PLANNER STATE ******/
 ////// Idle State /////
@@ -403,7 +410,7 @@ void DockingManager::goalReachHandling()
 void DockingManager::goalFailHandling()
 {
     resetPlanAndControl();
-    failure_code_ = 3;
+    failure_code_ = 1;
     current_pallet_docking_state_ = FAILURE;
     ROS_INFO("Goal failed !!!");
 }
@@ -418,7 +425,7 @@ void DockingManager::genPathAndPubControlState()
     if (!quintic_planner.path_feasible_)
     {
         ROS_WARN("PATH IS NOT FEASIBLE");
-        failure_code_ = 2;
+        failure_code_ = 0;
         current_pallet_docking_state_ = FAILURE;
         return;
     } 
@@ -459,6 +466,7 @@ void DockingManager::endState()
 {
     docking_state.data = "END";
     docking_done.data = true;
+    docking_result = dockingResult::SUCCESS;
 }
 
 ////// Stop State /////
@@ -482,6 +490,18 @@ void DockingManager::failureState()
     ROS_INFO_ONCE("FAILURE: %s. ABORTED!", failure_map_[failure_code_].c_str());
     docking_state.data = "FAILURE: " + failure_map_[failure_code_];
     docking_failed.data = true;
+    switch (failure_code_)
+    {
+        case 0:
+            docking_result = dockingResult::FAIL_DOCKING_PATH_IS_NOT_FEASIBLE;
+            break;
+        case 1:
+            docking_result = dockingResult::FAIL_DOCKING_BAD_ACCURACY;
+            break;
+        case 2: 
+            docking_result = dockingResult::FAIL_TF_ERROR;
+            break;
+    }
 }
 
 ////// FSM setup ///////

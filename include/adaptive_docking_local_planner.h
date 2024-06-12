@@ -30,10 +30,9 @@ public:
                                     const geometry_msgs::TwistStamped &velocity, 
                                     geometry_msgs::Twist &cmd_vel,
                                     std::string &message);
-    uint32_t ExecuteControlLoop(geometry_msgs::Twist &cmd_vel);
     bool IsApproachingReached(double dx, double dy, double dyaw);
     bool IsGoalReached(double dx, double dy, double dyaw);
-
+    uint8_t getDockingResult();
     // Addition methods
     void setGoalRange(double dd);
     void setLocalFrame(std::string local_frame);

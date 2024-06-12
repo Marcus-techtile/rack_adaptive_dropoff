@@ -81,8 +81,6 @@ private:
     geometry_msgs::PoseStamped  local_static_goal_pose_;   // goal pose in path_frame_
     geometry_msgs::PoseStamped  local_update_goal_pose_;   // goal pose in path_frame_. Updated each period
 
-    
-
     double check_approaching_goal_distance_;                // distance from robot to approaching pose
     double approaching_min_dis_; //minimum necessary distance (perpendicular distance) to start approaching. Less than it, the forklift will move backward to increase the distance
 
@@ -169,12 +167,19 @@ public:
     bool startFSM();
     void dockingFSM();
 
+    // Additional method
     bool isApproachingReach();
     bool isGoalReach();
     geometry_msgs::Twist getCmdVel();
+
+    uint8_t getDockingResult();
 
     /* Docking state of each stage*/
     std_msgs::Bool docking_done;        // Docking process done or not
     std_msgs::Bool approaching_done;    // Approaching process done or not
     std_msgs::Bool docking_failed;
+
+    enum class dockingResult:uint8_t{PROCESS, SUCCESS, FAIL_DOCKING_PATH_IS_NOT_FEASIBLE, 
+                                FAIL_DOCKING_BAD_ACCURACY, FAIL_TF_ERROR};
+    dockingResult docking_result; 
 };
