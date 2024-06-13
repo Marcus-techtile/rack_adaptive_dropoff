@@ -33,14 +33,12 @@ DockingManager::~ DockingManager(){}
 void DockingManager::setParam(ros::NodeHandle &nh)
 {
     /* Get Param */
-    nh_.param<std::string>("global_frame", global_frame_, "odom");
-    nh_.param<std::string>("path_frame", path_frame_, "base_link_p");
+    // nh_.param<std::string>("global_frame", global_frame_, "odom");
+    nh_.param<std::string>("/move_base_flex/AD/global_frame_id", global_frame_, "map");
 
     /* Goal params */
     nh_.param<double>("approaching_min_dis", approaching_min_dis_, 1.2);
     nh_.param<double>("moveback_straight_distance", moveback_straight_distance_, 1.0);
-
-    nh_.param<double>("dis", moveback_straight_distance_, 1.0);
 }
 
 /***** RESET PALLET DOCKING ******/
@@ -133,6 +131,11 @@ void DockingManager::setDockingTolerance(double dx, double dy, double dyaw)
 void DockingManager::setLocalFrame(std::string local_frame)
 {
     path_frame_ = local_frame;
+}
+
+void DockingManager::setGLobalFrame(std::string global_frame)
+{
+    global_frame_ = global_frame;
 }
 
 uint8_t DockingManager::getDockingResult() {return static_cast<int>(docking_result);}

@@ -116,7 +116,7 @@ private:
     std::map<int, std::string> failure_map_;
 
     /* tf conversion */
-    std::string path_frame_;
+    std::string path_frame_{"base_link_p"};
     std::string global_frame_;
     tf2_ros::Buffer docking_tf_buffer;
     tf2_ros::TransformListener docking_listener{docking_tf_buffer};
@@ -144,6 +144,7 @@ public:
     void setApproachingTolerance(double dx, double dy, double dyaw);
     void setDockingTolerance(double dx, double dy, double dyaw);
     void setLocalFrame(std::string local_frame);
+    void setGLobalFrame(std::string global_frame);
 
     // Planner state transition
     void idleState();
