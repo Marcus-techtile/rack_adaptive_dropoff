@@ -36,6 +36,7 @@ public:
     // Addition methods
     void setGoalRange(double dd);
     void setLocalFrame(std::string local_frame);
+    void setGlobalFrame(std::string global_frame);
     void SetApproachingTolerance (const double dx, const double dy, const double dyaw);
     void SetMaxSpeed(const double max_linear_speed);
 

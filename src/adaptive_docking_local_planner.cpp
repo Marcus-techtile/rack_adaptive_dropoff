@@ -2,6 +2,7 @@
 
 using namespace techtile;
 
+/*********** Constructor ***********/
 AdaptiveDockingLocalPlanner::AdaptiveDockingLocalPlanner(ros::NodeHandle &nh) : nh_(nh)
 {
     initialize();
@@ -9,17 +10,28 @@ AdaptiveDockingLocalPlanner::AdaptiveDockingLocalPlanner(ros::NodeHandle &nh) : 
 
 AdaptiveDockingLocalPlanner::~AdaptiveDockingLocalPlanner(){}
 
+/*********** Init ***********/
 void AdaptiveDockingLocalPlanner::initialize()
 {
     // docking_manager = std::make_shared<DockingManager>(nh_);
     docking_manager.initDocking();
 }
 
+/************ Set Frame ************/
+// Set Local Frame. Default: "base_link_p"
 void AdaptiveDockingLocalPlanner::setLocalFrame(std::string local_frame)
 {
     docking_manager.setLocalFrame(local_frame);
 }
 
+// Set Global Frame. Default: initialize from the param "/move_base_flex/AD/global_frame_id"
+void AdaptiveDockingLocalPlanner::setGlobalFrame(std::string global_frame)
+{
+    docking_manager.setGLobalFrame(global_frame);
+}
+
+/************ Set Plan ************/
+// currently not use "starting_pose" and "header". Path frame is global/local frame
 bool AdaptiveDockingLocalPlanner::setPlan (const std_msgs::Header &header, 
                 const geometry_msgs::PoseStamped &starting_pose,
                 const geometry_msgs::PoseStamped &approaching_pose, 
@@ -37,6 +49,8 @@ bool AdaptiveDockingLocalPlanner::setPlan (const std_msgs::Header &header,
     return docking_manager.setupPoses(approaching_pose, docking_pose);
 }
 
+/************* Execute Control ************/
+// Just need velocity. Currently not use the other args
 uint32_t AdaptiveDockingLocalPlanner::ExecuteControlLoop(const geometry_msgs::PoseStamped &pose,
                                 const geometry_msgs::TwistStamped &velocity, 
                                 geometry_msgs::Twist &cmd_vel,
@@ -50,6 +64,11 @@ uint32_t AdaptiveDockingLocalPlanner::ExecuteControlLoop(const geometry_msgs::Po
     return mbf_msgs::ExePathResult::SUCCESS;
 }
 
+/************* Set Tolerance ************/
+// Default value:
+// dd: 0.1 (m)
+// Approaching distance: dx: 0.03 (m), dy: 0.03 (m), dyaw: 0.05 (rad)
+// Just use the IsGoalReached and set final tolerances if don't want to care about the other args
 void AdaptiveDockingLocalPlanner::setGoalRange(double dd)
 {
     docking_manager.setGoalRange(dd);
@@ -74,7 +93,6 @@ bool AdaptiveDockingLocalPlanner::IsGoalReached(double dx, double dy, double dya
 // 2: FAIL_DOCKING_PATH_IS_NOT_FEASIBLE
 // 3: FAIL_DOCKING_BAD_ACCURACY
 // 4: FAIL_TF_ERROR (Not implemented)
-
 uint8_t AdaptiveDockingLocalPlanner::getDockingResult()
 { 
     return docking_manager.getDockingResult();
