@@ -4,6 +4,8 @@ DockingManager::DockingManager(ros::NodeHandle &nh, tf2_ros::Buffer &tf): nh_(nh
 {   
     /* Docking Control init */
     docking_control_ = std::make_shared<DockingControl>(nh_, tf_);
+    /* Quintic Planner init */
+    quintic_planner_ = std::make_shared<QuinticPlanner>(nh_, tf_);
     /* Publisher */
     pub_docking_state = nh_.advertise<std_msgs::String>("/pallet_docking/docking_state", 1);
     pub_docking_done = nh_.advertise<std_msgs::Bool>("/pallet_docking/pallet_docking_done", 1);
@@ -34,7 +36,7 @@ DockingManager::~ DockingManager(){}
 void DockingManager::config()
 {
     /* Get Param */
-    nh_.param<std::string>("/move_base_flex/AD/global_frame_id", global_frame_, "odom");
+    nh_.param<std::string>("/move_base_flex/AD/global_frame_id", global_frame_, "map");
 
     /* Goal params */
     nh_.param<double>("approaching_min_dis", approaching_min_dis_, 1.2);
@@ -62,7 +64,7 @@ void DockingManager::initDocking()
     docking_failed.data = false;
 
     docking_control_->resetController();
-    quintic_planner.resetPlanner();
+    quintic_planner_->resetPlanner();
 
     check_inside_goal_range_ = false;
     count_outside_goal_range_ = 0;
@@ -81,7 +83,7 @@ void DockingManager::initDocking()
 void DockingManager::resetPlanAndControl()
 {
     docking_control_->resetController();
-    quintic_planner.resetPlanner();
+    quintic_planner_->resetPlanner();
     goal_setup_ = false;
     count_outside_goal_range_ = 0;
 }
@@ -131,12 +133,14 @@ void DockingManager::setDockingTolerance(double dx, double dy, double dyaw)
 void DockingManager::setLocalFrame(std::string local_frame)
 {
     path_frame_ = local_frame;
-    docking_control_->setLocalFrame(local_frame);
+    docking_control_->path_frame_ = local_frame;
+    quintic_planner_->path_frame_ = local_frame;
 }
 
 void DockingManager::setGLobalFrame(std::string global_frame)
 {
     global_frame_ = global_frame;
+    quintic_planner_->global_frame_ = global_frame;
 }
 
 uint8_t DockingManager::getDockingResult() {return static_cast<int>(docking_result);}
@@ -148,7 +152,6 @@ void DockingManager::updateGoal()
     global_goal_pose_.header.stamp = ros::Time(0);
     try
     {
-        // local_update_goal_pose_ = tf_->transform(global_goal_pose_, path_frame_, ros::Duration(1));
         tf_.transform(global_goal_pose_, local_update_goal_pose_, path_frame_, ros::Duration(1));
     }
     catch (tf2::TransformException ex)
@@ -389,20 +392,20 @@ void DockingManager::quinticPlannerSetup()
 {
     if (returning_mode_.data)
     {
-        if (quintic_planner.starting_vel_ > 0) quintic_planner.starting_vel_ = -quintic_planner.starting_vel_;
-        if (quintic_planner.stopping_vel_ > 0) quintic_planner.stopping_vel_ = -quintic_planner.stopping_vel_;
+        if (quintic_planner_->starting_vel_ > 0) quintic_planner_->starting_vel_ = -quintic_planner_->starting_vel_;
+        if (quintic_planner_->stopping_vel_ > 0) quintic_planner_->stopping_vel_ = -quintic_planner_->stopping_vel_;
     }
     else
     {
-        if (quintic_planner.starting_vel_ < 0) quintic_planner.starting_vel_ = -quintic_planner.starting_vel_;
-        if (quintic_planner.stopping_vel_ < 0) quintic_planner.stopping_vel_ = -quintic_planner.stopping_vel_;
+        if (quintic_planner_->starting_vel_ < 0) quintic_planner_->starting_vel_ = -quintic_planner_->starting_vel_;
+        if (quintic_planner_->stopping_vel_ < 0) quintic_planner_->stopping_vel_ = -quintic_planner_->stopping_vel_;
     }
-    quintic_planner.setParams(0.0, 0.0, 0.0, quintic_planner.starting_vel_, quintic_planner.starting_acc_,
+    quintic_planner_->setParams(0.0, 0.0, 0.0, quintic_planner_->starting_vel_, quintic_planner_->starting_acc_,
             local_update_goal_pose_.pose.position.x, local_update_goal_pose_.pose.position.y, tf::getYaw(local_update_goal_pose_.pose.orientation),
-            quintic_planner.stopping_vel_, quintic_planner.stopping_acc_);
-    if (!quintic_planner.path_avai_)
-        quintic_planner.genPath();
-    quintic_planner.visualize(global_goal_pose_);
+            quintic_planner_->stopping_vel_, quintic_planner_->stopping_acc_);
+    if (!quintic_planner_->path_avai_)
+        quintic_planner_->genPath();
+    quintic_planner_->visualize(global_goal_pose_);
 }
 
 void DockingManager::goalReachHandling()
@@ -430,7 +433,7 @@ void DockingManager::genPathAndPubControlState()
     if (!goal_avai_) return;
     checkGoalReach();
     quinticPlannerSetup();
-    if (!quintic_planner.path_feasible_)
+    if (!quintic_planner_->path_feasible_)
     {
         ROS_WARN("PATH IS NOT FEASIBLE");
         failure_code_ = 0;
@@ -449,7 +452,7 @@ void DockingManager::genPathAndPubControlState()
     } 
 
     // Start the controller
-    if (quintic_planner.path_avai_ && !docking_control_->controller_on_.data)
+    if (quintic_planner_->path_avai_ && !docking_control_->controller_on_.data)
     {
         docking_control_->controller_on_.data = true;
         // pub_controller_on_.publish(controller_on_);

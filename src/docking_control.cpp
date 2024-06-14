@@ -104,11 +104,6 @@ void DockingControl::approachingStatusCallback(const std_msgs::Bool::ConstPtr& m
     approaching_done_.data = msg->data;
 }
 
-void DockingControl::setLocalFrame(std::string local_frame)
-{
-    path_frame_ = local_frame;
-}
-
 void DockingControl::setVel(geometry_msgs::Twist robot_speed)
 {
     robot_speed_ = robot_speed;

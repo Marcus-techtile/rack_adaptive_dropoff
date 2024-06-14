@@ -61,7 +61,7 @@ private:
     bool docking_mode_;
 
     /* Auxiliary class*/
-    QuinticPlanner quintic_planner{nh_};
+    std::shared_ptr<QuinticPlanner> quintic_planner_;
     std::shared_ptr<DockingControl> docking_control_;
 
     /* Turn on controller */

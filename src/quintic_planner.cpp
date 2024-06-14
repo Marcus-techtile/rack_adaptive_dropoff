@@ -54,33 +54,31 @@ double QuinticPolynominal::cal_jerk(double ti)
 }
 
 /* Quintic Planner Class */
-QuinticPlanner::QuinticPlanner(ros::NodeHandle &paramGet)
+QuinticPlanner::QuinticPlanner(ros::NodeHandle &nh, tf2_ros::Buffer &tf):nh_(nh), tf_buffer(tf)
 {
     /* Get Param */
-    paramGet.param<std::string>("global_frame", global_frame_, "base_link");
-    paramGet.param<std::string>("path_frame", path_frame_, "base_link");
-    paramGet.param<double>("starting_vel", starting_vel_, 0.01);
-    paramGet.param<double>("starting_acc", starting_acc_, 0.01);
-    paramGet.param<double>("stopping_vel", stopping_vel_, 0.01);
-    paramGet.param<double>("stopping_acc", stopping_acc_, -0.01);
-    paramGet.param<double>("max_yaw_rate", max_yaw_rate_, 0.1);
-    paramGet.param<double>("max_path_curvature", max_curv_, 2.0);
-    paramGet.param<double>("max_acc", max_accel_, 0.5);
-    paramGet.param<double>("max_ax", max_ax_, 0.5);
-    paramGet.param<double>("max_ay", max_ay_, 0.5);
-    paramGet.param<double>("max_jerk", max_jerk_, 0.5);
-    paramGet.param<double>("min_t", min_t_, 0.5);
-    paramGet.param<double>("max_t", max_t_, 10.0);
-    paramGet.param<double>("dt", dt_, 0.1);
+    nh_.param<double>("starting_vel", starting_vel_, 0.01);
+    nh_.param<double>("starting_acc", starting_acc_, 0.01);
+    nh_.param<double>("stopping_vel", stopping_vel_, 0.01);
+    nh_.param<double>("stopping_acc", stopping_acc_, -0.01);
+    nh_.param<double>("max_yaw_rate", max_yaw_rate_, 0.1);
+    nh_.param<double>("max_path_curvature", max_curv_, 2.0);
+    nh_.param<double>("max_acc", max_accel_, 0.5);
+    nh_.param<double>("max_ax", max_ax_, 0.5);
+    nh_.param<double>("max_ay", max_ay_, 0.5);
+    nh_.param<double>("max_jerk", max_jerk_, 0.5);
+    nh_.param<double>("min_t", min_t_, 0.5);
+    nh_.param<double>("max_t", max_t_, 10.0);
+    nh_.param<double>("dt", dt_, 0.1);
 
-    paramGet.param<double>("fake_goal_x", fake_goal_x_, 3.5);
-    paramGet.param<double>("fake_goal_y", fake_goal_y_, 2.0);
-    paramGet.param<double>("fake_goal_yaw", fake_goal_yaw_, -0.087);
+    nh_.param<double>("fake_goal_x", fake_goal_x_, 3.5);
+    nh_.param<double>("fake_goal_y", fake_goal_y_, 2.0);
+    nh_.param<double>("fake_goal_yaw", fake_goal_yaw_, -0.087);
 
     /* ROS Publisher */
-    pub_quintic_pose_ = nh_.advertise<geometry_msgs::PoseArray>("pallet_docking/quintic_pose", 1);
-    pub_quintic_path_ = nh_.advertise<nav_msgs::Path>("pallet_docking/quintic_path", 1);
-    marker_pub_ = nh_.advertise<visualization_msgs::Marker>("pallet_docking/visualization_marker", 10);
+    pub_quintic_pose_ = nh_.advertise<geometry_msgs::PoseArray>("/pallet_docking/quintic_pose", 1);
+    pub_quintic_path_ = nh_.advertise<nav_msgs::Path>("/pallet_docking/quintic_path", 1);
+    marker_pub_ = nh_.advertise<visualization_msgs::Marker>("/pallet_docking/visualization_marker", 10);
 
     /* Initialize parameters */
     quintic_pose_.header.frame_id = path_frame_;

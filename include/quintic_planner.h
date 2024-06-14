@@ -60,17 +60,16 @@ private:
     double fake_goal_yaw_;
 
     /* tf conversion */
-    tf2_ros::Buffer tf_buffer;
-    tf2_ros::TransformListener listener{tf_buffer};
+    tf2_ros::Buffer &tf_buffer;
 
 public:
     /* function */
-    QuinticPlanner(ros::NodeHandle &paramGet);
+    QuinticPlanner(ros::NodeHandle &nh, tf2_ros::Buffer &tf);
 
     /* Quintic planner */
     bool set_param_{false};
-    std::string path_frame_;
-    std::string global_frame_;
+    std::string path_frame_{"base_link_p"};
+    std::string global_frame_{"map"};
     geometry_msgs::PoseArray quintic_pose_;
     nav_msgs::Path quintic_path_, local_quintic_path_; 
 
@@ -92,8 +91,6 @@ public:
     std::vector<double> rx_, ry_, ryaw_, r_vyaw_;
     std::vector<double> rv_, ra_, rax_, ray_, rj_;        //x, y, yaw
     std::vector<double> curv_;
-
-    void odomCallback(const nav_msgs::Odometry::ConstPtr& msg_odom);
 
     void setParams(double sx, double sy, double syaw, double sv, double sa,
                     double gx, double gy, double gyaw, double gv, double ga);
