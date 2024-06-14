@@ -10,7 +10,8 @@ class AdaptiveDockingLocalPlanner
 private:
     ros::NodeHandle nh_;
 
-    DockingManager docking_manager{nh_};
+    // DockingManager docking_manager{nh_};
+    std::unique_ptr<DockingManager> docking_manager_;
 
 public:
     AdaptiveDockingLocalPlanner(ros::NodeHandle &nh);
@@ -18,7 +19,7 @@ public:
        
     /**** MBF Interface ****/
     // 
-    void initialize();
+    void initialize(tf2_ros::Buffer &tf);
     bool setPlan (const std_msgs::Header &header, 
 				const geometry_msgs::PoseStamped &starting_pose,
 				const geometry_msgs::PoseStamped &approaching_pose, 

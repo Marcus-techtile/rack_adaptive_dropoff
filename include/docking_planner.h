@@ -118,8 +118,9 @@ private:
     /* tf conversion */
     std::string path_frame_{"base_link_p"};
     std::string global_frame_;
-    tf2_ros::Buffer docking_tf_buffer;
-    tf2_ros::TransformListener docking_listener{docking_tf_buffer};
+
+    tf2_ros::Buffer& tf_;
+    // std::shared_ptr<tf2_ros::TransformListener> docking_listener;
 
     /* Mutex */
     std::mutex mutex_;
@@ -131,9 +132,9 @@ private:
     void updateGoal();
     void checkGoalReach();
 public:
-    DockingManager(ros::NodeHandle &nh);
+    DockingManager(ros::NodeHandle &nh, tf2_ros::Buffer &tf);
     ~ DockingManager();
-    void setParam(ros::NodeHandle &nh);
+    void config();
 
     void initDocking();
     void resetPlanAndControl();

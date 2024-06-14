@@ -56,7 +56,7 @@ private:
     geometry_msgs::Twist robot_speed_;
 
     /* Control general variable */
-    std::string path_frame_;
+    std::string path_frame_{"base_link_p"};
     std_msgs::Bool approaching_done_;
     bool pub_stop_{false};
 
@@ -116,6 +116,7 @@ public:
     /* Functions */
     void resetController();
     bool checkData();
+    void setLocalFrame(std::string local_frame);
     void setVel(geometry_msgs::Twist robot_speed);
     nav_msgs::Path convertPathtoLocalFrame(nav_msgs::Path global_path);
     int nearestPointIndexFind(nav_msgs::Path local_path);

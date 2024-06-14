@@ -5,29 +5,31 @@ using namespace techtile;
 /*********** Constructor ***********/
 AdaptiveDockingLocalPlanner::AdaptiveDockingLocalPlanner(ros::NodeHandle &nh) : nh_(nh)
 {
-    initialize();
+    ROS_INFO("Adaptive Local Planner Constructor");
 }
 
 AdaptiveDockingLocalPlanner::~AdaptiveDockingLocalPlanner(){}
 
 /*********** Init ***********/
-void AdaptiveDockingLocalPlanner::initialize()
+void AdaptiveDockingLocalPlanner::initialize(tf2_ros::Buffer &tf)
 {
-    // docking_manager = std::make_shared<DockingManager>(nh_);
-    docking_manager.initDocking();
+    docking_manager_ = std::make_unique<DockingManager>(nh_, tf);
+    docking_manager_->config();
+    docking_manager_->initDocking();
+    ROS_INFO("Init AD");  
 }
 
 /************ Set Frame ************/
 // Set Local Frame. Default: "base_link_p"
 void AdaptiveDockingLocalPlanner::setLocalFrame(std::string local_frame)
 {
-    docking_manager.setLocalFrame(local_frame);
+    docking_manager_->setLocalFrame(local_frame);
 }
 
 // Set Global Frame. Default: initialize from the param "/move_base_flex/AD/global_frame_id"
 void AdaptiveDockingLocalPlanner::setGlobalFrame(std::string global_frame)
 {
-    docking_manager.setGLobalFrame(global_frame);
+    docking_manager_->setGLobalFrame(global_frame);
 }
 
 /************ Set Plan ************/
@@ -37,16 +39,16 @@ bool AdaptiveDockingLocalPlanner::setPlan (const std_msgs::Header &header,
                 const geometry_msgs::PoseStamped &approaching_pose, 
                 const geometry_msgs::PoseStamped &docking_pose)
 {
-    docking_manager.initDocking();
-    return docking_manager.setupPoses(approaching_pose, docking_pose);
+    docking_manager_->initDocking();
+    return docking_manager_->setupPoses(approaching_pose, docking_pose);
 }
 
 bool AdaptiveDockingLocalPlanner::setPlan (const std_msgs::Header &header,
             const geometry_msgs::PoseStamped &approaching_pose, 
             const geometry_msgs::PoseStamped &docking_pose)
 {
-    docking_manager.initDocking();
-    return docking_manager.setupPoses(approaching_pose, docking_pose);
+    docking_manager_->initDocking();
+    return docking_manager_->setupPoses(approaching_pose, docking_pose);
 }
 
 /************* Execute Control ************/
@@ -56,11 +58,11 @@ uint32_t AdaptiveDockingLocalPlanner::ExecuteControlLoop(const geometry_msgs::Po
                                 geometry_msgs::Twist &cmd_vel,
                                 std::string &message)
 {
-    docking_manager.setRobotSpeed(velocity.twist);
-    docking_manager.dockingFSM();
-    if (docking_manager.docking_failed.data)
+    docking_manager_->setRobotSpeed(velocity.twist);
+    docking_manager_->dockingFSM();
+    if (docking_manager_->docking_failed.data)
         return mbf_msgs::ExePathResult::FAILURE;
-    cmd_vel = docking_manager.getCmdVel();
+    cmd_vel = docking_manager_->getCmdVel();
     return mbf_msgs::ExePathResult::SUCCESS;
 }
 
@@ -71,19 +73,19 @@ uint32_t AdaptiveDockingLocalPlanner::ExecuteControlLoop(const geometry_msgs::Po
 // Just use the IsGoalReached and set final tolerances if don't want to care about the other args
 void AdaptiveDockingLocalPlanner::setGoalRange(double dd)
 {
-    docking_manager.setGoalRange(dd);
+    docking_manager_->setGoalRange(dd);
 }
 
 bool AdaptiveDockingLocalPlanner::IsApproachingReached(double dx, double dy, double dyaw)
 {
-    docking_manager.setApproachingTolerance(dx, dy, dyaw);
-    return docking_manager.isApproachingReach();
+    docking_manager_->setApproachingTolerance(dx, dy, dyaw);
+    return docking_manager_->isApproachingReach();
 }
 
 bool AdaptiveDockingLocalPlanner::IsGoalReached(double dx, double dy, double dyaw)
 {
-    docking_manager.setDockingTolerance(dx, dy, dyaw);
-    return docking_manager.isGoalReach();
+    docking_manager_->setDockingTolerance(dx, dy, dyaw);
+    return docking_manager_->isGoalReach();
 }
 
 /*******Get Docking Result *********/
@@ -95,5 +97,5 @@ bool AdaptiveDockingLocalPlanner::IsGoalReached(double dx, double dy, double dya
 // 4: FAIL_TF_ERROR (Not implemented)
 uint8_t AdaptiveDockingLocalPlanner::getDockingResult()
 { 
-    return docking_manager.getDockingResult();
+    return docking_manager_->getDockingResult();
 }

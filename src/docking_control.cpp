@@ -8,7 +8,6 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     ROS_INFO("Docking Control Frequency: %f", docking_freq_);
     ROS_INFO("Docking Control Sampling Time: %f", dt_);
 
-    paramGet.param<std::string>("path_frame", path_frame_, "base_link_p");
     paramGet.param("/forklift_params/wheel_base", l_wheelbase_, 1.311);
     
     paramGet.param<bool>("publish_cmd", publish_cmd_, false);
@@ -103,6 +102,11 @@ void DockingControl::controllerOnCallback(const std_msgs::Bool::ConstPtr& msg)
 void DockingControl::approachingStatusCallback(const std_msgs::Bool::ConstPtr& msg)
 {
     approaching_done_.data = msg->data;
+}
+
+void DockingControl::setLocalFrame(std::string local_frame)
+{
+    path_frame_ = local_frame;
 }
 
 void DockingControl::setVel(geometry_msgs::Twist robot_speed)

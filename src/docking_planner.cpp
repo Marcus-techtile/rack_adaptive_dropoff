@@ -1,9 +1,7 @@
 #include "docking_planner.h"
 
-DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh)
-{
-    setParam(nh_);
-    
+DockingManager::DockingManager(ros::NodeHandle &nh, tf2_ros::Buffer &tf): nh_(nh), tf_(tf)
+{   
     /* Publisher */
     pub_docking_state = nh_.advertise<std_msgs::String>("/pallet_docking/docking_state", 1);
     pub_docking_done = nh_.advertise<std_msgs::Bool>("/pallet_docking/pallet_docking_done", 1);
@@ -22,19 +20,19 @@ DockingManager::DockingManager(ros::NodeHandle &nh): nh_(nh)
     failure_map_[0] = "PATH_IS_NOT_FEASIBLE";
     failure_map_[1] = "BAD_DOCKING_ACCURACY";
     failure_map_[2] = "TF_ERROR";
-
+    
     // Init the Docking
+    // tf_ = tf;
     initDocking();
 }
 
 DockingManager::~ DockingManager(){}
 
 /***** SET DOCKING PARAMS ******/
-void DockingManager::setParam(ros::NodeHandle &nh)
+void DockingManager::config()
 {
     /* Get Param */
-    // nh_.param<std::string>("global_frame", global_frame_, "odom");
-    nh_.param<std::string>("/move_base_flex/AD/global_frame_id", global_frame_, "map");
+    nh_.param<std::string>("/move_base_flex/AD/global_frame_id", global_frame_, "odom");
 
     /* Goal params */
     nh_.param<double>("approaching_min_dis", approaching_min_dis_, 1.2);
@@ -131,6 +129,7 @@ void DockingManager::setDockingTolerance(double dx, double dy, double dyaw)
 void DockingManager::setLocalFrame(std::string local_frame)
 {
     path_frame_ = local_frame;
+    docking_control.setLocalFrame(local_frame);
 }
 
 void DockingManager::setGLobalFrame(std::string global_frame)
@@ -147,7 +146,8 @@ void DockingManager::updateGoal()
     global_goal_pose_.header.stamp = ros::Time(0);
     try
     {
-        local_update_goal_pose_ = docking_tf_buffer.transform(global_goal_pose_, path_frame_, ros::Duration(1));
+        // local_update_goal_pose_ = tf_->transform(global_goal_pose_, path_frame_, ros::Duration(1));
+        tf_.transform(global_goal_pose_, local_update_goal_pose_, path_frame_, ros::Duration(1));
     }
     catch (tf2::TransformException ex)
     {
@@ -301,8 +301,11 @@ void DockingManager::goalSetup()
         docking_goal_.header.stamp = ros::Time(0);
         try
         {
-            tf_approaching_goal_ = docking_tf_buffer.transform(approaching_goal_, global_frame_, ros::Duration(1));
-            tf_docking_goal_ = docking_tf_buffer.transform(docking_goal_, global_frame_, ros::Duration(1));
+            // tf_approaching_goal_ = tf_->transform(approaching_goal_, global_frame_, ros::Duration(1));
+            // tf_docking_goal_ = tf_->transform(docking_goal_, global_frame_, ros::Duration(1));
+            
+            tf_.transform(approaching_goal_, tf_approaching_goal_, global_frame_, ros::Duration(1));
+            tf_.transform(docking_goal_, tf_docking_goal_, global_frame_, ros::Duration(1));
         }
         catch (tf2::TransformException ex)
         {
