@@ -1,38 +1,38 @@
 #include "docking_control.h"
 
-DockingControl::DockingControl(ros::NodeHandle &paramGet)
+DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf): nh_(nh), tf_buffer_c(tf)
 {
     /* Get Param */
-    paramGet.param<double>("docking_freq", docking_freq_, 50.0);
+    nh_.param<double>("docking_freq", docking_freq_, 50.0);
     dt_ = 1 / docking_freq_;                        // Calculate sampling time
     ROS_INFO("Docking Control Frequency: %f", docking_freq_);
     ROS_INFO("Docking Control Sampling Time: %f", dt_);
 
-    paramGet.param("/forklift_params/wheel_base", l_wheelbase_, 1.311);
+    nh_.param("/forklift_params/wheel_base", l_wheelbase_, 1.311);
     
-    paramGet.param<bool>("publish_cmd", publish_cmd_, false);
-    paramGet.param<double>("look_ahead_time", pp_look_ahead_time_, 3.0);
-    paramGet.param<double>("look_ahead_time_straigh_line", pp_look_ahead_time_straigh_line_, 5.0);
-    paramGet.param<double>("pp_min_lk_distance_approaching", pp_min_lk_distance_approaching_, 0.2);
-    paramGet.param<double>("pp_min_lk_distance_docking", pp_min_lk_distance_docking_, 0.4);
-    paramGet.param<double>("max_steering", max_steering_, 1.5);
-    paramGet.param<double>("min_steering", min_steering_, -1.5);
-    paramGet.param<double>("max_steering_speed", max_steering_speed_, 0.2);
-    paramGet.param<double>("min_steering_speed", min_steering_speed_, -0.2);
-    paramGet.param<double>("max_vel", max_vel_, 0.3);
-    paramGet.param<double>("min_vel", min_vel_, 0.15);
-    paramGet.param<double>("goal_correct_yaw", goal_correct_yaw_, 0.3);
-    paramGet.param<double>("max_angular_vel", max_angular_vel_, 0.2);
-    paramGet.param<bool>("adaptive_ref_angle", adaptive_ref_angle_, true);
+    nh_.param<bool>("publish_cmd", publish_cmd_, false);
+    nh_.param<double>("look_ahead_time", pp_look_ahead_time_, 3.0);
+    nh_.param<double>("look_ahead_time_straigh_line", pp_look_ahead_time_straigh_line_, 5.0);
+    nh_.param<double>("pp_min_lk_distance_approaching", pp_min_lk_distance_approaching_, 0.2);
+    nh_.param<double>("pp_min_lk_distance_docking", pp_min_lk_distance_docking_, 0.4);
+    nh_.param<double>("max_steering", max_steering_, 1.5);
+    nh_.param<double>("min_steering", min_steering_, -1.5);
+    nh_.param<double>("max_steering_speed", max_steering_speed_, 0.2);
+    nh_.param<double>("min_steering_speed", min_steering_speed_, -0.2);
+    nh_.param<double>("max_vel", max_vel_, 0.3);
+    nh_.param<double>("min_vel", min_vel_, 0.15);
+    nh_.param<double>("goal_correct_yaw", goal_correct_yaw_, 0.3);
+    nh_.param<double>("max_angular_vel", max_angular_vel_, 0.2);
+    nh_.param<bool>("adaptive_ref_angle", adaptive_ref_angle_, true);
 
-    paramGet.param<double>("fuzzy_lookahead_dis", fuzzy_lookahead_dis_, 0.3);
-    paramGet.param<bool>("limit_sp_curve", limit_sp_curve_, true);
-    paramGet.param<double>("backward_offset", backward_offset_, -0.02);
-    paramGet.param<double>("max_linear_acc", max_linear_acc_, 0.5);
-    paramGet.param<double>("min_linear_acc", min_linear_acc_, -0.5);
+    nh_.param<double>("fuzzy_lookahead_dis", fuzzy_lookahead_dis_, 0.3);
+    nh_.param<bool>("limit_sp_curve", limit_sp_curve_, true);
+    nh_.param<double>("backward_offset", backward_offset_, -0.02);
+    nh_.param<double>("max_linear_acc", max_linear_acc_, 0.5);
+    nh_.param<double>("min_linear_acc", min_linear_acc_, -0.5);
 
-    paramGet.param<double>("max_pocket_dock_vel", max_pocket_dock_vel_, 0.2);
-    paramGet.param<double>("max_pocket_dock_steering", max_pocket_dock_steering_, 0.2);
+    nh_.param<double>("max_pocket_dock_vel", max_pocket_dock_vel_, 0.2);
+    nh_.param<double>("max_pocket_dock_steering", max_pocket_dock_steering_, 0.2);
 
     /* ROS Publisher */
     pub_cmd_vel_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
@@ -54,8 +54,8 @@ DockingControl::DockingControl(ros::NodeHandle &paramGet)
     joint_states_sub_ = nh_.subscribe<sensor_msgs::JointState>("/joint_states", 1, &DockingControl::JointStateCallBack, this);
 
     /* Define the Controller */
-    fuzzy_controller = FuzzyControl(paramGet);
-    pure_pursuit_control = PurePursuitController(paramGet);
+    fuzzy_controller = FuzzyControl(nh_);
+    pure_pursuit_control = PurePursuitController(nh_);
 
     /* Initialize parameters */
     ref_path_avai_ = false;

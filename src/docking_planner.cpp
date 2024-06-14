@@ -2,6 +2,8 @@
 
 DockingManager::DockingManager(ros::NodeHandle &nh, tf2_ros::Buffer &tf): nh_(nh), tf_(tf)
 {   
+    /* Docking Control init */
+    docking_control_ = std::make_shared<DockingControl>(nh_, tf_);
     /* Publisher */
     pub_docking_state = nh_.advertise<std_msgs::String>("/pallet_docking/docking_state", 1);
     pub_docking_done = nh_.advertise<std_msgs::Bool>("/pallet_docking/pallet_docking_done", 1);
@@ -59,7 +61,7 @@ void DockingManager::initDocking()
     approaching_done.data = false;
     docking_failed.data = false;
 
-    docking_control.resetController();
+    docking_control_->resetController();
     quintic_planner.resetPlanner();
 
     check_inside_goal_range_ = false;
@@ -78,7 +80,7 @@ void DockingManager::initDocking()
 /***** RESET PLANNING AND CONTROL ******/
 void DockingManager::resetPlanAndControl()
 {
-    docking_control.resetController();
+    docking_control_->resetController();
     quintic_planner.resetPlanner();
     goal_setup_ = false;
     count_outside_goal_range_ = 0;
@@ -129,7 +131,7 @@ void DockingManager::setDockingTolerance(double dx, double dy, double dyaw)
 void DockingManager::setLocalFrame(std::string local_frame)
 {
     path_frame_ = local_frame;
-    docking_control.setLocalFrame(local_frame);
+    docking_control_->setLocalFrame(local_frame);
 }
 
 void DockingManager::setGLobalFrame(std::string global_frame)
@@ -380,7 +382,7 @@ void DockingManager::setGoalState()
 ////// Gen Path State /////
 void DockingManager::setRobotSpeed(geometry_msgs::Twist robot_speed)
 {
-    docking_control.setVel(robot_speed);
+    docking_control_->setVel(robot_speed);
 }
 
 void DockingManager::quinticPlannerSetup()
@@ -447,13 +449,13 @@ void DockingManager::genPathAndPubControlState()
     } 
 
     // Start the controller
-    if (quintic_planner.path_avai_ && !docking_control.controller_on_.data)
+    if (quintic_planner.path_avai_ && !docking_control_->controller_on_.data)
     {
-        docking_control.controller_on_.data = true;
+        docking_control_->controller_on_.data = true;
         // pub_controller_on_.publish(controller_on_);
     }
-    docking_control.controllerCal();
-    if (docking_control.invalid_control_signal_)
+    docking_control_->controllerCal();
+    if (docking_control_->invalid_control_signal_)
     {
         docking_state.data = "FAILURE";
         current_pallet_docking_state_ = FAILURE;
@@ -583,7 +585,7 @@ void DockingManager::dockingFSM()
 
 geometry_msgs::Twist DockingManager::getCmdVel()
 {
-    return docking_control.cmd_vel_;
+    return docking_control_->cmd_vel_;
 }
 
 

@@ -90,8 +90,7 @@ private:
     double pp_min_lk_distance_docking_;
 
     /* tf conversion */
-    tf2_ros::Buffer tf_buffer_c;
-    tf2_ros::TransformListener listener{tf_buffer_c};
+    tf2_ros::Buffer &tf_buffer_c;
 
     /* Limit angular rate */
     double max_angular_vel_;
@@ -110,7 +109,7 @@ private:
     void approachingStatusCallback(const std_msgs::Bool::ConstPtr& msg);
 
 public:
-    DockingControl(ros::NodeHandle &paramGet);
+    DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf);
     ~DockingControl();
 
     /* Functions */

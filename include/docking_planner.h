@@ -62,7 +62,7 @@ private:
 
     /* Auxiliary class*/
     QuinticPlanner quintic_planner{nh_};
-    DockingControl docking_control{nh_};
+    std::shared_ptr<DockingControl> docking_control_;
 
     /* Turn on controller */
     std_msgs::Bool controller_on_;      // on/off signal for controller
