@@ -120,7 +120,7 @@ private:
     std::string global_frame_;
 
     tf2_ros::Buffer& tf_;
-    // std::shared_ptr<tf2_ros::TransformListener> docking_listener;
+    double tf_time_out_{1.0};
 
     /* Mutex */
     std::mutex mutex_;
@@ -132,7 +132,7 @@ private:
     void updateGoal();
     void checkGoalReach();
 public:
-    DockingManager(ros::NodeHandle &nh, tf2_ros::Buffer &tf);
+    DockingManager(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double sec);
     ~ DockingManager();
     void config();
 

@@ -90,6 +90,7 @@ private:
 
     /* tf conversion */
     tf2_ros::Buffer &tf_buffer_c;
+    double tf_time_out_{1.0};
 
     /* Limit angular rate */
     double max_angular_vel_;
@@ -108,7 +109,7 @@ private:
     void approachingStatusCallback(const std_msgs::Bool::ConstPtr& msg);
 
 public:
-    DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf);
+    DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double sec);
     ~DockingControl();
 
     /* Functions */

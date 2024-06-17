@@ -1,11 +1,14 @@
 #include "docking_planner.h"
 
-DockingManager::DockingManager(ros::NodeHandle &nh, tf2_ros::Buffer &tf): nh_(nh), tf_(tf)
+/****** Constructor *******/
+// tf: tf_buffer
+// sec: tf_buffer timeout
+DockingManager::DockingManager(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double sec): nh_(nh), tf_(tf), tf_time_out_(sec)
 {   
     /* Docking Control init */
-    docking_control_ = std::make_shared<DockingControl>(nh_, tf_);
+    docking_control_ = std::make_shared<DockingControl>(nh_, tf_, tf_time_out_);
     /* Quintic Planner init */
-    quintic_planner_ = std::make_shared<QuinticPlanner>(nh_, tf_);
+    quintic_planner_ = std::make_shared<QuinticPlanner>(nh_, tf_, tf_time_out_);
     /* Publisher */
     pub_docking_state = nh_.advertise<std_msgs::String>("/pallet_docking/docking_state", 1);
     pub_docking_done = nh_.advertise<std_msgs::Bool>("/pallet_docking/pallet_docking_done", 1);
@@ -152,7 +155,7 @@ void DockingManager::updateGoal()
     global_goal_pose_.header.stamp = ros::Time(0);
     try
     {
-        tf_.transform(global_goal_pose_, local_update_goal_pose_, path_frame_, ros::Duration(1));
+        tf_.transform(global_goal_pose_, local_update_goal_pose_, path_frame_, ros::Duration(tf_time_out_));
     }
     catch (tf2::TransformException ex)
     {
@@ -306,11 +309,11 @@ void DockingManager::goalSetup()
         docking_goal_.header.stamp = ros::Time(0);
         try
         {
-            // tf_approaching_goal_ = tf_->transform(approaching_goal_, global_frame_, ros::Duration(1));
-            // tf_docking_goal_ = tf_->transform(docking_goal_, global_frame_, ros::Duration(1));
+            // tf_approaching_goal_ = tf_->transform(approaching_goal_, global_frame_, ros::Duration(tf_time_out_));
+            // tf_docking_goal_ = tf_->transform(docking_goal_, global_frame_, ros::Duration(tf_time_out_));
             
-            tf_.transform(approaching_goal_, tf_approaching_goal_, global_frame_, ros::Duration(1));
-            tf_.transform(docking_goal_, tf_docking_goal_, global_frame_, ros::Duration(1));
+            tf_.transform(approaching_goal_, tf_approaching_goal_, global_frame_, ros::Duration(tf_time_out_));
+            tf_.transform(docking_goal_, tf_docking_goal_, global_frame_, ros::Duration(tf_time_out_));
         }
         catch (tf2::TransformException ex)
         {

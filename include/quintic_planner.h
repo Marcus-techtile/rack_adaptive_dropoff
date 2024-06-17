@@ -61,10 +61,11 @@ private:
 
     /* tf conversion */
     tf2_ros::Buffer &tf_buffer;
+    double tf_time_out_{1.0};
 
 public:
     /* function */
-    QuinticPlanner(ros::NodeHandle &nh, tf2_ros::Buffer &tf);
+    QuinticPlanner(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double sec);
 
     /* Quintic planner */
     bool set_param_{false};

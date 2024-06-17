@@ -1,6 +1,6 @@
 #include "docking_control.h"
 
-DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf): nh_(nh), tf_buffer_c(tf)
+DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double sec): nh_(nh), tf_buffer_c(tf), tf_time_out_(sec)
 {
     /* Get Param */
     nh_.param<double>("docking_freq", docking_freq_, 50.0);
@@ -156,7 +156,7 @@ nav_msgs::Path DockingControl::convertPathtoLocalFrame(nav_msgs::Path global_pat
         global_path.poses.at(i).header.stamp = ros::Time(0);
         try
         {
-            local_ref_path.poses.push_back(tf_buffer_c.transform(global_path.poses.at(i), path_frame_, ros::Duration(1)));
+            local_ref_path.poses.push_back(tf_buffer_c.transform(global_path.poses.at(i), path_frame_, ros::Duration(tf_time_out_)));
         }
         catch (tf2::TransformException ex)
         {

@@ -10,13 +10,12 @@ AdaptiveDockingLocalPlanner::AdaptiveDockingLocalPlanner(ros::NodeHandle &nh) : 
 
 AdaptiveDockingLocalPlanner::~AdaptiveDockingLocalPlanner(){}
 
-/*********** Init ***********/
-void AdaptiveDockingLocalPlanner::initialize(tf2_ros::Buffer &tf)
+void AdaptiveDockingLocalPlanner::initialize(tf2_ros::Buffer &tf, double sec)
 {
-    docking_manager_ = std::make_unique<DockingManager>(nh_, tf);
+    docking_manager_ = std::make_unique<DockingManager>(nh_, tf, sec);
     docking_manager_->config();
     docking_manager_->initDocking();
-    ROS_INFO("Init AD");  
+    ROS_INFO("Init Adaptive Docking Local Planner");  
 }
 
 /************ Set Frame ************/

@@ -17,9 +17,13 @@ public:
     AdaptiveDockingLocalPlanner(ros::NodeHandle &nh);
     ~AdaptiveDockingLocalPlanner();
        
-    /**** MBF Interface ****/
-    // 
-    void initialize(tf2_ros::Buffer &tf);
+/**
+ * @brief Initialize the Adaptive Local Planner.
+ * @param tf tf_buffer
+ * @param sec tf transform timeout (second). Default: 1s
+ */
+    void initialize(tf2_ros::Buffer &tf, double sec);
+
     bool setPlan (const std_msgs::Header &header, 
 				const geometry_msgs::PoseStamped &starting_pose,
 				const geometry_msgs::PoseStamped &approaching_pose, 

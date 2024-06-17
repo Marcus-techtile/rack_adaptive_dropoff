@@ -54,7 +54,7 @@ double QuinticPolynominal::cal_jerk(double ti)
 }
 
 /* Quintic Planner Class */
-QuinticPlanner::QuinticPlanner(ros::NodeHandle &nh, tf2_ros::Buffer &tf):nh_(nh), tf_buffer(tf)
+QuinticPlanner::QuinticPlanner(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double sec):nh_(nh), tf_buffer(tf), tf_time_out_{1.0}
 {
     /* Get Param */
     nh_.param<double>("starting_vel", starting_vel_, 0.01);
