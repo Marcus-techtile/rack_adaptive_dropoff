@@ -19,9 +19,6 @@ class DockingControl
 private:
     ros::NodeHandle nh_;
 
-    /* Subscriber */
-    ros::Subscriber sub_ref_path_;
-
     /* Publisher */
     ros::Publisher pub_cmd_vel_;
     ros::Publisher pub_pp_steering_;
