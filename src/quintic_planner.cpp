@@ -237,14 +237,14 @@ void QuinticPlanner::genPath()
     else
     {
         /* Convert path to global frame global_frame_ */ 
-        local_quintic_path_.poses.clear();
-        local_quintic_path_.header.frame_id = global_frame_;
+        global_quintic_path_.poses.clear();
+        global_quintic_path_.header.frame_id = global_frame_;
         for (int i = 0; i < quintic_path_.poses.size(); i++)
         {
             quintic_path_.poses.at(i).header.stamp = ros::Time(0);
             try
             {
-                local_quintic_path_.poses.push_back(tf_buffer.transform(quintic_path_.poses.at(i), global_frame_, ros::Duration(1)));
+                global_quintic_path_.poses.push_back(tf_buffer.transform(quintic_path_.poses.at(i), global_frame_, ros::Duration(1)));
             }
             catch (tf2::TransformException ex)
             {
@@ -252,7 +252,7 @@ void QuinticPlanner::genPath()
             }
         }
 
-        pub_quintic_path_.publish(local_quintic_path_);
+        pub_quintic_path_.publish(global_quintic_path_);
         pub_quintic_pose_.publish(quintic_pose_);
         path_avai_ = true;
     } 

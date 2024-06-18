@@ -72,7 +72,7 @@ public:
     std::string path_frame_{"base_link_p"};
     std::string global_frame_{"map"};
     geometry_msgs::PoseArray quintic_pose_;
-    nav_msgs::Path quintic_path_, local_quintic_path_; 
+    nav_msgs::Path quintic_path_, global_quintic_path_; 
 
     double min_t_; //min time to goal
     double max_t_; //max time to goal
