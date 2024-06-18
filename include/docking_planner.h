@@ -182,6 +182,6 @@ public:
     std_msgs::Bool docking_failed;
 
     enum class dockingResult:uint8_t{PROCESS, SUCCESS, FAIL_DOCKING_PATH_IS_NOT_FEASIBLE, 
-                                FAIL_DOCKING_BAD_ACCURACY, FAIL_TF_ERROR};
+                                FAIL_DOCKING_BAD_ACCURACY, FAIL_TF_ERROR, FAIL_INVALID_CONTROL_OUTPUT};
     dockingResult docking_result; 
 };

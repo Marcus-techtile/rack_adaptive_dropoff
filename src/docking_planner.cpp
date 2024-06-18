@@ -26,10 +26,10 @@ DockingManager::DockingManager(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
     /*Define failure cases */
     failure_map_[0] = "PATH_IS_NOT_FEASIBLE";
     failure_map_[1] = "BAD_DOCKING_ACCURACY";
-    failure_map_[2] = "TF_ERROR";
+    failure_map_[2] = "DOCKING_TIME_OUT";
+    failure_map_[3] = "INVALID_CONTROL_OUTPUT";
     
     // Init the Docking
-    // tf_ = tf;
     initDocking();
 }
 
@@ -262,7 +262,6 @@ void DockingManager::approachingState()
     docking_state.data = "APPROACHING";
     if (!approach_done_)
     {
-        // goal_distance = dis_approach_offset_;
         current_pallet_docking_state_ = SET_GOAL;  
     }
     else 
@@ -270,6 +269,7 @@ void DockingManager::approachingState()
         approaching_done.data = true;
         current_pallet_docking_state_ = DOCKING;
     }
+    docking_control_->approaching_done_.data = approach_done_;
 }
 
 ////// Docking State /////
@@ -457,6 +457,7 @@ void DockingManager::genPathAndPubControlState()
     // Start the controller
     if (quintic_planner_->path_avai_ && !docking_control_->controller_on_.data)
     {
+        docking_control_->setRefPath(quintic_planner_->global_quintic_path_);
         docking_control_->controller_on_.data = true;
         // pub_controller_on_.publish(controller_on_);
     }
@@ -464,6 +465,7 @@ void DockingManager::genPathAndPubControlState()
     if (docking_control_->invalid_control_signal_)
     {
         docking_state.data = "FAILURE";
+        failure_code_ = 3;
         current_pallet_docking_state_ = FAILURE;
         return;
     }
@@ -479,8 +481,6 @@ void DockingManager::recoverState()
 void DockingManager::endState()
 {
     docking_state.data = "END";
-    docking_done.data = true;
-    docking_result = dockingResult::SUCCESS;
 }
 
 ////// Stop State /////
@@ -489,19 +489,24 @@ void DockingManager::stopState()
     docking_state.data = "STOP";
     resetPlanAndControl();
     ros::Duration(1.0).sleep();
-    if (docking_done_) current_pallet_docking_state_ = END;
+    if (docking_done_)
+    {
+        docking_done.data = true;
+        current_pallet_docking_state_ = END;
+        if (isGoalReach()) docking_result = dockingResult::SUCCESS;
+    } 
     else 
     {
         current_pallet_docking_state_ = APPROACHING;
         ros::Duration(1.0).sleep();
-    }
+    } 
 }
 
 ////// Failure State /////
 void DockingManager::failureState()
 {
     resetPlanAndControl();
-    ROS_INFO_ONCE("FAILURE: %s. ABORTED!", failure_map_[failure_code_].c_str());
+    ROS_ERROR("FAILURE: %s. ABORTED!", failure_map_[failure_code_].c_str());
     docking_state.data = "FAILURE: " + failure_map_[failure_code_];
     docking_failed.data = true;
     switch (failure_code_)
@@ -515,7 +520,11 @@ void DockingManager::failureState()
         case 2: 
             docking_result = dockingResult::FAIL_TF_ERROR;
             break;
+        case 3:
+            docking_result = dockingResult::FAIL_INVALID_CONTROL_OUTPUT;
+            break;
     }
+    current_pallet_docking_state_ = END;
 }
 
 ////// FSM setup ///////
