@@ -46,13 +46,6 @@ DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
     pub_pp_lookahead_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("pallet_docking/pp_lookahead_pose", 1);
     pub_nearest_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("pallet_docking/nearest_pose", 1);
 
-    /* ROS Subscriber */
-    sub_odom_ = nh_.subscribe<nav_msgs::Odometry>("/gazebo/forklift_controllers/odom", 1, &DockingControl::odomCallback, this);
-    sub_ref_path_ = nh_.subscribe<nav_msgs::Path>("/pallet_docking/quintic_path", 1, &DockingControl::refPathCallback, this);
-    sub_controller_on_ = nh_.subscribe<std_msgs::Bool>("/pallet_docking/controller_turn_on", 1, &DockingControl::controllerOnCallback, this);
-    sub_approaching_status_ = nh_.subscribe<std_msgs::Bool>("/pallet_docking/pallet_approaching_done", 1, &DockingControl::approachingStatusCallback, this);
-    joint_states_sub_ = nh_.subscribe<sensor_msgs::JointState>("/joint_states", 1, &DockingControl::JointStateCallBack, this);
-
     /* Define the Controller */
     fuzzy_controller = FuzzyControl(nh_);
     pure_pursuit_control = PurePursuitController(nh_);
@@ -66,42 +59,11 @@ DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
 
 DockingControl::~DockingControl(){}
 
-/***** Callback function *****/
-void DockingControl::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_odom)
+void DockingControl::setRefPath(nav_msgs::Path path)
 {
-    odom_sub_.pose = msg_odom->pose;
-    odom_sub_.twist = msg_odom->twist;
-    odom_avai_ = true;
-}
-
-void DockingControl::JointStateCallBack(const sensor_msgs::JointState::ConstPtr &msg)
-{
-    for (int i = 0; i < msg->name.size(); i++) {
-        if (msg->name.at(i) == "drive_steer_joint" ) {
-        steering_sub_ = msg->position.at(i);
-        ROS_DEBUG("JointStateCallBack: steering angle: %f", steering_sub_);
-        break;
-        }
-    }
-}
-
-void DockingControl::refPathCallback(const nav_msgs::Path::ConstPtr& msg)
-{
-    ref_path_ = *msg;
-    if (ref_path_.poses.size() > 1)
-        ref_path_avai_ = true;
+    ref_path_ = path;
+    if (ref_path_.poses.size() > 1) ref_path_avai_ = true;
     else ref_path_avai_ = false;
-}
-
-void DockingControl::controllerOnCallback(const std_msgs::Bool::ConstPtr& msg)
-{
-    controller_on_.data = msg->data;
-    ROS_INFO("CONTROLLER IS TRIGGERED: %d !", controller_on_.data);
-}
-
-void DockingControl::approachingStatusCallback(const std_msgs::Bool::ConstPtr& msg)
-{
-    approaching_done_.data = msg->data;
 }
 
 void DockingControl::setVel(geometry_msgs::Twist robot_speed)
@@ -127,11 +89,6 @@ void DockingControl::resetController()
 /***** Check Required Data *****/
 bool DockingControl::checkData()
 {
-    if(!odom_avai_)
-    {
-        ROS_WARN("No Odometry!!!");
-        return false; 
-    }
     if (!ref_path_avai_)
     {
         ROS_DEBUG("No ref path!!!");
@@ -314,9 +271,8 @@ void DockingControl::controllerCal()
     if(isnan(steering_) || isnan(final_ref_vel_))
     {
         invalid_control_signal_ = true;
-        ROS_ERROR("NAN NUMBER ! RESET CONTROLLER");
+        ROS_ERROR("NAN NUMBER ! STOP THE CONTROLLER");
         controller_on_.data = false;
-        resetController();
         return;
     }
 

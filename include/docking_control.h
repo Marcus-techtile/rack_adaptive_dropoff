@@ -8,7 +8,6 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
 
-#include <sensor_msgs/JointState.h>
 #include <visualization_msgs/Marker.h>
 
 #include "fuzzy_control.h"
@@ -21,10 +20,7 @@ private:
     ros::NodeHandle nh_;
 
     /* Subscriber */
-    ros::Subscriber sub_odom_, sub_steering_;
     ros::Subscriber sub_ref_path_;
-    ros::Subscriber sub_controller_on_, sub_approaching_status_;
-    ros::Subscriber joint_states_sub_;
 
     /* Publisher */
     ros::Publisher pub_cmd_vel_;
@@ -36,13 +32,6 @@ private:
     ros::Publisher pub_pp_lookahead_pose_, pub_nearest_pose_;;
     ros::Publisher pub_pp_lookahead_curvature_;
     ros::Publisher marker_pub_;
-
-    /* Odometry sub */
-    nav_msgs::Odometry odom_sub_;
-    bool odom_avai_{false};
-
-    /* Steering sub */
-    double steering_sub_;
 
     double docking_freq_;
     double dt_;
@@ -56,7 +45,6 @@ private:
     geometry_msgs::Twist robot_speed_;
 
     /* Control general variable */
-    std_msgs::Bool approaching_done_;
     bool pub_stop_{false};
 
     /* PP tune parameters */
@@ -101,13 +89,6 @@ private:
     /* Mutex */
     std::mutex mutex_;
 
-    /* Callback function */
-    void odomCallback(const nav_msgs::Odometry::ConstPtr& msg_odom);
-    void JointStateCallBack(const sensor_msgs::JointState::ConstPtr &msg);
-    void refPathCallback(const nav_msgs::Path::ConstPtr& msg);
-    void controllerOnCallback(const std_msgs::Bool::ConstPtr& msg);
-    void approachingStatusCallback(const std_msgs::Bool::ConstPtr& msg);
-
 public:
     DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double sec);
     ~DockingControl();
@@ -115,6 +96,7 @@ public:
     /* Functions */
     void resetController();
     bool checkData();
+    void setRefPath(nav_msgs::Path path);
     void setVel(geometry_msgs::Twist robot_speed);
     nav_msgs::Path convertPathtoLocalFrame(nav_msgs::Path global_path);
     int nearestPointIndexFind(nav_msgs::Path local_path);
@@ -125,6 +107,7 @@ public:
     /* Output control command */
     geometry_msgs::Twist cmd_vel_;   // command velocity
 
+    std_msgs::Bool approaching_done_;
     std_msgs::Bool controller_on_;
     bool invalid_control_signal_;
     bool publish_cmd_{false};
