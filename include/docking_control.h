@@ -23,7 +23,6 @@ private:
     ros::Publisher pub_cmd_vel_;
     ros::Publisher pub_pp_steering_;
     ros::Publisher pub_local_path_;
-    ros::Publisher pub_debug_;
     ros::Publisher pub_pp_lookahead_distance_;
     ros::Publisher pub_pp_lookahead_angle_;
     ros::Publisher pub_pp_lookahead_pose_, pub_nearest_pose_;;
@@ -41,8 +40,9 @@ private:
     double l_wheelbase_;
     geometry_msgs::Twist robot_speed_;
 
-    /* Control general variable */
-    bool pub_stop_{false};
+    /* control point index */
+    int nearest_index_;
+    int lk_index_vel_;
 
     /* PP tune parameters */
     double max_steering_;   // max steering wheel angle
@@ -86,6 +86,8 @@ private:
     /* Mutex */
     std::mutex mutex_;
 
+    void visualize();
+
 public:
     DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double sec);
     ~DockingControl();
@@ -97,6 +99,9 @@ public:
     void setVel(geometry_msgs::Twist robot_speed);
     nav_msgs::Path convertPathtoLocalFrame(nav_msgs::Path global_path);
     int nearestPointIndexFind(nav_msgs::Path local_path);
+    void steeringControl();
+    void linearSpeedControl();
+    void limitControlSignal();
     void controllerCal();
 
     std::string path_frame_{"base_link_p"};
