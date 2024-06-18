@@ -87,13 +87,6 @@ bool AdaptiveDockingLocalPlanner::IsGoalReached(double dx, double dy, double dya
     return docking_manager_->isGoalReach();
 }
 
-/*******Get Docking Result *********/
-////////// Result Code
-// 0: PROCESS (AD is still processing)
-// 1: SUCCESS 
-// 2: FAIL_DOCKING_PATH_IS_NOT_FEASIBLE
-// 3: FAIL_DOCKING_BAD_ACCURACY
-// 4: FAIL_TF_ERROR (Not implemented)
 uint8_t AdaptiveDockingLocalPlanner::getDockingResult()
 { 
     return docking_manager_->getDockingResult();

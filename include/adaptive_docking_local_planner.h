@@ -37,18 +37,25 @@ public:
                                     std::string &message);
     bool IsApproachingReached(double dx, double dy, double dyaw);
     bool IsGoalReached(double dx, double dy, double dyaw);
+/**
+ * @brief Return Docking Result Code.
+ * 
+ * This function returns various result codes based on the outcome
+ * of the docking process.
+ *
+ * @return The docking result code:
+ * - 0: PROCESS (AD is still processing).
+ * - 1: SUCCESS.
+ * - 2: FAIL_DOCKING_PATH_IS_NOT_FEASIBLE.
+ * - 3: FAIL_DOCKING_BAD_ACCURACY.
+ * - 4: FAIL_TF_ERROR (Not implemented).
+ * - 5: FAIL_INVALID_CONTROL_OUTPUT.
+ */
     uint8_t getDockingResult();
     // Addition methods
     void setGoalRange(double dd);
     void setLocalFrame(std::string local_frame);
     void setGlobalFrame(std::string global_frame);
-    void SetApproachingTolerance (const double dx, const double dy, const double dyaw);
-    void SetMaxSpeed(const double max_linear_speed);
-
-
-
-
-
 };
 } //namespace
 #endif // ADAPTIVE_DOCKING_LOCAL_PLANNER_H
