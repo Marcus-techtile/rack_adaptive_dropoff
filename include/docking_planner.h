@@ -86,12 +86,15 @@ private:
 
     /* Tolerance (in local frame) */
     double goal_range_{0.1};       // absolute distance = sqrt(x^2+y^2) is consider inside goal range
-    double app_angle_tolerance_{0.05}, docking_angle_tolerance_;    // absolute tolerance of yaw
+    double app_angle_tolerance_{0.05}, docking_angle_tolerance_{0.03};    // absolute tolerance of yaw
     double app_x_tolerance_{0.03}, docking_x_tolerance_{0.01};
     double app_y_tolerance_{0.03}, docking_y_tolerance_{0.025};              // absolute tolerance of x
-    double x_tolerance_, y_tolerance_, angle_tolerance_{0.03};
+    double x_tolerance_, y_tolerance_, angle_tolerance_;
     bool check_inside_goal_range_{false};       // if the distance error < distance tol -> inside goal range
     int count_outside_goal_range_;
+
+    // limit for final docking tolerance
+    double limit_tol_x_{0.01}, limit_tol_y_{0.02}, limit_tol_angle_{0.03};
 
     /* Docking State Control */
     bool start_pallet_docking_, start_returning_;
@@ -143,7 +146,7 @@ public:
                 geometry_msgs::PoseStamped docking_pose);
     void setGoalRange(double dd);
     void setApproachingTolerance(double dx, double dy, double dyaw);
-    void setDockingTolerance(double dx, double dy, double dyaw);
+    void setDockingTolerance(double &dx, double &dy, double &dyaw);
     void setLocalFrame(std::string local_frame);
     void setGLobalFrame(std::string global_frame);
 

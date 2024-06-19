@@ -126,8 +126,15 @@ void DockingManager::setApproachingTolerance(double dx, double dy, double dyaw)
     app_angle_tolerance_ = dyaw;
 }
 
-void DockingManager::setDockingTolerance(double dx, double dy, double dyaw)
+void DockingManager::setDockingTolerance(double &dx, double &dy, double &dyaw)
 {
+    if (dx < limit_tol_x_ || dy < limit_tol_y_ || dyaw < limit_tol_angle_) 
+    {
+        if (dx < limit_tol_x_) dx = limit_tol_x_;
+        if (dy < limit_tol_y_) dy = limit_tol_y_;
+        if (dyaw < limit_tol_angle_) dyaw = limit_tol_angle_;
+        ROS_WARN("Invalid tolerances. Limit to minimum values (%f, %f, %f)", dx, dy, dyaw);
+    }
     docking_x_tolerance_ = dx;
     docking_y_tolerance_ = dy;
     docking_angle_tolerance_ = dyaw;
@@ -309,9 +316,6 @@ void DockingManager::goalSetup()
         docking_goal_.header.stamp = ros::Time(0);
         try
         {
-            // tf_approaching_goal_ = tf_->transform(approaching_goal_, global_frame_, ros::Duration(tf_time_out_));
-            // tf_docking_goal_ = tf_->transform(docking_goal_, global_frame_, ros::Duration(tf_time_out_));
-            
             tf_.transform(approaching_goal_, tf_approaching_goal_, global_frame_, ros::Duration(tf_time_out_));
             tf_.transform(docking_goal_, tf_docking_goal_, global_frame_, ros::Duration(tf_time_out_));
         }
