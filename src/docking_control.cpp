@@ -36,14 +36,14 @@ DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
 
     /* ROS Publisher */
     pub_cmd_vel_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
-    pub_local_path_ = nh_.advertise<nav_msgs::Path>("pallet_docking/local_ref_path", 1);
+    pub_local_path_ = nh_.advertise<nav_msgs::Path>("/pallet_docking/local_ref_path", 1);
     marker_pub_ = nh_.advertise<visualization_msgs::Marker>("/pallet_docking/marker", 1);
-    pub_pp_lookahead_distance_ = nh_.advertise<std_msgs::Float32>("pallet_docking/purepursuit_lookahead_distance", 1);
-    pub_pp_lookahead_angle_ = nh_.advertise<std_msgs::Float32>("pallet_docking/purepursuit_lookahead_angle", 1);
-    pub_pp_lookahead_curvature_ = nh_.advertise<std_msgs::Float32>("pallet_docking/purepursuit_lookahead_curvature", 1);
-    pub_pp_steering_ = nh_.advertise<std_msgs::Float32>("pallet_docking/pp_steering_angle", 1);
-    pub_pp_lookahead_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("pallet_docking/pp_lookahead_pose", 1);
-    pub_nearest_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("pallet_docking/nearest_pose", 1);
+    pub_pp_lookahead_distance_ = nh_.advertise<std_msgs::Float32>("/pallet_docking/purepursuit_lookahead_distance", 1);
+    pub_pp_lookahead_angle_ = nh_.advertise<std_msgs::Float32>("/pallet_docking/purepursuit_lookahead_angle", 1);
+    pub_pp_lookahead_curvature_ = nh_.advertise<std_msgs::Float32>("/pallet_docking/purepursuit_lookahead_curvature", 1);
+    pub_pp_steering_ = nh_.advertise<std_msgs::Float32>("/pallet_docking/pp_steering_angle", 1);
+    pub_pp_lookahead_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("/pallet_docking/pp_lookahead_pose", 1);
+    pub_nearest_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("/pallet_docking/nearest_pose", 1);
 
     /* Define the Controller */
     fuzzy_controller = FuzzyControl(nh_);
