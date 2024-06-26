@@ -19,9 +19,6 @@ DockingManager::DockingManager(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
     pub_global_goal_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("/pallet_docking/global_goal_pose", 10);
     pub_local_goal_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("/pallet_docking/local_goal_pose", 10);
     pub_docking_error_ = nh_.advertise<geometry_msgs::Vector3>("/pallet_docking/docking_error", 1);
-
-    /* Service*/
-    service_ = nh_.advertiseService("/pallet_docking_service", &DockingManager::dockingServiceCb, this);
     
     /*Define failure cases */
     failure_map_[0] = "PATH_IS_NOT_FEASIBLE";
@@ -89,29 +86,6 @@ void DockingManager::resetPlanAndControl()
     quintic_planner_->resetPlanner();
     goal_setup_ = false;
     count_outside_goal_range_ = 0;
-}
-
-/***** DOCKING SERVICE CALLBACK *****/
-bool DockingManager::dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
-{
-    if(req.data)
-    {
-        res.success = true;
-        res.message = "Start docking!"; 
-        start_docking_FSM = true;
-        ROS_INFO("Docking is turned on");
-    }
-    else
-    {
-        initDocking();
-        resetPlanAndControl();
-        start_docking_FSM = false;
-        res.success = true;
-        res.message = "Stop docking!";
-        returning_mode_.data = false;
-        ROS_INFO("Docking is turned off");
-    }
-    return true;
 }
 
 void DockingManager::setGoalRange(double dd)

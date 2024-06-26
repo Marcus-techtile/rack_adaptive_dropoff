@@ -40,9 +40,6 @@ private:
     /* Subscriber */
     ros::Subscriber sub_cmd_vel;
     ros::Subscriber sub_move_back_;
-
-    /* Docking Service*/
-    ros::ServiceServer service_;
     
         // Pallet docking action server
     ros::Subscriber sub_docking_server_result_;
@@ -127,9 +124,6 @@ private:
 
     /* Mutex */
     std::mutex mutex_;
-
-    /* Callback function */
-    bool dockingServiceCb(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
 
     void goalSetup();
     void updateGoal();
