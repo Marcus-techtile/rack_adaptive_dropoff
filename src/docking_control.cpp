@@ -66,6 +66,7 @@ void DockingControl::resetController()
     ref_path_.poses.clear();
     ref_path_avai_ = false;
     steering_ = 0;
+    abs_ref_vel_ = 0;
     final_ref_vel_ = 0;
 }
 
