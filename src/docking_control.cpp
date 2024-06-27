@@ -224,6 +224,8 @@ void DockingControl::linearSpeedControl()
     final_ref_vel_ = abs_ref_vel_;
     if (local_ref_path_.poses.at(lk_index_vel_).pose.position.x < backward_offset_)
         if (final_ref_vel_ > 0) final_ref_vel_ = -final_ref_vel_;
+    
+    ROS_DEBUG("Linear speed from Fuzzy: %f", final_ref_vel_);
 }
 
 void DockingControl::limitControlSignal()
@@ -243,7 +245,8 @@ void DockingControl::limitControlSignal()
     {
         if (abs(steering_) >= max_pocket_dock_steering_) steering_ = max_pocket_dock_steering_*(abs(steering_)/steering_);
         if (abs(final_ref_vel_) >= max_pocket_dock_vel_) final_ref_vel_ = max_pocket_dock_vel_ * (final_ref_vel_/abs(final_ref_vel_));
-    }    
+    }   
+    ROS_DEBUG("Linear speed after limit: %f", final_ref_vel_); 
 }
 
 void DockingControl::controllerCal()
