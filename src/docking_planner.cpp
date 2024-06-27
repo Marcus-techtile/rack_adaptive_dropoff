@@ -578,6 +578,8 @@ void DockingManager::dockingFSM()
 
 geometry_msgs::Twist DockingManager::getCmdVel()
 {
+    ROS_DEBUG("PLanner CMD_VEL (v,w): %f, %f", docking_control_->cmd_vel_.linear.x,
+                                        docking_control_->cmd_vel_.angular.z);
     return docking_control_->cmd_vel_;
 }
 

@@ -279,6 +279,9 @@ void DockingControl::controllerCal()
     cmd_vel_.linear.x = final_ref_vel_;
     cmd_vel_.angular.z = steering_;
 
+    ROS_DEBUG("Control CMD_VEL (v,w): %f, %f", cmd_vel_.linear.x,
+                                        cmd_vel_.angular.z);
+
     if (publish_cmd_) pub_cmd_vel_.publish(cmd_vel_);
 }
 
