@@ -204,6 +204,7 @@ void DockingControl::linearSpeedControl()
     if (abs(local_ref_path_.poses.at(local_ref_path_.poses.size()-1).pose.position.x) < fuzzy_lk_dis)
         lk_index_vel_ = local_ref_path_.poses.size()-1;
     
+    ROS_DEBUG("Fuzzy lk_index_vel_: %d", lk_index_vel_);
     fuzzy_controller.inputSolveGoal(abs(fuzzy_lk_dis));
     if (limit_sp_curve_)
         fuzzy_controller.inputsolveSteering(pure_pursuit_control.look_ahead_curvature_);
@@ -215,17 +216,21 @@ void DockingControl::linearSpeedControl()
     else
         ref_velocity_ = fuzzy_controller.cal_fuzzy_output() * cos(steering_);
     
+    ROS_DEBUG("Linear speed from Fuzzy: %f", ref_velocity_);
     // Smooth the velocity output. Limit linear acceleration
     double linear_acc = (ref_velocity_ - abs_ref_vel_)/dt_;
     if (linear_acc > max_linear_acc_) linear_acc = max_linear_acc_;
     if (linear_acc < min_linear_acc_) linear_acc = min_linear_acc_;
     abs_ref_vel_ = abs_ref_vel_ + linear_acc * dt_;
 
-    final_ref_vel_ = abs_ref_vel_;
+    if (abs_ref_vel_ > max_vel_) abs_ref_vel_ = max_vel_;
+    if (abs_ref_vel_ < min_vel_) abs_ref_vel_ = min_vel_;
+
+    ROS_DEBUG("Linear speed from Fuzzy: %f", ref_velocity_);
     if (local_ref_path_.poses.at(lk_index_vel_).pose.position.x < backward_offset_)
         if (final_ref_vel_ > 0) final_ref_vel_ = -final_ref_vel_;
     
-    ROS_DEBUG("Linear speed from Fuzzy: %f", final_ref_vel_);
+    ROS_DEBUG("Linear speed limit acc: %f", final_ref_vel_);
 }
 
 void DockingControl::limitControlSignal()
