@@ -35,7 +35,7 @@ DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
     nh_.param<double>("max_pocket_dock_steering", max_pocket_dock_steering_, 0.2);
 
     /* ROS Publisher */
-    pub_cmd_vel_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel_docking_control", 1);
+    pub_cmd_vel_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
     pub_local_path_ = nh_.advertise<nav_msgs::Path>("/pallet_docking/local_ref_path", 1);
     marker_pub_ = nh_.advertise<visualization_msgs::Marker>("/pallet_docking/marker", 1);
     pub_pp_lookahead_distance_ = nh_.advertise<std_msgs::Float32>("/pallet_docking/purepursuit_lookahead_distance", 1);
