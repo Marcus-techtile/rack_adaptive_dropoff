@@ -31,11 +31,12 @@ private:
     ros::Publisher pub_docking_done;
     ros::Publisher pub_approaching_done;
     ros::Publisher pub_cmd_vel;
-    ros::Publisher pub_controller_on_;
     ros::Publisher pub_docking_error_;
     ros::Publisher pub_global_goal_pose_;
     ros::Publisher pub_local_goal_pose_;
     ros::Publisher pub_goal_pose_array_;
+    ros::Publisher pub_approaching_error_;
+    ros::Publisher pub_final_docking_error_;
 
     /* Subscriber */
     ros::Subscriber sub_cmd_vel;
@@ -91,6 +92,7 @@ private:
     int count_outside_goal_range_;
 
     /* Docking error */
+    geometry_msgs::Vector3 approaching_error_;
     geometry_msgs::Vector3 final_error_;
 
     // limit for final docking tolerance
@@ -131,6 +133,7 @@ private:
     void goalSetup();
     void updateGoal();
     void checkGoalReach();
+    void getAndPubDockingErrors(double error_x, double error_y, double error_yaw);
 public:
     DockingManager(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double sec);
     ~ DockingManager();

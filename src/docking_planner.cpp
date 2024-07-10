@@ -14,11 +14,12 @@ DockingManager::DockingManager(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
     pub_docking_done = nh_.advertise<std_msgs::Bool>("/pallet_docking/pallet_docking_done", 1);
     pub_approaching_done = nh_.advertise<std_msgs::Bool>("/pallet_docking/pallet_approaching_done", 1);
     pub_cmd_vel = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
-    pub_controller_on_ = nh_.advertise<std_msgs::Bool>("/pallet_docking/controller_turn_on", 1);
     pub_goal_pose_array_ = nh_.advertise<geometry_msgs::PoseArray>("/pallet_docking/goal_pose_array", 10);
     pub_global_goal_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("/pallet_docking/global_goal_pose", 10);
     pub_local_goal_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("/pallet_docking/local_goal_pose", 10);
     pub_docking_error_ = nh_.advertise<geometry_msgs::Vector3>("/pallet_docking/docking_error", 1);
+    pub_approaching_error_ = nh_.advertise<geometry_msgs::Vector3>("/pallet_docking/approaching_error", 1);
+    pub_final_docking_error_ = nh_.advertise<geometry_msgs::Vector3>("/pallet_docking/final_docking_error", 1);
     
     /*Define failure cases */
     failure_map_[0] = "PATH_IS_NOT_FEASIBLE";
@@ -69,6 +70,7 @@ void DockingManager::initDocking()
     check_inside_goal_range_ = false;
     count_outside_goal_range_ = 0;
 
+    approaching_error_.x = approaching_error_.y = approaching_error_.z = 0;
     final_error_.x = final_error_.y = final_error_.z = 0;
 
     // reset the transition state
@@ -129,9 +131,23 @@ void DockingManager::setGLobalFrame(std::string global_frame)
     quintic_planner_->global_frame_ = global_frame;
 }
 
-uint8_t DockingManager::getDockingResult() {return static_cast<int>(docking_result);}
+
 
 /***** UPDATE GOAL EACH CONTROL PERIOD *****/
+void DockingManager::getAndPubDockingErrors(double error_x, double error_y, double error_yaw)
+{
+    if (!approach_done_)
+    {
+        approaching_error_.x = error_x; approaching_error_.y = error_y; approaching_error_.z = error_yaw;
+        pub_approaching_error_.publish(approaching_error_);
+    }
+    else
+    {
+        final_error_.x = error_x; final_error_.y = error_y; final_error_.z = error_yaw;
+        pub_final_docking_error_.publish(final_error_);
+    }
+}
+
 void DockingManager::updateGoal()
 {
     /* Transform goal pose to path_frame */
@@ -193,9 +209,7 @@ void DockingManager::checkGoalReach()
         {
             check_inside_goal_range_ = false;
             goal_reach_ = true;
-            final_error_.x = error_x;
-            final_error_.y = error_y;
-            final_error_.z = error_yaw;
+            getAndPubDockingErrors(error_x, error_y, error_yaw);              
             ROS_INFO("Docking Error [x , y, yaw]: %f (m), %f (m), %f (rad)", error_x, error_y, error_yaw);
             return;
         } 
@@ -211,9 +225,7 @@ void DockingManager::checkGoalReach()
         {
             count_outside_goal_range_ = 0;
             ROS_WARN("Failed!!! !");
-            final_error_.x = error_x;
-            final_error_.y = error_y;
-            final_error_.z = error_yaw;
+            getAndPubDockingErrors(error_x, error_y, error_yaw); 
             ROS_INFO("Docking Error [x , y, yaw]: %f (m), %f (m), %f (rad)", error_x, error_y, error_yaw);
             check_inside_goal_range_ = false;
             goal_failed_ = true;
@@ -444,7 +456,6 @@ void DockingManager::genPathAndPubControlState()
     {
         docking_control_->setRefPath(quintic_planner_->global_quintic_path_);
         docking_control_->controller_on_.data = true;
-        // pub_controller_on_.publish(controller_on_);
     }
     docking_control_->controllerCal();
     if (docking_control_->invalid_control_signal_)
@@ -599,3 +610,5 @@ geometry_msgs::Vector3 DockingManager::getDockingFinalError()
     }
     return final_error_;
 }
+
+uint8_t DockingManager::getDockingResult() {return static_cast<int>(docking_result);}
