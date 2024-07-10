@@ -52,6 +52,7 @@ public:
  * - 5: FAIL_INVALID_CONTROL_OUTPUT.
  */
     uint8_t getDockingResult();
+    geometry_msgs::Vector3 getDockingFinalError();
     // Addition methods
     void setGoalRange(double dd);
     void setLocalFrame(std::string local_frame);

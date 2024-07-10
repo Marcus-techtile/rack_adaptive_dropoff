@@ -69,6 +69,8 @@ void DockingManager::initDocking()
     check_inside_goal_range_ = false;
     count_outside_goal_range_ = 0;
 
+    final_error_.x = final_error_.y = final_error_.z = 0;
+
     // reset the transition state
     pallet_pose_avai_ = false;
     approach_done_ = false;     // transition from APPROACHING to DOCKING, to SET_GOAL
@@ -191,6 +193,9 @@ void DockingManager::checkGoalReach()
         {
             check_inside_goal_range_ = false;
             goal_reach_ = true;
+            final_error_.x = error_x;
+            final_error_.y = error_y;
+            final_error_.z = error_yaw;
             ROS_INFO("Docking Error [x , y, yaw]: %f (m), %f (m), %f (rad)", error_x, error_y, error_yaw);
             return;
         } 
@@ -206,6 +211,9 @@ void DockingManager::checkGoalReach()
         {
             count_outside_goal_range_ = 0;
             ROS_WARN("Failed!!! !");
+            final_error_.x = error_x;
+            final_error_.y = error_y;
+            final_error_.z = error_yaw;
             ROS_INFO("Docking Error [x , y, yaw]: %f (m), %f (m), %f (rad)", error_x, error_y, error_yaw);
             check_inside_goal_range_ = false;
             goal_failed_ = true;
@@ -225,7 +233,6 @@ bool DockingManager::isGoalReach()
     if (approaching_done.data && docking_done.data) return true;
     else return false;
 }
-
 
 
 /***** PLANNER STATE ******/
@@ -583,20 +590,12 @@ geometry_msgs::Twist DockingManager::getCmdVel()
     return docking_control_->cmd_vel_;
 }
 
-
-// int main(int argc, char** argv)
-// {
-//     ros::init(argc, argv, "docking_manager");
-//     ros::NodeHandle n ("~");
-//     ros::Rate loop_rate(20);
-
-//     DockingManager docking_magager(n);
-//     while(ros::ok())
-//     {
-//         docking_magager.dockingFSM();
-//         ros::spinOnce();
-//         loop_rate.sleep();
-//     }
-  
-//   return 0;
-// }
+geometry_msgs::Vector3 DockingManager::getDockingFinalError()
+{
+    if (current_pallet_docking_state_ != END)
+    {
+        ROS_WARN("Docking is still in progress. Return 0 for final errors");
+        final_error_.x = final_error_.y = final_error_.z = 0;
+    }
+    return final_error_;
+}

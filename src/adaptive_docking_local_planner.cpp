@@ -91,3 +91,8 @@ uint8_t AdaptiveDockingLocalPlanner::getDockingResult()
 { 
     return docking_manager_->getDockingResult();
 }
+
+geometry_msgs::Vector3 AdaptiveDockingLocalPlanner::getDockingFinalError()
+{
+    return docking_manager_->getDockingFinalError();
+}

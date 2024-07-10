@@ -90,6 +90,9 @@ private:
     bool check_inside_goal_range_{false};       // if the distance error < distance tol -> inside goal range
     int count_outside_goal_range_;
 
+    /* Docking error */
+    geometry_msgs::Vector3 final_error_;
+
     // limit for final docking tolerance
     double limit_tol_x_{0.01}, limit_tol_y_{0.02}, limit_tol_angle_{0.03};
 
@@ -172,6 +175,7 @@ public:
     geometry_msgs::Twist getCmdVel();
 
     uint8_t getDockingResult();
+    geometry_msgs::Vector3 getDockingFinalError();
 
     /* Docking state of each stage*/
     std_msgs::Bool docking_done;        // Docking process done or not
