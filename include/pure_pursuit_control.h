@@ -30,6 +30,7 @@ private:
     double max_steering_;   // max steering wheel angle
     double min_steering_;   // min steering wheel angle
     double goal_correct_yaw_;
+    double k_lat_, k_angle_;
 
     // PID control
     double kp_, ki_;

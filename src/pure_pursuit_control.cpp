@@ -15,6 +15,8 @@ PurePursuitController::PurePursuitController(ros::NodeHandle &paramGet)
     paramGet.param<double>("goal_correct_yaw", goal_correct_yaw_, 0.3);
     paramGet.param<double>("kp", kp_, 0.0);
     paramGet.param<double>("ki", ki_, 0.0);
+    paramGet.param<double>("k_lat", k_lat_, 0.7);
+    paramGet.param<double>("k_angle", k_angle_, 0.3);
     paramGet.param<double>("i_sw_offset", i_sw_offset_, 0.01);
     paramGet.param<double>("path_lateral_offset", path_lateral_offset_, 0.01);
     paramGet.param<bool>("use_track_path_pid", use_track_path_pid_, true);
@@ -178,11 +180,11 @@ void PurePursuitController::calControl()
      look_ahead_distance_ = sqrt(point_lkh.x*point_lkh.x + point_lkh.y*point_lkh.y);
 
     // Calculate the reference lookahead angle
+    distance_to_goal_ = hypot(path_.poses.at(path_.poses.size()-1).pose.position.x,
+                                path_.poses.at(path_.poses.size()-1).pose.position.y);
     if (use_ref_angle_from_path_) alpha_ = tf2::getYaw(path_.poses.at(point_index_).pose.orientation);
     else
     {
-        distance_to_goal_ = hypot(path_.poses.at(path_.poses.size()-1).pose.position.x,
-                                path_.poses.at(path_.poses.size()-1).pose.position.y);
         if (abs(distance_to_goal_) > goal_correct_yaw_) alpha_= atan(point_lkh.y/ point_lkh.x);
         else alpha_ = tf2::getYaw(path_.poses.at(point_index_).pose.orientation);
     }
@@ -213,6 +215,7 @@ void PurePursuitController::calControl()
     i_part_ += ki_*pid_error_ * dt_;
     pre_pid_error_ = pid_error_;
     double steering_angle_corrected = PP_steering_angle_ + p_part_ + i_part_;
+    if (abs(distance_to_goal_) < goal_correct_yaw_) steering_angle_corrected = k_angle_*PP_steering_angle_ + k_lat_*(p_part_ + i_part_);
 
     if (use_ref_angle_from_path_)
         steering_angle_ = steering_angle_corrected;
