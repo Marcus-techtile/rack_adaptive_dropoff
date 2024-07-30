@@ -35,8 +35,9 @@ DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
     nh_.param<double>("max_pocket_dock_steering", max_pocket_dock_steering_, 0.2);
 
     /* ROS Publisher */
-    pub_cmd_vel_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel_docking_control", 1);
+    pub_cmd_vel_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
     pub_local_path_ = nh_.advertise<nav_msgs::Path>("/pallet_docking/local_ref_path", 1);
+    pub_docking_local_path_ = nh_.advertise<nav_msgs::Path>("/pallet_docking/docking_control_path", 1);
     marker_pub_ = nh_.advertise<visualization_msgs::Marker>("/pallet_docking/marker", 1);
     pub_pp_lookahead_distance_ = nh_.advertise<std_msgs::Float32>("/pallet_docking/purepursuit_lookahead_distance", 1);
     pub_pp_lookahead_angle_ = nh_.advertise<std_msgs::Float32>("/pallet_docking/purepursuit_lookahead_angle", 1);
@@ -75,6 +76,11 @@ void DockingControl::setRefPath(nav_msgs::Path path)
     ref_path_ = path;
     if (ref_path_.poses.size() > 1) ref_path_avai_ = true;
     else ref_path_avai_ = false;
+}
+
+void DockingControl::setLocalGoal(geometry_msgs::PoseStamped local_goal)
+{
+    local_goal_ = local_goal;
 }
 
 void DockingControl::setVel(geometry_msgs::Twist robot_speed)
@@ -116,6 +122,8 @@ nav_msgs::Path DockingControl::convertPathtoLocalFrame(nav_msgs::Path global_pat
             ROS_ERROR("%s",ex.what());
         }
     }
+    int final_index = local_ref_path.poses.size() - 1;
+    local_ref_path.poses.at(final_index) = local_goal_;
     return local_ref_path;
 }
 
@@ -298,6 +306,49 @@ void DockingControl::controllerCal()
                                         cmd_vel_.angular.z);
 
     if (publish_cmd_) pub_cmd_vel_.publish(cmd_vel_);
+    predictedPath();
+}
+
+void DockingControl::predictedPath()
+{
+    double time;
+    if (cmd_vel_.linear.x != 0)
+        time = pure_pursuit_control.look_ahead_distance_/cmd_vel_.linear.x;
+    else time = 0;
+    double sampling_time = 0.2;
+    int number_sample = time/sampling_time;
+
+    nav_msgs::Path predict_path;
+    predict_path.header.frame_id = path_frame_;
+    predict_path.header.stamp = ros::Time(0);
+    predict_path.poses.clear();
+
+    geometry_msgs::PoseStamped pose_est;
+    pose_est.header.frame_id = path_frame_;
+
+    double v_r = cmd_vel_.linear.x;
+    double steer = cmd_vel_.angular.z;
+    double pre_yaw = 0, pre_x = 0, pre_y = 0;
+    double yaw_est = 0;
+    
+    predict_path.poses.push_back(pose_est);
+
+    for (int i = 0; i <= number_sample - 1; i++)
+    {
+        if(abs(steer) != M_PI/2) yaw_est = pre_yaw + sampling_time*(v_r*tan(steer)/l_wheelbase_);
+        else yaw_est = pre_yaw;
+        pose_est.pose.orientation = rpyToQuaternion(0, 0, yaw_est);
+        
+        pose_est.pose.position.x = pre_x + sampling_time*v_r*cos(pre_yaw);
+        pose_est.pose.position.y = pre_y + sampling_time*v_r*sin(pre_yaw);
+        predict_path.poses.push_back(pose_est);
+
+        pre_yaw = yaw_est;
+        pre_x = pose_est.pose.position.x;
+        pre_y = pose_est.pose.position.y;
+    }
+    pub_docking_local_path_.publish(predict_path);
+
 }
 
 void DockingControl::visualize()

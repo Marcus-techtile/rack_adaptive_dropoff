@@ -25,9 +25,10 @@ private:
     ros::Publisher pub_local_path_;
     ros::Publisher pub_pp_lookahead_distance_;
     ros::Publisher pub_pp_lookahead_angle_;
-    ros::Publisher pub_pp_lookahead_pose_, pub_nearest_pose_;;
+    ros::Publisher pub_pp_lookahead_pose_, pub_nearest_pose_;
     ros::Publisher pub_pp_lookahead_curvature_;
     ros::Publisher marker_pub_;
+    ros::Publisher pub_docking_local_path_;
 
     double docking_freq_;
     double dt_;
@@ -35,6 +36,12 @@ private:
     /* Ref path */
     nav_msgs::Path ref_path_, local_ref_path_;
     bool ref_path_avai_{false};
+
+    /* Local Control Path Output*/
+    nav_msgs::Path local_control_path_;
+
+    /* Local Dynamic Goal */
+    geometry_msgs::PoseStamped local_goal_;
 
     /* Forklift parameters */
     double l_wheelbase_;
@@ -97,12 +104,14 @@ public:
     bool checkData();
     void setRefPath(nav_msgs::Path path);
     void setVel(geometry_msgs::Twist robot_speed);
+    void setLocalGoal(geometry_msgs::PoseStamped local_goal);
     nav_msgs::Path convertPathtoLocalFrame(nav_msgs::Path global_path);
     int nearestPointIndexFind(nav_msgs::Path local_path);
     void steeringControl();
     void linearSpeedControl();
     void limitControlSignal();
     void controllerCal();
+    void predictedPath();
 
     std::string path_frame_{"base_link_p"};
 
