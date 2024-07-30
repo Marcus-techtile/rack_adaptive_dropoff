@@ -218,9 +218,13 @@ void DockingManager::checkGoalReach()
     if (check_inside_goal_range_)
     {
         if (!approach_done_)
+        {
             if (error_sq > goal_range_) count_outside_goal_range_++;
+        }
         else
+        {
             if (error_x < 0) count_outside_goal_range_++;
+        }
         if (count_outside_goal_range_ > 10)      // Prevent jumping in and out goal range
         {
             count_outside_goal_range_ = 0;
@@ -455,8 +459,10 @@ void DockingManager::genPathAndPubControlState()
     if (quintic_planner_->path_avai_ && !docking_control_->controller_on_.data)
     {
         docking_control_->setRefPath(quintic_planner_->global_quintic_path_);
+        docking_control_->setLocalGoal(local_update_goal_pose_);
         docking_control_->controller_on_.data = true;
     }
+    docking_control_->setLocalGoal(local_update_goal_pose_);            // Fix local goal for the final pose of the ref path
     docking_control_->controllerCal();
     if (docking_control_->invalid_control_signal_)
     {
