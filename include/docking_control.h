@@ -43,6 +43,9 @@ private:
     /* Local Dynamic Goal */
     geometry_msgs::PoseStamped local_goal_;
 
+    /* Predict*/
+    double predict_time_{5.0};
+
     /* Forklift parameters */
     double l_wheelbase_;
     geometry_msgs::Twist robot_speed_;

@@ -4,9 +4,11 @@ DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
 {
     /* Get Param */
     nh_.param<double>("docking_freq", docking_freq_, 50.0);
-    dt_ = 1 / docking_freq_;                        // Calculate sampling time
+    dt_ = 1 / docking_freq_;                       
+    nh_.param<double>("predict_time", predict_time_, 2.0);
     ROS_INFO("Docking Control Frequency: %f", docking_freq_);
     ROS_INFO("Docking Control Sampling Time: %f", dt_);
+    ROS_INFO("Docking Control Predict Time: %f", predict_time_);
 
     nh_.param("/forklift_params/wheel_base", l_wheelbase_, 1.311);
     
@@ -311,12 +313,10 @@ void DockingControl::controllerCal()
 
 void DockingControl::predictedPath()
 {
-    double time;
-    if (cmd_vel_.linear.x != 0)
-        time = pure_pursuit_control.look_ahead_distance_/cmd_vel_.linear.x;
-    else time = 0;
-    double sampling_time = 0.2;
-    int number_sample = time/sampling_time;
+    // if (cmd_vel_.linear.x != 0)
+    //     predict_time_ = pure_pursuit_control.look_ahead_distance_/cmd_vel_.linear.x;
+    // else predict_time_ = 0;
+    int number_sample = predict_time_/dt_;
 
     nav_msgs::Path predict_path;
     predict_path.header.frame_id = path_frame_;
@@ -331,22 +331,27 @@ void DockingControl::predictedPath()
     double pre_yaw = 0, pre_x = 0, pre_y = 0;
     double yaw_est = 0;
     
+    pose_est.pose.orientation = rpyToQuaternion(0,0,0);
     predict_path.poses.push_back(pose_est);
 
-    for (int i = 0; i <= number_sample - 1; i++)
+    if (number_sample > 0)
     {
-        if(abs(steer) != M_PI/2) yaw_est = pre_yaw + sampling_time*(v_r*tan(steer)/l_wheelbase_);
-        else yaw_est = pre_yaw;
-        pose_est.pose.orientation = rpyToQuaternion(0, 0, yaw_est);
-        
-        pose_est.pose.position.x = pre_x + sampling_time*v_r*cos(pre_yaw);
-        pose_est.pose.position.y = pre_y + sampling_time*v_r*sin(pre_yaw);
-        predict_path.poses.push_back(pose_est);
+        for (int i = 0; i <= number_sample - 1; i++)
+        {
+            if(abs(steer) != M_PI/2) yaw_est = pre_yaw + dt_*(v_r*tan(steer)/l_wheelbase_);
+            else yaw_est = pre_yaw;
+            pose_est.pose.orientation = rpyToQuaternion(0, 0, yaw_est);
+            
+            pose_est.pose.position.x = pre_x + dt_*v_r*cos(pre_yaw);
+            pose_est.pose.position.y = pre_y + dt_*v_r*sin(pre_yaw);
+            predict_path.poses.push_back(pose_est);
 
-        pre_yaw = yaw_est;
-        pre_x = pose_est.pose.position.x;
-        pre_y = pose_est.pose.position.y;
+            pre_yaw = yaw_est;
+            pre_x = pose_est.pose.position.x;
+            pre_y = pose_est.pose.position.y;
+        }
     }
+
     pub_docking_local_path_.publish(predict_path);
 
 }
