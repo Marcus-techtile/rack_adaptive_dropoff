@@ -39,6 +39,7 @@ private:
 
     /* Local Control Path Output*/
     nav_msgs::Path local_control_path_;
+    nav_msgs::Path predict_path_;
 
     /* Local Dynamic Goal */
     geometry_msgs::PoseStamped local_goal_;
@@ -114,7 +115,7 @@ public:
     void linearSpeedControl();
     void limitControlSignal();
     void controllerCal();
-    void predictedPath();
+    nav_msgs::Path predictPath(geometry_msgs::Twist cmd_in);
 
     std::string path_frame_{"base_link_p"};
 

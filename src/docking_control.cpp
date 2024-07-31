@@ -308,31 +308,28 @@ void DockingControl::controllerCal()
                                         cmd_vel_.angular.z);
 
     if (publish_cmd_) pub_cmd_vel_.publish(cmd_vel_);
-    predictedPath();
+    predict_path_ = predictPath(cmd_vel_);
+    pub_docking_local_path_.publish(predict_path_);
 }
 
-void DockingControl::predictedPath()
+nav_msgs::Path DockingControl::predictPath(geometry_msgs::Twist cmd_in)
 {
-    // if (cmd_vel_.linear.x != 0)
-    //     predict_time_ = pure_pursuit_control.look_ahead_distance_/cmd_vel_.linear.x;
-    // else predict_time_ = 0;
     int number_sample = predict_time_/dt_;
-
-    nav_msgs::Path predict_path;
-    predict_path.header.frame_id = path_frame_;
-    predict_path.header.stamp = ros::Time(0);
-    predict_path.poses.clear();
+    nav_msgs::Path est_path;
+    est_path.header.frame_id = path_frame_;
+    est_path.header.stamp = ros::Time(0);
+    est_path.poses.clear();
 
     geometry_msgs::PoseStamped pose_est;
     pose_est.header.frame_id = path_frame_;
 
-    double v_r = cmd_vel_.linear.x;
-    double steer = cmd_vel_.angular.z;
+    double v_r = cmd_in.linear.x;
+    double steer = cmd_in.angular.z;
     double pre_yaw = 0, pre_x = 0, pre_y = 0;
     double yaw_est = 0;
     
     pose_est.pose.orientation = rpyToQuaternion(0,0,0);
-    predict_path.poses.push_back(pose_est);
+    est_path.poses.push_back(pose_est);
 
     if (number_sample > 0)
     {
@@ -344,16 +341,14 @@ void DockingControl::predictedPath()
             
             pose_est.pose.position.x = pre_x + dt_*v_r*cos(pre_yaw);
             pose_est.pose.position.y = pre_y + dt_*v_r*sin(pre_yaw);
-            predict_path.poses.push_back(pose_est);
+            est_path.poses.push_back(pose_est);
 
             pre_yaw = yaw_est;
             pre_x = pose_est.pose.position.x;
             pre_y = pose_est.pose.position.y;
         }
     }
-
-    pub_docking_local_path_.publish(predict_path);
-
+    return est_path;
 }
 
 void DockingControl::visualize()
