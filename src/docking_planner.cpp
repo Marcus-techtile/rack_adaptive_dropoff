@@ -223,7 +223,7 @@ void DockingManager::checkGoalReach()
         }
         else
         {
-            if (error_x < 0) count_outside_goal_range_++;
+            if (error_x < 0 || error_sq > goal_range_) count_outside_goal_range_++;
         }
         if (count_outside_goal_range_ > 10)      // Prevent jumping in and out goal range
         {
