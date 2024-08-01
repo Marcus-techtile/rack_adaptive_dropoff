@@ -28,3 +28,24 @@ double normalize_M_PI(const double &angle)
     return a;
 }
 
+std::vector<double> linspace(double start, double stop, int num, bool endpoint = true) 
+{
+    std::vector<double> result;
+    if (num <= 0) return result; 
+    
+    if (num == 1) {
+        result.push_back(start);
+        return result;
+    }
+
+    double step = (stop - start) / (endpoint ? (num - 1) : num);
+
+    for (int i = 0; i < num; ++i) {
+        result.push_back(start + step * i);
+    }
+
+    if (endpoint) result.back() = stop; 
+    
+    return result;
+}
+

@@ -8,3 +8,5 @@
 geometry_msgs::Quaternion rpyToQuaternion(double roll, double pitch, double yaw);
 void quaternionToRPY(geometry_msgs::Quaternion quat, double &roll, double &pitch, double &yaw);
 double normalize_M_PI(const double &angle);
+
+std::vector<double> linspace(double start, double stop, int num, bool endpoint);
