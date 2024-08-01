@@ -33,6 +33,8 @@ private:
     double docking_freq_;
     double dt_;
 
+    bool use_cost_function_;
+
     /* Ref path */
     nav_msgs::Path ref_path_, local_ref_path_;
     bool ref_path_avai_{false};
@@ -43,6 +45,7 @@ private:
 
     /* Local Dynamic Goal */
     geometry_msgs::PoseStamped local_goal_;
+    geometry_msgs::PoseStamped lookehead_pose_;
 
     /* Predict*/
     double predict_time_{5.0};
@@ -116,11 +119,15 @@ public:
     void limitControlSignal();
     void controllerCal();
     nav_msgs::Path predictPath(geometry_msgs::Twist cmd_in);
+    std::vector<geometry_msgs::Twist> generateControlSample(geometry_msgs::Twist current_cmd, geometry_msgs::Twist cal_cmd);
+    geometry_msgs::Twist evaluateControlSampleAndOutputControl(std::vector<geometry_msgs::Twist> control_samp);
 
     std::string path_frame_{"base_link_p"};
 
     /* Output control command */
+    double gain_heading_, gain_track_, gain_vel_;
     geometry_msgs::Twist cmd_vel_;   // command velocity
+    geometry_msgs::Twist pre_cmd_vel_;
 
     std_msgs::Bool approaching_done_;
     std_msgs::Bool controller_on_;

@@ -4,7 +4,9 @@ DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
 {
     /* Get Param */
     nh_.param<double>("docking_freq", docking_freq_, 50.0);
-    dt_ = 1 / docking_freq_;                       
+    dt_ = 1 / docking_freq_;     
+
+    nh_.param<bool>("use_cost_function", use_cost_function_, false);                  
     nh_.param<double>("predict_time", predict_time_, 2.0);
     ROS_INFO("Docking Control Frequency: %f", docking_freq_);
     ROS_INFO("Docking Control Sampling Time: %f", dt_);
@@ -35,6 +37,10 @@ DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
 
     nh_.param<double>("max_pocket_dock_vel", max_pocket_dock_vel_, 0.2);
     nh_.param<double>("max_pocket_dock_steering", max_pocket_dock_steering_, 0.2);
+
+    nh_.param<double>("gain_track", gain_track_, 2.0);
+    nh_.param<double>("gain_vel", gain_vel_, 1.0);
+    nh_.param<double>("gain_heading", gain_heading_, 2.0);
 
     /* ROS Publisher */
     pub_cmd_vel_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
@@ -216,6 +222,8 @@ void DockingControl::linearSpeedControl()
         lk_index_vel_ = local_ref_path_.poses.size()-1;
     
     ROS_DEBUG("Fuzzy lk_index_vel_: %d", lk_index_vel_);
+
+    fuzzy_lk_dis = pure_pursuit_control.look_ahead_distance_;
     fuzzy_controller.inputSolveGoal(abs(fuzzy_lk_dis));
     if (limit_sp_curve_)
         fuzzy_controller.inputsolveSteering(pure_pursuit_control.look_ahead_curvature_);
@@ -307,13 +315,28 @@ void DockingControl::controllerCal()
     ROS_DEBUG("Control CMD_VEL (v,w): %f, %f", cmd_vel_.linear.x,
                                         cmd_vel_.angular.z);
 
-    if (publish_cmd_) pub_cmd_vel_.publish(cmd_vel_);
-    predict_path_ = predictPath(cmd_vel_);
-    pub_docking_local_path_.publish(predict_path_);
+    if (!use_cost_function_) {
+        if (publish_cmd_) pub_cmd_vel_.publish(cmd_vel_);
+        predict_path_ = predictPath(cmd_vel_);
+        pub_docking_local_path_.publish(predict_path_);
+    }
+    else
+    {
+        std::vector<geometry_msgs::Twist> control_sampling = generateControlSample(pre_cmd_vel_, cmd_vel_);
+        geometry_msgs::Twist cmd_out =  evaluateControlSampleAndOutputControl(control_sampling);
+        
+        if (publish_cmd_) pub_cmd_vel_.publish(cmd_out);
+        predict_path_ = predictPath(cmd_out);
+        pub_docking_local_path_.publish(predict_path_);
+        pre_cmd_vel_ = cmd_out;
+    }
+
+
 }
 
 nav_msgs::Path DockingControl::predictPath(geometry_msgs::Twist cmd_in)
 {
+    predict_time_ = pure_pursuit_control.look_ahead_distance_/cmd_in.linear.x;
     int number_sample = predict_time_/dt_;
     nav_msgs::Path est_path;
     est_path.header.frame_id = path_frame_;
@@ -350,6 +373,73 @@ nav_msgs::Path DockingControl::predictPath(geometry_msgs::Twist cmd_in)
     }
     return est_path;
 }
+
+std::vector<geometry_msgs::Twist> DockingControl::generateControlSample(geometry_msgs::Twist current_cmd, 
+                                                                            geometry_msgs::Twist cal_cmd)
+{
+    // std::vector<double> linear_vel_sample = linspace(current_cmd.linear.x, cal_cmd.linear.x, 5, true);
+    std::vector<double> linear_vel_sample = linspace(current_cmd.linear.x, cal_cmd.linear.x, 10, true);
+    std::vector<double> steering_sample;
+    if (cal_cmd.angular.z >= 0)
+        steering_sample = linspace(0, cal_cmd.angular.z, 100, true);
+    else steering_sample = linspace(cal_cmd.angular.z, 0, 100, true);
+    // std::cout << "Linear vel sample: " << linear_vel_sample << std::endl;
+    std::vector<geometry_msgs::Twist> control_sample;
+    geometry_msgs::Twist control_tmp;
+    for (int i = 0; i <= linear_vel_sample.size() - 1; i++)
+    {
+        for (int j = 0; j <= steering_sample.size() - 1; j++)
+        {
+            control_tmp.linear.x = linear_vel_sample.at(i);
+            control_tmp.angular.z = steering_sample.at(j);
+            control_sample.push_back(control_tmp);
+        }
+    }
+    return control_sample;
+}
+
+geometry_msgs::Twist DockingControl::evaluateControlSampleAndOutputControl(std::vector<geometry_msgs::Twist> control_samp)
+{
+    // Predict all the path with input control sample
+    std::vector<nav_msgs::Path> path_sample;
+    for (int i = 0; i <= control_samp.size() - 1; i++) {
+        path_sample.push_back(predictPath(control_samp.at(i)));
+    }
+    // Get final position of the path
+    std::vector<geometry_msgs::PoseStamped> final_pose_sample;
+    for (int i = 0; i <= path_sample.size() - 1; i++) {
+        final_pose_sample.push_back(path_sample.at(i).poses.back());
+    }
+
+    // Calculate the cost
+    std::vector<double> tracking_cost;
+    std::vector<double> heading_cost;
+    std::vector<double> linear_vel_cost; // prefer higher linear velocity
+    double best_cost = -100;
+    int best_index = 0;
+    for (int i = 0; i <= final_pose_sample.size() - 1; i++)
+    {
+        heading_cost.push_back(abs(tf2::getYaw(final_pose_sample.at(i).pose.orientation) -
+                                tf2::getYaw(pp_lkh_pose_.pose.orientation)));
+        tracking_cost.push_back(hypot(final_pose_sample.at(i).pose.position.x - pp_lkh_pose_.pose.position.x,
+                                final_pose_sample.at(i).pose.position.y - pp_lkh_pose_.pose.position.y));
+        linear_vel_cost.push_back(control_samp.at(i).linear.x);
+        double cost_tmp = -gain_heading_*heading_cost.at(i)  -gain_track_*tracking_cost.at(i) + gain_vel_*linear_vel_cost.at(i);
+        // ROS_INFO("tracking_cost %d: %f", i, tracking_cost.at(i));
+        // ROS_INFO("linear_vel_cost %d: %f", i, linear_vel_cost.at(i));
+        // ROS_INFO("cost_tmp %d: %f", i, cost_tmp);
+        if (cost_tmp > best_cost)
+        {
+            best_cost = cost_tmp;
+            best_index = i;
+        }
+    }
+    ROS_INFO("Best index: %d", best_index);
+    return control_samp.at(best_index); 
+}
+
+
+
 
 void DockingControl::visualize()
 {
