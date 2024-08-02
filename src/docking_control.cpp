@@ -16,9 +16,6 @@ DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
     
     nh_.param<bool>("publish_cmd", publish_cmd_, false);
     nh_.param<double>("look_ahead_time", pp_look_ahead_time_, 3.0);
-    nh_.param<double>("look_ahead_time_straigh_line", pp_look_ahead_time_straigh_line_, 5.0);
-    nh_.param<double>("pp_min_lk_distance_approaching", pp_min_lk_distance_approaching_, 0.2);
-    nh_.param<double>("pp_min_lk_distance_docking", pp_min_lk_distance_docking_, 0.4);
     nh_.param<double>("max_steering", max_steering_, 1.5);
     nh_.param<double>("min_steering", min_steering_, -1.5);
     nh_.param<double>("max_steering_speed", max_steering_speed_, 0.2);
@@ -160,18 +157,16 @@ void DockingControl::steeringControl()
 {
     pure_pursuit_control.setSpeed(robot_speed_);
     pure_pursuit_control.setRefPath(local_ref_path_);
+    pure_pursuit_control.setLocalGoalPose(local_goal_);
     pure_pursuit_control.setRefVel(final_ref_vel_);
     pure_pursuit_control.setClosestPoint(nearest_index_);
+    pure_pursuit_control.setLookaheadTime(pp_look_ahead_time_);
     if (!approaching_done_.data)
-    {
-        pure_pursuit_control.setLookaheadTime(pp_look_ahead_time_);
-        pure_pursuit_control.limitLookaheadDistance(pp_min_lk_distance_approaching_, 2.5);
+    { 
         if (adaptive_ref_angle_) pure_pursuit_control.setRefAngleMode(false);
     } 
     else
     {
-        pure_pursuit_control.setLookaheadTime(pp_look_ahead_time_straigh_line_);
-        pure_pursuit_control.limitLookaheadDistance(pp_min_lk_distance_docking_, 2.5);
         if (adaptive_ref_angle_) pure_pursuit_control.setRefAngleMode(true);
     } 
     pure_pursuit_control.calControl();
@@ -378,12 +373,8 @@ std::vector<geometry_msgs::Twist> DockingControl::generateControlSample(geometry
                                                                             geometry_msgs::Twist cal_cmd)
 {
     // std::vector<double> linear_vel_sample = linspace(current_cmd.linear.x, cal_cmd.linear.x, 5, true);
-    std::vector<double> linear_vel_sample = linspace(current_cmd.linear.x, cal_cmd.linear.x, 10, true);
-    std::vector<double> steering_sample;
-    if (cal_cmd.angular.z >= 0)
-        steering_sample = linspace(0, cal_cmd.angular.z, 100, true);
-    else steering_sample = linspace(cal_cmd.angular.z, 0, 100, true);
-    // std::cout << "Linear vel sample: " << linear_vel_sample << std::endl;
+    std::vector<double> linear_vel_sample = linspace(current_cmd.linear.x - max_linear_acc_*dt_, cal_cmd.linear.x, 10, true);
+    std::vector<double> steering_sample = linspace(current_cmd.angular.z, cal_cmd.angular.z, 100, true);
     std::vector<geometry_msgs::Twist> control_sample;
     geometry_msgs::Twist control_tmp;
     for (int i = 0; i <= linear_vel_sample.size() - 1; i++)

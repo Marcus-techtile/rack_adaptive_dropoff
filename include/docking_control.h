@@ -68,7 +68,7 @@ private:
     /* PP varibales */
     PurePursuitController pure_pursuit_control;
     double steering_angle_, steering_;     // steering wheel
-    double pp_look_ahead_time_, pp_look_ahead_time_straigh_line_;
+    double pp_look_ahead_time_;
     geometry_msgs::PoseStamped pp_lkh_pose_;
 
     /* Fuzzy control */
@@ -82,10 +82,6 @@ private:
     double max_steering_speed_, min_steering_speed_;
     double max_pocket_dock_vel_;
     double max_pocket_dock_steering_;
-
-    /* Limit PP lookahead distance */
-    double pp_min_lk_distance_approaching_;
-    double pp_min_lk_distance_docking_;
 
     /* tf conversion */
     tf2_ros::Buffer &tf_buffer_c;
