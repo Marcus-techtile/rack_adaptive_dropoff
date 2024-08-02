@@ -17,17 +17,17 @@ PurePursuitController::PurePursuitController(ros::NodeHandle &paramGet)
     paramGet.param<double>("ki", ki_, 0.0);
     paramGet.param<double>("k_lat", k_lat_, 0.7);
     paramGet.param<double>("k_angle", k_angle_, 0.3);
-    paramGet.param<double>("i_sw_offset", i_sw_offset_, 0.01);
-    paramGet.param<double>("path_lateral_offset", path_lateral_offset_, 0.01);
-    paramGet.param<bool>("use_track_path_pid", use_track_path_pid_, true);
     paramGet.param<bool>("use_point_interpolate", use_point_interpolate_, true);
     paramGet.param<bool>("use_ref_angle_from_path", use_ref_angle_from_path_, true);
     paramGet.param<bool>("re_cal_lookahead_dis", re_cal_lookahead_dis_, true);
+
+    paramGet.param<bool>("cal_lookahead_using_heading_thres", cal_lookahead_using_heading_thres_, true);
+    paramGet.param<double>("heading_thres", heading_thres_, 0.5);
 }
 
 void PurePursuitController::resetPP()
 {
-    i_part_ = 0;
+    path_avai_ = false;
     steering_angle_ = 0;
     alpha_ = 0;
     pre_pid_error_ = 0;
@@ -58,6 +58,12 @@ void PurePursuitController::setSpeed(geometry_msgs::Twist cur_speed)
 void PurePursuitController::setRefPath(nav_msgs::Path path)
 {
     path_ = path;
+    path_avai_ = true;
+}
+
+void PurePursuitController::setLocalGoalPose(geometry_msgs::PoseStamped local_goal)
+{
+    local_goal_ = local_goal;
 }
 
 void PurePursuitController::setRefVel(double ref_vel)
@@ -120,6 +126,33 @@ double PurePursuitController::calLookaheadDistance(double lk_t, double cur_spd)
     return lk_dis;
 }
 
+double PurePursuitController::calLookaheadDistanceUsingHeading()
+{
+    // Find the min and max lookahead index
+    int min_index, max_index;
+    geometry_msgs::PoseStamped min_path_pose = calLookaheadPoint(closest_index_, min_look_ahead_dis_, path_, min_index);
+    geometry_msgs::PoseStamped max_path_pose = calLookaheadPoint(closest_index_, max_look_ahead_dis_, path_, max_index);
+    // ROS_INFO("min_index: %d", min_index);
+    // ROS_INFO("max_index: %d", max_index);
+    int lookahead_index_tmp = min_index;
+    for (int i = min_index; i <= max_index; i++)
+    {
+        double lk_heading_tmp = abs(tf2::getYaw(path_.poses.at(i).pose.orientation));
+        if (lk_heading_tmp > heading_thres_)
+        {
+            lookahead_index_tmp = i;
+            break;
+        }
+        if (i == max_index)
+        {
+            lookahead_index_tmp = i;
+        }
+
+    }
+    double lk_dis_tmp = hypot(path_.poses.at(lookahead_index_tmp).pose.position.x, path_.poses.at(lookahead_index_tmp).pose.position.y);
+    return lk_dis_tmp;
+}
+
 double PurePursuitController::calLookaheadCurvature(geometry_msgs::Point lookahead_point)
 {
     const double sq_dis = (lookahead_point.x * lookahead_point.x) +
@@ -131,14 +164,14 @@ double PurePursuitController::calLookaheadCurvature(geometry_msgs::Point lookahe
     
 }
 
-geometry_msgs::PoseStamped PurePursuitController::calLookaheadPoint(int nearest_index, double & lookahead_distance, nav_msgs::Path path)
+geometry_msgs::PoseStamped PurePursuitController::calLookaheadPoint(int nearest_index, double & lookahead_distance, nav_msgs::Path path, int &output_index)
 {
     // Find the first point which has the distance longer than the lookahead distance
     auto point_it = std::find_if(path.poses.begin() + nearest_index, path.poses.end(), [&](const auto & ps) {
       return hypot(ps.pose.position.x, ps.pose.position.y) >= lookahead_distance;});
 
-    this->point_index_ = std::distance(path.poses.begin(), point_it);
-    if (this->point_index_ > path.poses.size() - 1) this->point_index_ = path.poses.size() - 1;
+    output_index = std::distance(path.poses.begin(), point_it);
+    if (output_index > path.poses.size() - 1) output_index = path.poses.size() - 1;
     
     // Return the last point if no it satisfied
     if (point_it == path.poses.end()) {point_it = std::prev(path.poses.end());}
@@ -159,34 +192,35 @@ geometry_msgs::PoseStamped PurePursuitController::calLookaheadPoint(int nearest_
 void PurePursuitController::calControl()
 {
     // Lookahead Distance computation
-    look_ahead_distance_ = calLookaheadDistance(lk_time, cur_vel_);
+    if (path_avai_)
+    {
+        if (cal_lookahead_using_heading_thres_)
+            look_ahead_distance_ = calLookaheadDistanceUsingHeading();
+        else look_ahead_distance_ = calLookaheadDistance(lk_time, cur_vel_);
 
-    // Get Lookahead Pose and Point
-    pp_lookahead_pose_ = calLookaheadPoint(closest_index_, look_ahead_distance_, path_);
+        // Get Lookahead Pose and Point
+        pp_lookahead_pose_ = calLookaheadPoint(closest_index_, look_ahead_distance_, path_, point_index_);
+    }
+    else //if not using path
+        pp_lookahead_pose_ = local_goal_;
+
+    
     point_lkh = pp_lookahead_pose_.pose.position;
 
     // Lookahead Curvature Computation
     look_ahead_curvature_ = calLookaheadCurvature(point_lkh);
-    if (abs(look_ahead_curvature_) > 1.0) 
-    {
-        look_ahead_distance_ = path_lateral_offset_;
-        // Get Lookahead Pose and Point
-        pp_lookahead_pose_ = calLookaheadPoint(closest_index_, look_ahead_distance_, path_);
-        point_lkh = pp_lookahead_pose_.pose.position;
-    }
         
     // Recalculate lookahead distance with actual point
-    if (re_cal_lookahead_dis_ && min_look_ahead_dis_ < 0.35)
+    if (re_cal_lookahead_dis_)
      look_ahead_distance_ = sqrt(point_lkh.x*point_lkh.x + point_lkh.y*point_lkh.y);
 
     // Calculate the reference lookahead angle
-    distance_to_goal_ = hypot(path_.poses.at(path_.poses.size()-1).pose.position.x,
-                                path_.poses.at(path_.poses.size()-1).pose.position.y);
-    if (use_ref_angle_from_path_) alpha_ = tf2::getYaw(path_.poses.at(point_index_).pose.orientation);
+    distance_to_goal_ = hypot(local_goal_.pose.position.x, local_goal_.pose.position.y);
+    if (use_ref_angle_from_path_) alpha_ = tf2::getYaw(pp_lookahead_pose_.pose.orientation);
     else
     {
         if (abs(distance_to_goal_) > goal_correct_yaw_) alpha_= atan(point_lkh.y/ point_lkh.x);
-        else alpha_ = tf2::getYaw(path_.poses.at(point_index_).pose.orientation);
+        else alpha_ = tf2::getYaw(pp_lookahead_pose_.pose.orientation);
     }
     
     // Correct the lookahead pose angle
@@ -200,16 +234,7 @@ void PurePursuitController::calControl()
 
     // PID control for support the convergence to reference path
     lateral_heading_error_.data = point_lkh.y;
-
-    if (use_track_path_pid_)
-    {
-        double path_lateral_tracking_error = path_.poses.at(closest_index_).pose.position.y;
-        if (abs(path_lateral_tracking_error) > 0.0001) pid_error_ = path_lateral_tracking_error;
-        else pid_error_ = lateral_heading_error_.data;
-        // if (distance_to_goal_ < goal_correct_yaw_) pid_error_ = lateral_heading_error_.data;
-        if (pid_error_*pre_pid_error_ < 0 && abs(pid_error_ - pre_pid_error_) > i_sw_offset_) i_part_ = 0;
-    }
-    else pid_error_ = lateral_heading_error_.data;
+    pid_error_ = lateral_heading_error_.data;
     
     p_part_ = kp_*pid_error_;
     i_part_ += ki_*pid_error_ * dt_;
@@ -217,9 +242,11 @@ void PurePursuitController::calControl()
     double steering_angle_corrected = PP_steering_angle_ + p_part_ + i_part_;
     if (abs(distance_to_goal_) < goal_correct_yaw_) steering_angle_corrected = k_angle_*PP_steering_angle_ + k_lat_*(p_part_ + i_part_);
 
-    if (use_ref_angle_from_path_)
-        steering_angle_ = steering_angle_corrected;
-    else steering_angle_ = PP_steering_angle_;
+    // if (use_ref_angle_from_path_)
+    //     steering_angle_ = steering_angle_corrected;
+    // else steering_angle_ = PP_steering_angle_;
+
+    steering_angle_ = steering_angle_corrected;
 
     if (steering_angle_ > max_steering_) steering_angle_ = max_steering_;
     if (steering_angle_ < min_steering_) steering_angle_ = min_steering_;
