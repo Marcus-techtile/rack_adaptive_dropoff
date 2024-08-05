@@ -30,6 +30,8 @@ private:
     ros::Publisher marker_pub_;
     ros::Publisher pub_docking_local_path_;
 
+    ros::Publisher pub_boundary_point_;
+
     double docking_freq_;
     double dt_;
 
@@ -38,6 +40,10 @@ private:
     /* Ref path */
     nav_msgs::Path ref_path_, local_ref_path_;
     bool ref_path_avai_{false};
+
+    /* Boundary zones */
+    geometry_msgs::PoseArray boundary_points_;
+
 
     /* Local Control Path Output*/
     nav_msgs::Path local_control_path_;
@@ -116,9 +122,16 @@ public:
     void controllerCal();
     nav_msgs::Path predictPath(geometry_msgs::Twist cmd_in);
     std::vector<geometry_msgs::Twist> generateControlSample(geometry_msgs::Twist current_cmd, geometry_msgs::Twist cal_cmd);
+    double evaluateTrajectory(const nav_msgs::Path& trajectory, 
+                                                const geometry_msgs::PoseStamped& target_pose,
+                                                const geometry_msgs::PoseArray& obstacles,
+                                                geometry_msgs::Twist cmd_control);
     geometry_msgs::Twist evaluateControlSampleAndOutputControl(std::vector<geometry_msgs::Twist> control_samp);
+    geometry_msgs::PoseArray generateBoundaryPoints(const geometry_msgs::PoseStamped& goal_pose, double boundary_distance, double step_size);
+    void publishBoundaryPoseArray(const geometry_msgs::PoseArray& boundary_points, ros::Publisher& publisher);
 
     std::string path_frame_{"base_link_p"};
+    std::string global_frame_{"odom"};
 
     /* Output control command */
     double gain_heading_, gain_track_, gain_vel_;

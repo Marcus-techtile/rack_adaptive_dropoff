@@ -51,6 +51,7 @@ DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
     pub_pp_lookahead_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("/pallet_docking/pp_lookahead_pose", 1);
     pub_nearest_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("/pallet_docking/nearest_pose", 1);
 
+    pub_boundary_point_ = nh.advertise<geometry_msgs::PoseArray>("/pallet_docking/boundary_points", 10);
     /* Define the Controller */
     fuzzy_controller = FuzzyControl(nh_);
     pure_pursuit_control = PurePursuitController(nh_);
@@ -329,6 +330,8 @@ void DockingControl::controllerCal()
 
 }
 
+/** TODO: Change sampling control function ***/
+/** Trajectory prediction using sampled control **/
 nav_msgs::Path DockingControl::predictPath(geometry_msgs::Twist cmd_in)
 {
     predict_time_ = pure_pursuit_control.look_ahead_distance_/cmd_in.linear.x;
@@ -369,6 +372,79 @@ nav_msgs::Path DockingControl::predictPath(geometry_msgs::Twist cmd_in)
     return est_path;
 }
 
+geometry_msgs::PoseArray DockingControl::generateBoundaryPoints(const geometry_msgs::PoseStamped& goal_pose, double boundary_distance, double step_size)
+{
+    geometry_msgs::PoseArray boundary_points;
+
+    boundary_points.header.frame_id = path_frame_;  
+    boundary_points.header.stamp = ros::Time::now();
+
+    double x_goal = goal_pose.pose.position.x;
+    double y_goal = goal_pose.pose.position.y;
+    double yaw = tf::getYaw(goal_pose.pose.orientation);
+
+    // Calculate direction vectors
+    double dx = cos(yaw);
+    double dy = sin(yaw);
+
+    double perp_dx = -dy;
+    double perp_dy = dx;
+
+    // Calculate line points
+    for (double i = -2; i <= 2.0; i += step_size) {
+        geometry_msgs::Pose point1, point2;
+
+        point1.position.x = x_goal + boundary_distance * perp_dx + i * dx;
+        point1.position.y = y_goal + boundary_distance * perp_dy + i * dy;
+
+        point2.position.x = x_goal - boundary_distance * perp_dx + i * dx;
+        point2.position.y = y_goal - boundary_distance * perp_dy + i * dy;
+
+        // Add poses to the PoseArray
+        boundary_points.poses.push_back(point1);
+        boundary_points.poses.push_back(point2);
+    }
+
+    geometry_msgs::PoseArray transformed_boundary_points;
+    geometry_msgs::PoseStamped transformed_pose_stamped; // Declare outside the loop
+
+    try 
+    {
+    // Lookup the transform from "base_link" to "odom"
+        geometry_msgs::TransformStamped transform_stamped = tf_buffer_c.lookupTransform(global_frame_, path_frame_, ros::Time(0), ros::Duration(1.0));
+
+        // Transform all poses in the PoseArray
+        for (auto& pose : boundary_points.poses) {
+            geometry_msgs::PoseStamped pose_stamped;
+            pose_stamped.pose = pose;
+            pose_stamped.header = boundary_points.header;
+
+            // Transform the pose
+            tf2::doTransform(pose_stamped, transformed_pose_stamped, transform_stamped);
+
+            // Add the transformed pose to the new PoseArray
+            transformed_boundary_points.poses.push_back(transformed_pose_stamped.pose);
+        }
+
+        // Set the header for the transformed PoseArray
+        transformed_boundary_points.header = transform_stamped.header;
+        transformed_boundary_points.header.stamp = boundary_points.header.stamp;
+
+    } catch (tf2::TransformException &ex) {
+        ROS_WARN("Failed to transform boundary points from path_frame to global_frame: %s", ex.what());
+        return boundary_points; // Return the original in local frame in case of failure
+    }
+
+    return boundary_points;
+}
+
+void DockingControl::publishBoundaryPoseArray(const geometry_msgs::PoseArray& boundary_points, ros::Publisher& publisher)
+{
+    // Publish the PoseArray
+    publisher.publish(boundary_points);
+}
+
+
 std::vector<geometry_msgs::Twist> DockingControl::generateControlSample(geometry_msgs::Twist current_cmd, 
                                                                             geometry_msgs::Twist cal_cmd)
 {
@@ -389,6 +465,50 @@ std::vector<geometry_msgs::Twist> DockingControl::generateControlSample(geometry
     return control_sample;
 }
 
+double DockingControl::evaluateTrajectory(const nav_msgs::Path& trajectory, 
+                                          const geometry_msgs::PoseStamped& target_pose, 
+                                          const geometry_msgs::PoseArray& obstacles,
+                                          geometry_msgs::Twist cmd_control) {
+    // Goal distance cost
+    double headingCost = std::hypot(target_pose.pose.position.x - trajectory.poses.back().pose.position.x,
+                                    target_pose.pose.position.y - trajectory.poses.back().pose.position.y);
+
+    // Obstacle cost calculateion 
+    double minDistanceToObstacle = std::numeric_limits<double>::infinity();
+
+        // Calculate the minium distance to obstacles
+    for (const auto& poseStamped : trajectory.poses) {
+        const auto& pose = poseStamped.pose;
+        for (const auto& obs : obstacles.poses) { // Updated to work with PoseArray
+            double distanceToObstacle = std::hypot(pose.position.x - obs.position.x,
+                                                   pose.position.y - obs.position.y);
+            minDistanceToObstacle = std::min(minDistanceToObstacle, distanceToObstacle);
+        }
+    }
+
+        // Set the obstacle distance cost
+    double distanceCost = minDistanceToObstacle;
+
+    // Velocity penalty based on proximity to obstacles
+    double proximityVelocityPenalty = 0.0;
+    if (minDistanceToObstacle < 0.5) {
+        double velocity = cmd_control.linear.x; // Assuming linear.x represents the robot's velocity
+        proximityVelocityPenalty = velocity / (minDistanceToObstacle + 0.1);  // Add a small value to avoid division by zero
+    }
+
+    // Velocity cost to prefer faster trajectory
+    double velocityCost = cmd_control.linear.x; // Assuming linear.x represents the robot's final velocity
+
+    // Cost function
+    double totalCost = (
+        -gain_heading_ * headingCost +
+         gain_track_ * distanceCost +
+         gain_vel_ * (velocityCost - proximityVelocityPenalty)  // Subtract penalty
+    );
+
+    return totalCost;
+}
+
 geometry_msgs::Twist DockingControl::evaluateControlSampleAndOutputControl(std::vector<geometry_msgs::Twist> control_samp)
 {
     // Predict all the path with input control sample
@@ -396,27 +516,22 @@ geometry_msgs::Twist DockingControl::evaluateControlSampleAndOutputControl(std::
     for (int i = 0; i <= control_samp.size() - 1; i++) {
         path_sample.push_back(predictPath(control_samp.at(i)));
     }
-    // Get final position of the path
-    std::vector<geometry_msgs::PoseStamped> final_pose_sample;
-    for (int i = 0; i <= path_sample.size() - 1; i++) {
-        final_pose_sample.push_back(path_sample.at(i).poses.back());
-    }
 
-    // Calculate the cost
-    std::vector<double> tracking_cost;
-    std::vector<double> heading_cost;
-    std::vector<double> linear_vel_cost; // prefer higher linear velocity
+    // generate boundary. For temporary. will move to another function
+    double step_size = 0.1;
+    boundary_points_ = generateBoundaryPoints(local_goal_, 1.28/2, step_size);
+    publishBoundaryPoseArray(boundary_points_, pub_boundary_point_);
+
+     // prefer higher linear velocity
     double best_cost = -100;
     int best_index = 0;
-    for (int i = 0; i <= final_pose_sample.size() - 1; i++)
+    for (int i = 0; i <= path_sample.size() - 1; i++)
     {
-        heading_cost.push_back(abs(tf2::getYaw(final_pose_sample.at(i).pose.orientation) -
-                                tf2::getYaw(pp_lkh_pose_.pose.orientation)));
-        tracking_cost.push_back(hypot(final_pose_sample.at(i).pose.position.x - pp_lkh_pose_.pose.position.x,
-                                final_pose_sample.at(i).pose.position.y - pp_lkh_pose_.pose.position.y));
-        linear_vel_cost.push_back(control_samp.at(i).linear.x);
-        double cost_tmp = -gain_heading_*heading_cost.at(i)  -gain_track_*tracking_cost.at(i) + gain_vel_*linear_vel_cost.at(i);
-        // ROS_INFO("tracking_cost %d: %f", i, tracking_cost.at(i));
+        double cost_tmp = evaluateTrajectory(path_sample.at(i), 
+                                                pure_pursuit_control.pp_lookahead_pose_, 
+                                                boundary_points_,
+                                                control_samp.at(i));
+        ROS_INFO("cost_tmp %d: %f", i, cost_tmp);
         // ROS_INFO("linear_vel_cost %d: %f", i, linear_vel_cost.at(i));
         // ROS_INFO("cost_tmp %d: %f", i, cost_tmp);
         if (cost_tmp > best_cost)
@@ -428,9 +543,6 @@ geometry_msgs::Twist DockingControl::evaluateControlSampleAndOutputControl(std::
     ROS_INFO("Best index: %d", best_index);
     return control_samp.at(best_index); 
 }
-
-
-
 
 void DockingControl::visualize()
 {
