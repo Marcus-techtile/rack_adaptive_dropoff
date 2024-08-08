@@ -129,6 +129,7 @@ void DockingManager::setGLobalFrame(std::string global_frame)
 {
     global_frame_ = global_frame;
     quintic_planner_->global_frame_ = global_frame;
+    docking_control_->global_frame_ = global_frame;
 }
 
 
