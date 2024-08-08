@@ -14,13 +14,15 @@
 #include "pure_pursuit_control.h"
 #include <mutex>
 
+#include <geometry_msgs/PolygonStamped.h>
+
 class DockingControl
 {
 private:
     ros::NodeHandle nh_;
 
     /* Publisher */
-    ros::Publisher pub_cmd_vel_;
+    ros::Publisher pub_cmd_vel_, pub_cmd_vel_not_scale;
     ros::Publisher pub_pp_steering_;
     ros::Publisher pub_local_path_;
     ros::Publisher pub_pp_lookahead_distance_;
@@ -31,6 +33,8 @@ private:
     ros::Publisher pub_docking_local_path_;
 
     ros::Publisher pub_boundary_point_;
+    ros::Publisher pub_footprint_;
+    ros::Publisher pub_estimated_footprint_;
 
     double docking_freq_;
     double dt_;
@@ -104,6 +108,9 @@ private:
 
     void visualize();
 
+    /* Obstacle and velocity penalty */
+    double velocity_penalty_dis_thres_;
+
 public:
     DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double sec);
     ~DockingControl();
@@ -125,16 +132,24 @@ public:
     double evaluateTrajectory(const nav_msgs::Path& trajectory, 
                                                 const geometry_msgs::PoseStamped& target_pose,
                                                 const geometry_msgs::PoseArray& obstacles,
-                                                geometry_msgs::Twist cmd_control);
+                                                geometry_msgs::Twist cmd_control,
+                                                std::vector<double> &scaling_vel);
     geometry_msgs::Twist evaluateControlSampleAndOutputControl(std::vector<geometry_msgs::Twist> control_samp);
+   
     geometry_msgs::PoseArray generateBoundaryPoints(const geometry_msgs::PoseStamped& goal_pose, double boundary_distance, double step_size);
     void publishBoundaryPoseArray(const geometry_msgs::PoseArray& boundary_points, ros::Publisher& publisher);
 
+    geometry_msgs::PolygonStamped generateFootprint(double top_left_x, double top_left_y,
+                                                    double top_right_x, double top_right_y,
+                                                    double bt_right_x, double bt_right_y,
+                                                    double bt_left_x, double bt_left_y,
+                                                    const geometry_msgs::PoseStamped& PoseStamped);
+    void publishFootprint(geometry_msgs::PolygonStamped footprint, ros::Publisher& publisher);
     std::string path_frame_{"base_link_p"};
     std::string global_frame_{"odom"};
 
     /* Output control command */
-    double gain_heading_, gain_track_, gain_vel_;
+    double gain_heading_, gain_track_, gain_vel_, gain_penetrate_linear_vel_;
     geometry_msgs::Twist cmd_vel_;   // command velocity
     geometry_msgs::Twist pre_cmd_vel_;
 
