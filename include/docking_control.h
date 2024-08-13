@@ -15,6 +15,7 @@
 #include <mutex>
 
 #include <geometry_msgs/PolygonStamped.h>
+#include <sensor_msgs/JointState.h>
 
 class DockingControl
 {
@@ -87,6 +88,7 @@ private:
     double ref_velocity_, abs_ref_vel_, final_ref_vel_;       // reference velocity
     double backward_offset_;        //offset velocity used to switch to reverse movement
     double max_linear_acc_, min_linear_acc_;
+    double fuzzy_output_;
 
     /* Limit docking velocity */
     double max_steering_speed_, min_steering_speed_;
@@ -110,6 +112,8 @@ private:
 
     /* Obstacle and velocity penalty */
     double velocity_penalty_dis_thres_;
+    bool use_velocity_penalty_;
+    double obstacle_thresh_;
 
 public:
     DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double sec);
@@ -128,13 +132,12 @@ public:
     void limitControlSignal();
     void controllerCal();
     nav_msgs::Path predictPath(geometry_msgs::Twist cmd_in);
-    std::vector<geometry_msgs::Twist> generateControlSample(geometry_msgs::Twist current_cmd, geometry_msgs::Twist cal_cmd);
-    double evaluateTrajectory(const nav_msgs::Path& trajectory, 
+    void velocityScalingFactor(const nav_msgs::Path& trajectory, 
                                                 const geometry_msgs::PoseStamped& target_pose,
                                                 const geometry_msgs::PoseArray& obstacles,
                                                 geometry_msgs::Twist cmd_control,
                                                 std::vector<double> &scaling_vel);
-    geometry_msgs::Twist evaluateControlSampleAndOutputControl(std::vector<geometry_msgs::Twist> control_samp);
+    geometry_msgs::Twist scaleControlSignal(geometry_msgs::Twist control_imput);
    
     geometry_msgs::PoseArray generateBoundaryPoints(const geometry_msgs::PoseStamped& goal_pose, double boundary_distance, double step_size);
     void publishBoundaryPoseArray(const geometry_msgs::PoseArray& boundary_points, ros::Publisher& publisher);
@@ -149,9 +152,7 @@ public:
     std::string global_frame_{"odom"};
 
     /* Output control command */
-    double gain_heading_, gain_track_, gain_vel_, gain_penetrate_linear_vel_;
     geometry_msgs::Twist cmd_vel_;   // command velocity
-    geometry_msgs::Twist pre_cmd_vel_;
 
     std_msgs::Bool approaching_done_;
     std_msgs::Bool controller_on_;

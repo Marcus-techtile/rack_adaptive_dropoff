@@ -5,13 +5,13 @@ DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
     /* Get Param */
     nh_.param<double>("docking_freq", docking_freq_, 50.0);
     dt_ = 1 / docking_freq_;     
-
-    nh_.param<bool>("use_cost_function", use_cost_function_, false);                  
+    nh_.param<bool>("use_cost_function", use_cost_function_, false);      
+    nh_.param<bool>("use_velocity_penalty", use_velocity_penalty_, true);              
     nh_.param<double>("predict_time", predict_time_, 2.0);
     ROS_INFO("Docking Control Frequency: %f", docking_freq_);
     ROS_INFO("Docking Control Sampling Time: %f", dt_);
     ROS_INFO("Docking Control Predict Time: %f", predict_time_);
-
+    
     nh_.param("/forklift_params/wheel_base", l_wheelbase_, 1.311);
     
     nh_.param<bool>("publish_cmd", publish_cmd_, false);
@@ -35,12 +35,8 @@ DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
     nh_.param<double>("max_pocket_dock_vel", max_pocket_dock_vel_, 0.2);
     nh_.param<double>("max_pocket_dock_steering", max_pocket_dock_steering_, 0.2);
 
-    nh_.param<double>("gain_track", gain_track_, 2.0);
-    nh_.param<double>("gain_vel", gain_vel_, 1.0);
-    nh_.param<double>("gain_heading", gain_heading_, 2.0);
-    nh_.param<double>("gain_penetrate_linear_vel", gain_penetrate_linear_vel_, 2.0);
-
     nh_.param<double>("velocity_penalty_dis_thres", velocity_penalty_dis_thres_, 0.2);
+    nh_.param<double>("obstacle_thresh", obstacle_thresh_, 0.05);
 
     /* ROS Publisher */
     pub_cmd_vel_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
@@ -58,7 +54,7 @@ DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
     pub_boundary_point_ = nh.advertise<geometry_msgs::PoseArray>("/pallet_docking/boundary_points", 1);
     pub_footprint_ = nh.advertise<geometry_msgs::PolygonStamped>("/pallet_docking/footprint", 1);
     pub_estimated_footprint_ = nh.advertise<geometry_msgs::PolygonStamped>("/pallet_docking/estimated_footprint", 1);
-
+    
     /* Define the Controller */
     fuzzy_controller = FuzzyControl(nh_);
     pure_pursuit_control = PurePursuitController(nh_);
@@ -164,7 +160,7 @@ int DockingControl::nearestPointIndexFind(nav_msgs::Path local_path)
 void DockingControl::steeringControl()
 {
     pure_pursuit_control.setSpeed(robot_speed_);
-    pure_pursuit_control.setRefPath(local_ref_path_);
+    // pure_pursuit_control.setRefPath(local_ref_path_);
     pure_pursuit_control.setLocalGoalPose(local_goal_);
     pure_pursuit_control.setRefVel(final_ref_vel_);
     pure_pursuit_control.setClosestPoint(nearest_index_);
@@ -182,10 +178,10 @@ void DockingControl::steeringControl()
     steering_angle_ = pure_pursuit_control.steering_angle_;
 
     // Smooth the steering output. Limit steering speed
-    double steering_speed = (steering_angle_ - steering_)/dt_;
+    double steering_speed = steering_angle_ - steering_;
     if (steering_speed > max_steering_speed_) steering_speed = max_steering_speed_;
     if (steering_speed < min_steering_speed_) steering_speed = min_steering_speed_;
-    steering_ = steering_ + steering_speed * dt_;
+    steering_ = steering_ + steering_speed;
     
     // Visualize and debugging topic
     std_msgs::Float32 pp_steer;
@@ -318,21 +314,18 @@ void DockingControl::controllerCal()
     ROS_DEBUG("Control CMD_VEL (v,w): %f, %f", cmd_vel_.linear.x,
                                         cmd_vel_.angular.z);
 
-    // if (!use_cost_function_) {
-    //     if (publish_cmd_) pub_cmd_vel_.publish(cmd_vel_);
-    //     predict_path_ = predictPath(cmd_vel_);
-    //     pub_docking_local_path_.publish(predict_path_);
-    // }
-    // else
-    // {
+    if (!use_velocity_penalty_)
+    {
+        if (publish_cmd_) pub_cmd_vel_.publish(cmd_vel_);
+        predict_path_ = predictPath(cmd_vel_);
+        pub_docking_local_path_.publish(predict_path_);
+    }
+    else
+    {
         if (publish_cmd_) pub_cmd_vel_not_scale.publish(cmd_vel_);
-        std::vector<geometry_msgs::Twist> control_sampling = generateControlSample(pre_cmd_vel_, cmd_vel_);
-        geometry_msgs::Twist cmd_out =  evaluateControlSampleAndOutputControl(control_sampling);
-        
+        geometry_msgs::Twist cmd_out = scaleControlSignal(cmd_vel_);
         if (publish_cmd_) pub_cmd_vel_.publish(cmd_out);
-
-        pre_cmd_vel_ = cmd_out;
-    // }
+    }
 
 
 }
@@ -348,7 +341,7 @@ geometry_msgs::PoseArray DockingControl::generateBoundaryPoints(const geometry_m
     double x_goal = goal_pose.pose.position.x;
     double y_goal = goal_pose.pose.position.y;
     double yaw = tf::getYaw(goal_pose.pose.orientation);
-
+    if (approaching_done_.data) x_goal -= 2.3;      // Temporay fixed
     // Calculate direction vectors
     double dx = cos(yaw);
     double dy = sin(yaw);
@@ -357,15 +350,15 @@ geometry_msgs::PoseArray DockingControl::generateBoundaryPoints(const geometry_m
     double perp_dy = dx;
 
     // Calculate line points
-    for (double i = -2.0; i <= 2.0; i += step_size) {
+    for (double i = -0.2; i <= 5.0; i += step_size) {
         geometry_msgs::Pose point1, point2;
 
         point1.position.x = x_goal + boundary_distance * perp_dx + i * dx;
         point1.position.y = y_goal + boundary_distance * perp_dy + i * dy;
         point1.orientation = goal_pose.pose.orientation;
 
-        point2.position.x = x_goal - 3*boundary_distance * perp_dx + i * dx;
-        point2.position.y = y_goal - 3*boundary_distance * perp_dy + i * dy;
+        point2.position.x = x_goal - 1*boundary_distance * perp_dx + i * dx;
+        point2.position.y = y_goal - 1*boundary_distance * perp_dy + i * dy;
         point2.orientation = goal_pose.pose.orientation;
 
         // Add poses to the PoseArray
@@ -433,33 +426,8 @@ void DockingControl::publishFootprint(geometry_msgs::PolygonStamped footprint, r
 {
     publisher.publish(footprint);
 }
-/** Trajectory prediction using sampled control **/
-// Generate control sample
-/** TODO: Change sampling control function */
-std::vector<geometry_msgs::Twist> DockingControl::generateControlSample(geometry_msgs::Twist current_cmd, 
-                                                                            geometry_msgs::Twist cal_cmd)
-{
-    // std::vector<double> linear_vel_sample = linspace(current_cmd.linear.x, cal_cmd.linear.x, 5, true);
-    double lower_linear_thres = current_cmd.linear.x - max_linear_acc_*dt_;
-    if (lower_linear_thres < min_vel_) lower_linear_thres = min_vel_;
-    std::vector<double> linear_vel_sample = linspace(cal_cmd.linear.x, cal_cmd.linear.x, 1, true);
-    // std::vector<double> steering_sample = linspace(cal_cmd.angular.z, cal_cmd.angular.z, 1, true);
-    std::vector<double> steering_sample;
-    steering_sample.push_back(cal_cmd.angular.z);
-    std::vector<geometry_msgs::Twist> control_sample;
-    geometry_msgs::Twist control_tmp;
-    for (int i = 0; i <= linear_vel_sample.size() - 1; i++)
-    {
-        for (int j = 0; j <= steering_sample.size() - 1; j++)
-        {
-            control_tmp.linear.x = linear_vel_sample.at(i);
-            control_tmp.angular.z = steering_sample.at(j);
-            control_sample.push_back(control_tmp);
-        }
-    }
-    return control_sample;
-}
 
+/** Control scaling**/
 // Predict path sample
 nav_msgs::Path DockingControl::predictPath(geometry_msgs::Twist cmd_in)
 {
@@ -507,17 +475,13 @@ nav_msgs::Path DockingControl::predictPath(geometry_msgs::Twist cmd_in)
     return est_path;
 }
 
-// Evaluate Path sample
-double DockingControl::evaluateTrajectory(const nav_msgs::Path& trajectory, 
+// Calculate the scaling factor for the velocity
+void DockingControl::velocityScalingFactor(const nav_msgs::Path& trajectory, 
                                           const geometry_msgs::PoseStamped& target_pose, 
                                           const geometry_msgs::PoseArray& obstacles,
                                           geometry_msgs::Twist cmd_control,
                                           std::vector<double> &scaling_vel) 
 {
-    // Goal distance cost
-    double headingCost = std::hypot(target_pose.pose.position.x - trajectory.poses.back().pose.position.x,
-                                    target_pose.pose.position.y - trajectory.poses.back().pose.position.y);
-
     // Initialize minimum distance to obstacle
     std::vector<double> min_distance_samp;
     
@@ -541,7 +505,6 @@ double DockingControl::evaluateTrajectory(const nav_msgs::Path& trajectory,
             for (const auto& obs : obstacles.poses) { 
                 double distance_to_obs = std::hypot(footprint_point.x - obs.position.x,
                                                        footprint_point.y - obs.position.y);
-
                 min_distance_to_obs = std::min(min_distance_to_obs, distance_to_obs);
             }
         }
@@ -553,101 +516,50 @@ double DockingControl::evaluateTrajectory(const nav_msgs::Path& trajectory,
     {
         double scaling_tmp = 1;
         if (min_distance < velocity_penalty_dis_thres_) scaling_tmp = min_distance/velocity_penalty_dis_thres_;
-        // ROS_INFO("min_distance_to_obs: %f", min_distance);
+        if (min_distance < obstacle_thresh_) scaling_tmp = 0;
         scaling_vel.push_back(scaling_tmp);
     }
-
-    // Velocity penalty based on proximity to obstacles
-    double proximityVelocityPenalty = 0.0;
-
-    // double const obstacle_distance_thresh = 0.3;
-    // scaling_vel = 1;
-    // if (min_distance_to_obs < obstacle_distance_thresh) {
-    //     double velocity = cmd_control.linear.x; // Assuming linear.x represents the robot's velocity
-    //     proximityVelocityPenalty = velocity / (min_distance_to_obs + 0.001);  // Add a small value to avoid division by zero
-    //     scaling_vel = min_distance_to_obs/obstacle_distance_thresh;
-    //     // ROS_INFO("scaling vel: %f", scaling_vel);
-    // }
-
-    ///TODO: Scale velocity to zero if current distance to obsacle < threshold
-
-    // Velocity cost to prefer faster trajectory
-    double velocityCost = cmd_control.linear.x; // Assuming linear.x represents the robot's final velocity
-
-    if (min_distance_to_obs < 0.05) {
-        min_distance_to_obs = -100; // Mark as unsafe
-    }
-
-    // ROS_INFO("headingCost: %f", headingCost);
-    // ROS_INFO("velocityCost: %f", velocityCost);
-    // ROS_INFO("proximityVelocityPenalty: %f", proximityVelocityPenalty);
-    // Cost function
-    double totalCost = (
-        -gain_heading_ * headingCost +
-         gain_track_ * min_distance_to_obs +
-         gain_vel_ * velocityCost +
-        -gain_penetrate_linear_vel_ * proximityVelocityPenalty  // Subtract penalty
-    );
-
-    return totalCost;
 }
 
-// Evaluate Control sample and re output control command
-geometry_msgs::Twist DockingControl::evaluateControlSampleAndOutputControl(std::vector<geometry_msgs::Twist> control_samp)
+// Scale the control output
+geometry_msgs::Twist DockingControl::scaleControlSignal(geometry_msgs::Twist control_input)
 {
-    // Predict all the path with input control sample
-
-    std::vector<nav_msgs::Path> path_sample;
-    for (int i = 0; i <= control_samp.size() - 1; i++) {
-        path_sample.push_back(predictPath(control_samp.at(i)));
-    }
-
-    // generate boundary. For temporary. will move to another function
+    // Generate boundary based on local goal
     double step_size = 0.1;
-    boundary_points_ = generateBoundaryPoints(local_goal_, 1.3/2, step_size);
+    boundary_points_ = generateBoundaryPoints(local_goal_, 1.38/2, step_size);
     publishBoundaryPoseArray(boundary_points_, pub_boundary_point_);
 
-     // prefer higher linear velocity
-    double best_cost = -100;
-    int best_index = 0;
+    // Predict path with the control input
+    nav_msgs::Path predict_path;
+    predict_path = predictPath(control_input);
 
-    std::vector<std::vector<double>> scaling_vector_sample;
+    // Calculate the scaling vector with the predicted path
+    //* TODO: Check if cannot generate the scaling_vector or collide with obstacle 
     std::vector<double> scaling_vector;
-    for (int i = 0; i <= path_sample.size() - 1; i++)
-    {
-        double cost_tmp = evaluateTrajectory(path_sample.at(i), 
-                                                pure_pursuit_control.pp_lookahead_pose_, 
-                                                boundary_points_,
-                                                control_samp.at(i),
-                                                scaling_vector);
-        scaling_vector_sample.push_back(scaling_vector);
-        // ROS_INFO("linear_vel_cost %d: %f", i, linear_vel_cost.at(i));
-        // ROS_INFO("cost_tmp %d: %f", i, cost_tmp);
-        if (cost_tmp > best_cost)
-        {
-            best_cost = cost_tmp;
-            best_index = i;
-        }
-    }
-    if (!use_cost_function_) best_index = control_samp.size() - 1; //if not using cost function. Just output the original control signal 
-    ROS_INFO("Best index: %d", best_index);
+    velocityScalingFactor(predict_path, 
+                          pure_pursuit_control.pp_lookahead_pose_, 
+                          boundary_points_,
+                          control_input,
+                          scaling_vector);
     
-    // Scale control signal of each pose in the selected trajectory calculated from the best control sample in control_samp
+    // Apply the scaling to the control signal of each pose in the selected trajectory calculated from the best control sample in control_samp
     std::vector<geometry_msgs::Twist> control_scaled_vector;
-    for (int i = 0; i < path_sample.at(best_index).poses.size(); i++)
+    for (int i = 0; i < predict_path.poses.size(); i++)
     {
-        control_scaled_vector.push_back(control_samp.at(best_index));   // All elements are equal to the best control sample
-        control_scaled_vector.at(i).linear.x *= scaling_vector_sample.at(best_index).at(i);
+        control_scaled_vector.push_back(control_input);   // All elements are equal to the control input
+        control_scaled_vector.at(i).linear.x = std::max(min_vel_, control_scaled_vector.at(i).linear.x*scaling_vector.at(i));
         // ROS_INFO("%d: Origin linear: %f, Scaled linear: %f, Scaling Factor: %f",
         //     i, control_samp.at(best_index).linear.x, control_scaled_vector.at(i).linear.x, scaling_vector_sample.at(best_index).at(i));
     }
-    ROS_INFO("0: Origin linear: %f, Scaled linear: %f, Scaling Factor: %f",
-             control_samp.at(best_index).linear.x, control_scaled_vector.at(0).linear.x, scaling_vector_sample.at(best_index).at(0));
-    // control_samp.at(best_index).linear.x *= scaling_vector_sample.at(best_index).at(0);
+    ROS_DEBUG("Original linear: %f, Scaled linear: %f, Scaling Factor: %f",
+             control_input.linear.x, control_scaled_vector.at(0).linear.x, scaling_vector.at(0));
     
-    predict_path_ = predictPath(control_samp.at(best_index));
+    // predict path again with the scaled control signal
+    predict_path_ = predictPath(control_scaled_vector.at(0));
     pub_docking_local_path_.publish(predict_path_);
-    double r_width = 1.0;
+
+    // publish the footprint
+    double r_width = 1.0;   //TODO: get robot width from the server
     geometry_msgs::PolygonStamped current_pose_footprint = 
                                 generateFootprint(0.4, r_width/2,
                                 0.4, -r_width/2,
@@ -663,7 +575,6 @@ geometry_msgs::Twist DockingControl::evaluateControlSampleAndOutputControl(std::
                                 predict_path_.poses.back());
     publishFootprint(last_pose_footprint, pub_estimated_footprint_);
 
-    
     return control_scaled_vector.at(0); 
 }
 
