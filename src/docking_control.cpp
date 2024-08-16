@@ -11,7 +11,7 @@ DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
     ROS_INFO("Docking Control Frequency: %f", docking_freq_);
     ROS_INFO("Docking Control Sampling Time: %f", dt_);
     ROS_INFO("Docking Control Predict Time: %f", predict_time_);
-    
+
     nh_.param("/forklift_params/wheel_base", l_wheelbase_, 1.311);
     
     nh_.param<bool>("publish_cmd", publish_cmd_, false);
@@ -160,7 +160,7 @@ int DockingControl::nearestPointIndexFind(nav_msgs::Path local_path)
 void DockingControl::steeringControl()
 {
     pure_pursuit_control.setSpeed(robot_speed_);
-    // pure_pursuit_control.setRefPath(local_ref_path_);
+    pure_pursuit_control.setRefPath(local_ref_path_);
     pure_pursuit_control.setLocalGoalPose(local_goal_);
     pure_pursuit_control.setRefVel(final_ref_vel_);
     pure_pursuit_control.setClosestPoint(nearest_index_);
@@ -526,7 +526,7 @@ geometry_msgs::Twist DockingControl::scaleControlSignal(geometry_msgs::Twist con
 {
     // Generate boundary based on local goal
     double step_size = 0.1;
-    boundary_points_ = generateBoundaryPoints(local_goal_, 1.38/2, step_size);
+    boundary_points_ = generateBoundaryPoints(local_goal_, 1.5/2, step_size);
     publishBoundaryPoseArray(boundary_points_, pub_boundary_point_);
 
     // Predict path with the control input
