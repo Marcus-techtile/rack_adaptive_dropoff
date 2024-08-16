@@ -77,17 +77,17 @@ add_dependencies(adaptive_docking_local_planner
                 ${${PROJECT_NAME}_EXPORTED_TARGETS}
                 ${catkin_EXPORTED_TARGETS})
 
-# add_executable(adaptive_docking_node  src/adaptive_docking_node.cpp)
-# target_link_libraries(adaptive_docking_node quintic_planner
-#                                             fuzzy_control 
-#                                             pure_pursuit_control 
-#                                             docking_control
-#                                             docking_planner
-#                                             adaptive_docking_local_planner
-#                                             ${catkin_LIBRARIES})
-# add_dependencies(adaptive_docking_node 
-#                   ${${PROJECT_NAME}_EXPORTED_TARGETS}
-#                   ${catkin_EXPORTED_TARGETS})
+add_executable(adaptive_docking_node  src/adaptive_docking_node.cpp)
+target_link_libraries(adaptive_docking_node quintic_planner
+                                            fuzzy_control 
+                                            pure_pursuit_control 
+                                            docking_control
+                                            docking_planner
+                                            adaptive_docking_local_planner
+                                            ${catkin_LIBRARIES})
+add_dependencies(adaptive_docking_node 
+                  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+                  ${catkin_EXPORTED_TARGETS})
 
 install(TARGETS utils_lib 
                 quintic_planner 
