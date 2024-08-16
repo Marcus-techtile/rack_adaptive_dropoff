@@ -47,15 +47,11 @@
 <!-- Controller -->
   <param name="publish_cmd" value="true"/>
   <param name="docking_freq" value="20.0"/>
-  <param name="use_cost_function" value="true"/>
+  <param name="use_velocity_penalty" value="true"/>
   
-  <param name="predict_time" value="5.0"/> <!-- Predict time for cost function checking -->
-  <param name="velocity_penalty_dis_thres" value="0.2"/> <!-- Distance threshold to penatrate the velocity (m) -->
-
-  <param name="gain_heading" value="0.0"/> 
-  <param name="gain_track" value="0.0"/> 
-  <param name="gain_vel" value="1.0"/> 
-  <param name="gain_penetrate_linear_vel" value="0.0"/>
+  <param name="predict_time" value="3.0"/> <!-- Predict time for cost function checking -->
+  <param name="velocity_penalty_dis_thres" value="0.25"/> <!-- Distance threshold to penatrate the velocity (m) -->
+  <param name="obstacle_thresh" value="0.05"/> <!-- Distance threshold to stop the AGV (m) -->
 
   <!-- Pure Pursuit parameters -->
     <!-- Calculate lookahead using heading threshold -->
@@ -67,8 +63,8 @@
   <param name="max_look_ahead_dis" value="0.5"/> 
   <param name="max_steering" value="1.57"/>     
   <param name="min_steering" value="-1.57"/> 
-  <param name="max_steering_speed" value="0.7"/> 
-  <param name="min_steering_speed" value="-0.7"/>  
+  <param name="max_steering_speed" value="0.05"/> 
+  <param name="min_steering_speed" value="-0.05"/>  
   <param name="goal_correct_yaw" value="0.1"/>   
   <param name="kp" value="5.0"/>     
   <param name="ki" value="0.1"/> 
@@ -85,7 +81,7 @@
 
   <!-- Fuzzy controller parameters -->
   <param name="fuzzy_lookahead_dis" value="1.0"/>      <!-- ZERO value for output velocity --> 
-  <param name="limit_sp_curve" value="true"/> 
+  <param name="limit_sp_curve" value="false"/> 
 
   <param name="min_vel" value="0.01"/>      
   <param name="output_VS" value="0.05"/>    
