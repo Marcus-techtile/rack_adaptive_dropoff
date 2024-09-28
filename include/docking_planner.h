@@ -21,6 +21,9 @@
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/client/terminal_state.h>
 
+#include "rack_detection_msg/RackDeviation.h"
+#include "rack_detection_msg/RackLine.h"
+
 class DockingManager
 {
 private:
@@ -41,7 +44,17 @@ private:
     /* Subscriber */
     ros::Subscriber sub_cmd_vel;
     ros::Subscriber sub_move_back_;
-    
+    ros::Subscriber sub_rack_deviation_;
+        std::string rack_deviation_topic_;
+        rack_detection_msg::RackDeviation rack_deviation_;
+        void rackDeviationCallback(const rack_detection_msg::RackDeviation::ConstPtr &msg);
+        bool rack_deviation_avai_;
+    ros::Subscriber sub_rack_line_;
+        std::string rack_line_topic_;
+        rack_detection_msg::RackLine rack_line_;
+        void rackLineCallback(const rack_detection_msg::RackLine::ConstPtr &msg);
+        bool rack_line_avai_;
+
         // Pallet docking action server
     ros::Subscriber sub_docking_server_result_;
     ros::Subscriber sub_docking_server_goal_;

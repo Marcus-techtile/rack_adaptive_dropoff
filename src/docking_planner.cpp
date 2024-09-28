@@ -21,6 +21,9 @@ DockingManager::DockingManager(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
     pub_approaching_error_ = nh_.advertise<geometry_msgs::Vector3>("/pallet_docking/approaching_error", 1);
     pub_final_docking_error_ = nh_.advertise<geometry_msgs::Vector3>("/pallet_docking/final_docking_error", 1);
     
+    sub_rack_deviation_ = nh_.subscribe<rack_detection_msg::RackDeviation>("/rack_detection/fusioned_rack_deviation", 1, &DockingManager::rackDeviationCallback, this);
+    sub_rack_line_ = nh_.subscribe<rack_detection_msg::RackLine>("/rack_detection/fusioned_rack_line", 1, &DockingManager::rackLineCallback, this);
+
     /*Define failure cases */
     failure_map_[0] = "PATH_IS_NOT_FEASIBLE";
     failure_map_[1] = "BAD_DOCKING_ACCURACY";
@@ -33,9 +36,10 @@ DockingManager::DockingManager(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
 
 DockingManager::~ DockingManager(){}
 
-/***** SET DOCKING PARAMS ******/
+/***** SET DOCKING SERVER PARAMS ******/
 void DockingManager::config()
 {
+    nh_.param<std::string>("rack_deviation_topic", rack_deviation_topic_, "/rack_detection/fusioned_rack_deviation");
     /* Get Param */
     nh_.param<std::string>("/move_base_flex/AD/global_frame_id", global_frame_, "map");
 
@@ -92,6 +96,26 @@ void DockingManager::resetPlanAndControl()
     count_outside_goal_range_ = 0;
 }
 
+/**** Params Setup ******/
+bool DockingManager::setupPoses(geometry_msgs::PoseStamped approaching_pose,
+                    geometry_msgs::PoseStamped docking_pose)
+{
+    if (approaching_pose.header.frame_id == "" || docking_pose.header.frame_id == "" )
+        
+    {
+        ROS_WARN("Pose frame is empty");
+        pose_setup_ = false;
+        return false;
+    }
+    else
+    {
+        approaching_goal_ = approaching_pose;
+        docking_goal_ = docking_pose;
+        pose_setup_ = true;
+        return true;
+    }  
+}
+
 void DockingManager::setGoalRange(double dd)
 {
     goal_range_ = dd;
@@ -133,7 +157,6 @@ void DockingManager::setGLobalFrame(std::string global_frame)
 }
 
 
-
 /***** UPDATE GOAL EACH CONTROL PERIOD *****/
 void DockingManager::getAndPubDockingErrors(double error_x, double error_y, double error_yaw)
 {
@@ -155,6 +178,7 @@ void DockingManager::updateGoal()
     global_goal_pose_.header.stamp = ros::Time(0);
     try
     {
+        tf_.lookupTransform(path_frame_, global_frame_, ros::Time(0));
         tf_.transform(global_goal_pose_, local_update_goal_pose_, path_frame_, ros::Duration(tf_time_out_));
     }
     catch (tf2::TransformException ex)
@@ -162,10 +186,28 @@ void DockingManager::updateGoal()
         ROS_ERROR("%s",ex.what());
     }
 
-    geometry_msgs::PoseWithCovarianceStamped goal_pose_pub;
-    goal_pose_pub.header = local_update_goal_pose_.header;
-    goal_pose_pub.pose.pose = local_update_goal_pose_.pose;
-    pub_local_goal_pose_.publish(goal_pose_pub);
+    if (!rack_deviation_avai_ || !rack_line_avai_)
+    {
+        ROS_WARN("Rack detection output is not available. Cannot complete goal update");
+        goal_avai_ = false;
+        return;
+    }
+    /*** Update the Rack deviation for the local goal ****/
+    double a = rack_line_.vector.x, b = rack_line_.vector.y; //rack line direction vector
+    double xc = rack_line_.centroid.x, yc = rack_line_.centroid.y; //rack line centroid
+    double xb = local_update_goal_pose_.pose.position.x;
+    double yb = local_update_goal_pose_.pose.position.y;
+
+    // project the local goal to the rack line to correct the lateral angle
+    double t = ((xb - xc) * a + (yb - yc) * b) / (a * a + b * b);
+    double xp = xc + t * a;
+    double yp = yc + t * b;
+
+    local_update_goal_pose_.pose.position.x = xp;
+    local_update_goal_pose_.pose.position.y = yp;
+    local_update_goal_pose_.pose.orientation = rpyToQuaternion(0,0, rack_deviation_.orientation_deviation);
+
+    pub_local_goal_pose_.publish(local_update_goal_pose_);
     goal_avai_ = true; 
 }
 
@@ -286,24 +328,6 @@ void DockingManager::dockingState()
 
 ////// Set goal State /////
 /***** SETUP GOAL FOR DOCKING *****/
-bool DockingManager::setupPoses(geometry_msgs::PoseStamped approaching_pose,
-                    geometry_msgs::PoseStamped docking_pose)
-{
-    if (approaching_pose.header.frame_id == "" || docking_pose.header.frame_id == "" )
-        
-    {
-        ROS_WARN("Pose frame is empty");
-        pose_setup_ = false;
-        return false;
-    }
-    else
-    {
-        approaching_goal_ = approaching_pose;
-        docking_goal_ = docking_pose;
-        pose_setup_ = true;
-        return true;
-    }  
-}
 
 void DockingManager::goalSetup()
 {   
@@ -404,6 +428,7 @@ void DockingManager::genPathAndPubControlState()
     docking_state.data = "GEN_PATH_AND_PUB_CONTROL";
     updateGoal();
     if (!goal_avai_) return;
+    goal_avai_ = false;  //reset goal update for the next cycle
     checkGoalReach();
     quinticPlannerSetup();
     if (!quintic_planner_->path_feasible_)
@@ -569,6 +594,7 @@ void DockingManager::dockingFSM()
     pub_approaching_done.publish(approaching_done);
 }
 
+/***** RETURN *****/
 geometry_msgs::Twist DockingManager::getCmdVel()
 {
     ROS_DEBUG("PLanner CMD_VEL (v,w): %f, %f", docking_control_->cmd_vel_.linear.x,
@@ -587,3 +613,16 @@ geometry_msgs::Vector3 DockingManager::getDockingFinalError()
 }
 
 uint8_t DockingManager::getDockingResult() {return static_cast<int>(docking_result);}
+
+
+void DockingManager::rackDeviationCallback(const rack_detection_msg::RackDeviation::ConstPtr &msg)
+{
+    rack_deviation_ = *msg;
+    rack_deviation_avai_ = true;
+}
+
+void DockingManager::rackLineCallback(const rack_detection_msg::RackLine::ConstPtr &msg)
+{
+    rack_line_ = *msg;
+    rack_line_avai_ = true;
+}
