@@ -49,3 +49,19 @@ std::vector<double> linspace(double start, double stop, int num, bool endpoint =
     return result;
 }
 
+double linearInterpolation(double x0, double y0, double x1, double y1, double x) {
+    return y0 + ((y1 - y0) / (x1 - x0)) * (x - x0);
+}
+
+double bilinearInterpolation(double x1, double y1, double x2, double y2, 
+                             double fQ11, double fQ21, double fQ12, double fQ22, 
+                             double x, double y) {
+    // Interpolate in the x direction
+    double fR1 = fQ11 + (x - x1) * ((fQ21 - fQ11) / (x2 - x1));
+    double fR2 = fQ12 + (x - x1) * ((fQ22 - fQ12) / (x2 - x1));
+    
+    // Interpolate in the y direction
+    double fP = fR1 + (y - y1) * ((fR2 - fR1) / (y2 - y1));
+    
+    return fP;
+}
