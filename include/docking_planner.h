@@ -109,7 +109,7 @@ private:
     geometry_msgs::Vector3 final_error_;
 
     // limit for final docking tolerance
-    double limit_tol_x_{0.01}, limit_tol_y_{0.01}, limit_tol_angle_{0.01};
+    double limit_tol_x_{0.001}, limit_tol_y_{0.001}, limit_tol_angle_{0.01};
 
     /* Docking State Control */
     bool start_pallet_docking_, start_returning_;

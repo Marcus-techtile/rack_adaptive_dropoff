@@ -186,27 +186,32 @@ void DockingManager::updateGoal()
         ROS_ERROR("%s",ex.what());
     }
 
-    if (!rack_deviation_avai_ || !rack_line_avai_)
+    if (rack_deviation_avai_ && rack_line_avai_)
     {
-        ROS_WARN("Rack detection output is not available. Cannot complete goal update");
-        goal_avai_ = false;
-        return;
+        /*** Update the Rack deviation for the local goal ****/
+        double a = rack_line_.vector.x, b = rack_line_.vector.y; //rack line direction vector
+        double xc = rack_line_.centroid.x, yc = rack_line_.centroid.y; //rack line centroid
+        double xb = local_update_goal_pose_.pose.position.x;
+        double yb = local_update_goal_pose_.pose.position.y;
+
+        // project the local goal to the rack line to correct the lateral angle
+        double t = ((xb - xc) * a + (yb - yc) * b) / (a * a + b * b);
+        double xp = xc + t * a;
+        double yp = yc + t * b;
+
+        local_update_goal_pose_.pose.position.x = xp;
+        local_update_goal_pose_.pose.position.y = yp;
+        local_update_goal_pose_.pose.orientation = rpyToQuaternion(0,0, rack_deviation_.orientation_deviation);
     }
-    /*** Update the Rack deviation for the local goal ****/
-    double a = rack_line_.vector.x, b = rack_line_.vector.y; //rack line direction vector
-    double xc = rack_line_.centroid.x, yc = rack_line_.centroid.y; //rack line centroid
-    double xb = local_update_goal_pose_.pose.position.x;
-    double yb = local_update_goal_pose_.pose.position.y;
+    else
+    {
+        // ROS_WARN("Rack detection output is not available. Use the global goal");
+    }
+    rack_deviation_avai_ = false;
+    rack_line_avai_ = false;
 
-    // project the local goal to the rack line to correct the lateral angle
-    double t = ((xb - xc) * a + (yb - yc) * b) / (a * a + b * b);
-    double xp = xc + t * a;
-    double yp = yc + t * b;
 
-    local_update_goal_pose_.pose.position.x = xp;
-    local_update_goal_pose_.pose.position.y = yp;
-    local_update_goal_pose_.pose.orientation = rpyToQuaternion(0,0, rack_deviation_.orientation_deviation);
-
+    pub_global_goal_pose_.publish(global_goal_pose_);
     pub_local_goal_pose_.publish(local_update_goal_pose_);
     goal_avai_ = true; 
 }
@@ -400,7 +405,7 @@ void DockingManager::quinticPlannerSetup()
     quintic_planner_->setParams(0.0, 0.0, 0.0, quintic_planner_->starting_vel_, quintic_planner_->starting_acc_,
             local_update_goal_pose_.pose.position.x, local_update_goal_pose_.pose.position.y, tf::getYaw(local_update_goal_pose_.pose.orientation),
             quintic_planner_->stopping_vel_, quintic_planner_->stopping_acc_);
-    if (!quintic_planner_->path_avai_)
+    // if (!quintic_planner_->path_avai_)
         quintic_planner_->genPath();
     quintic_planner_->visualize(global_goal_pose_);
 }
@@ -456,6 +461,7 @@ void DockingManager::genPathAndPubControlState()
         docking_control_->setLocalGoal(local_update_goal_pose_);
         docking_control_->controller_on_.data = true;
     }
+    docking_control_->setRefPath(quintic_planner_->quintic_path_);
     docking_control_->setLocalGoal(local_update_goal_pose_);            // Fix local goal for the final pose of the ref path
     docking_control_->controllerCal();
     if (docking_control_->invalid_control_signal_)
