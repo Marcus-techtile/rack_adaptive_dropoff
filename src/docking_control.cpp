@@ -38,6 +38,8 @@ DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
     nh_.param<double>("velocity_penalty_dis_thres", velocity_penalty_dis_thres_, 0.2);
     nh_.param<double>("obstacle_thresh", obstacle_thresh_, 0.05);
 
+    nh_.param<double>("alpha", alpha_, 0.3);
+
     /* ROS Publisher */
     pub_cmd_vel_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
     pub_cmd_vel_not_scale = nh_.advertise<geometry_msgs::Twist>("/pallet_docking/cmd_vel_unscaled", 1);
@@ -61,6 +63,7 @@ DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
 
     /* Initialize parameters */
     resetController();
+    control_filter_ = std::make_shared<LowPassFilter>(alpha_);
 }
 
 DockingControl::~DockingControl(){}
@@ -311,6 +314,10 @@ void DockingControl::controllerCal()
     cmd_vel_.linear.x = final_ref_vel_; 
     cmd_vel_.angular.z = steering_;
 
+    control_filter_->applyFilter(cmd_vel_filtered_.linear.x, cmd_vel_filtered_.angular.z, cmd_vel_filtered_.angular.z,
+                                cmd_vel_.linear.x, cmd_vel_.angular.z, cmd_vel_.angular.z);
+
+    cmd_vel_ = cmd_vel_filtered_;
     ROS_DEBUG("Control CMD_VEL (v,w): %f, %f", cmd_vel_.linear.x,
                                         cmd_vel_.angular.z);
 

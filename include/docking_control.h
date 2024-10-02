@@ -17,6 +17,8 @@
 #include <geometry_msgs/PolygonStamped.h>
 #include <sensor_msgs/JointState.h>
 
+#include <filters.h>
+
 class DockingControl
 {
 private:
@@ -95,6 +97,10 @@ private:
     double max_pocket_dock_vel_;
     double max_pocket_dock_steering_;
 
+    /* Lowpass filter */
+    double alpha_;
+    std::shared_ptr<LowPassFilter> control_filter_;
+
     /* tf conversion */
     tf2_ros::Buffer &tf_buffer_c;
     double tf_time_out_{1.0};
@@ -153,6 +159,7 @@ public:
 
     /* Output control command */
     geometry_msgs::Twist cmd_vel_;   // command velocity
+    geometry_msgs::Twist cmd_vel_filtered_;
 
     std_msgs::Bool approaching_done_;
     std_msgs::Bool controller_on_;
