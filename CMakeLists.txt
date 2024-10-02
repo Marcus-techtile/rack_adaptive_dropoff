@@ -10,7 +10,12 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   tf2_ros
   mbf_msgs
+  rack_detection_msg
+  rack_detection
 )
+
+# Find Eigen3
+find_package(Eigen3 REQUIRED)
 
 catkin_package(
   INCLUDE_DIRS 
@@ -30,6 +35,8 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${rack_detection_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIR}
 )
 
 link_directories(${catkin_LIBRARY_DIRS})
@@ -60,7 +67,8 @@ add_dependencies(pure_pursuit_control
 
 add_library(docking_control src/docking_control.cpp )
 target_link_libraries(docking_control  fuzzy_control 
-                                       pure_pursuit_control ${catkin_LIBRARIES})
+                                       pure_pursuit_control
+                                       filters ${catkin_LIBRARIES})
 add_dependencies(docking_control
                 ${${PROJECT_NAME}_EXPORTED_TARGETS}
                 ${catkin_EXPORTED_TARGETS})
