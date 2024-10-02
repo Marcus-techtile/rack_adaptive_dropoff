@@ -122,7 +122,7 @@ double PurePursuitController::calLookaheadDistance(double lk_t, double cur_spd)
 {
     double lk_dis = abs(cur_spd) * lk_time;     // adaptive lookahead distance
     if (lk_dis < min_look_ahead_dis_) return min_look_ahead_dis_;
-    if (lk_dis > max_look_ahead_dis_) return min_look_ahead_dis_;
+    if (lk_dis > max_look_ahead_dis_) return max_look_ahead_dis_;
     return lk_dis;
 }
 
