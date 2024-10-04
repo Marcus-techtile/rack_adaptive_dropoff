@@ -11,7 +11,6 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_ros
   mbf_msgs
   rack_detection_msg
-  rack_detection
 )
 
 # Find Eigen3
@@ -65,10 +64,10 @@ add_dependencies(pure_pursuit_control
                 ${${PROJECT_NAME}_EXPORTED_TARGETS}
                 ${catkin_EXPORTED_TARGETS})
 
-add_library(docking_control src/docking_control.cpp )
+add_library(docking_control src/docking_control.cpp src/filters)
 target_link_libraries(docking_control  fuzzy_control 
                                        pure_pursuit_control
-                                       filters ${catkin_LIBRARIES})
+                                       ${catkin_LIBRARIES})
 add_dependencies(docking_control
                 ${${PROJECT_NAME}_EXPORTED_TARGETS}
                 ${catkin_EXPORTED_TARGETS})
