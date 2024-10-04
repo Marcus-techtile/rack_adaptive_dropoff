@@ -71,13 +71,10 @@ QuinticPlanner::QuinticPlanner(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
     nh_.param<double>("max_t", max_t_, 10.0);
     nh_.param<double>("dt", dt_, 0.1);
 
-    nh_.param<double>("fake_goal_x", fake_goal_x_, 3.5);
-    nh_.param<double>("fake_goal_y", fake_goal_y_, 2.0);
-    nh_.param<double>("fake_goal_yaw", fake_goal_yaw_, -0.087);
-
     /* ROS Publisher */
     pub_quintic_pose_ = nh_.advertise<geometry_msgs::PoseArray>("/pallet_docking/quintic_pose", 1);
     pub_quintic_path_ = nh_.advertise<nav_msgs::Path>("/pallet_docking/quintic_path", 1);
+    pub_quintic_local_path_ = nh_.advertise<nav_msgs::Path>("/pallet_docking/quintic_local_path", 1);
     marker_pub_ = nh_.advertise<visualization_msgs::Marker>("/pallet_docking/visualization_marker", 10);
 
     /* Initialize parameters */
@@ -85,8 +82,6 @@ QuinticPlanner::QuinticPlanner(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
     quintic_path_.header.frame_id = path_frame_;
 
     set_param_ = false;
-    // controller_on_.data = false;
-
     resetPlanner();
 }
 
@@ -96,6 +91,12 @@ void QuinticPlanner::setParams(double sx, double sy, double syaw, double sv, dou
     sx_ = sx,   sy_ = sy,   syaw_ = syaw,   sv_ = sv,   sa_ = sa;
     gx_ = gx,   gy_ = gy,   gyaw_ = gyaw,   gv_ = gv,   ga_ = ga;
     set_param_ = true;
+}
+
+void QuinticPlanner::setFrame(std::string local_frame, std::string global_frame)
+{
+    global_frame_ = global_frame;
+    path_frame_ = local_frame;
 }
 
 void QuinticPlanner::genPath()
@@ -218,8 +219,6 @@ void QuinticPlanner::genPath()
             quintic_path_.poses.push_back(pose_stamp_tmp);
         }
 
-
-
         if ((*std::max_element(curv_.begin(), curv_.end()) < max_curv_) &&
                 (*std::min_element(curv_.begin(), curv_.end()) > -1*max_curv_) &&
             (*std::max_element(r_vyaw_.begin(), r_vyaw_.end()) < max_yaw_rate_) &&
@@ -265,6 +264,7 @@ void QuinticPlanner::genPath()
             }
         }
 
+        pub_quintic_local_path_.publish(quintic_path_);
         pub_quintic_path_.publish(global_quintic_path_);
         pub_quintic_pose_.publish(quintic_pose_);
         path_avai_ = true;

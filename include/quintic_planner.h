@@ -42,7 +42,9 @@ private:
     ros::NodeHandle nh_;
 
     /* Publisher */
-    ros::Publisher pub_quintic_pose_, pub_quintic_path_, marker_pub_;
+    ros::Publisher pub_quintic_pose_;
+    ros::Publisher pub_quintic_local_path_, pub_quintic_path_;
+    ros::Publisher marker_pub_;
 
     /* Quintic parameters */
     double sx_, sy_, syaw_, sv_, sa_;
@@ -53,11 +55,6 @@ private:
 
     /* odometry and pallet subscribe */
     double odom_yaw_;
-
-    /* fake goal for test */
-    double fake_goal_x_;
-    double fake_goal_y_;
-    double fake_goal_yaw_;
 
     /* tf conversion */
     tf2_ros::Buffer &tf_buffer;
@@ -93,6 +90,7 @@ public:
     std::vector<double> rv_, ra_, rax_, ray_, rj_;        //x, y, yaw
     std::vector<double> curv_;
 
+    void setFrame(std::string local_frame, std::string global_frame);
     void setParams(double sx, double sy, double syaw, double sv, double sa,
                     double gx, double gy, double gyaw, double gv, double ga);
     void genPath();
