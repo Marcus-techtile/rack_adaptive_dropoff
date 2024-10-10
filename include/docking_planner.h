@@ -118,7 +118,7 @@ private:
     enum docking_state {IDLE, APPROACHING, DOCKING, 
                         SET_GOAL, UPDATE_GOAL, SIDESHIFT_CONTROL, GEN_PATH_AND_PUB_CONTROL, STOP, RECOVER, END, FAILURE};
     bool pallet_pose_avai_{false};  // transition from GET_PALLET_POSE to APPROACH
-    bool approach_done_{false};     // transition from APPROACHING to DOCKING, to SET_GOAL
+
     bool docking_done_{false};       // transition from DOCKING to SET_GOAL
     bool goal_setup_{false};        // transition from SET_GOAL to UPDATE_GOAL
     bool goal_avai_{false};         // transition from UPDATE_GOAL to GEN_PATH
@@ -201,4 +201,6 @@ public:
     enum class dockingResult:uint8_t{PROCESS, SUCCESS, FAIL_DOCKING_PATH_IS_NOT_FEASIBLE, 
                                 FAIL_DOCKING_BAD_ACCURACY, FAIL_TF_ERROR, FAIL_INVALID_CONTROL_OUTPUT};
     dockingResult docking_result; 
+    
+	bool approach_done_{false};     // transition from APPROACHING to DOCKING, to SET_GOAL
 };

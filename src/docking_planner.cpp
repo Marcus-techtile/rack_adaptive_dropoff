@@ -271,7 +271,7 @@ void DockingManager::checkGoalReach()
         }
         else
         {
-            if (error_x < 0 || error_sq > goal_range_) count_outside_goal_range_++;
+            if (error_x < -0.01 || error_sq > goal_range_) count_outside_goal_range_++;
         }
         if (count_outside_goal_range_ > 10)      // Prevent jumping in and out goal range
         {
@@ -312,7 +312,7 @@ void DockingManager::idleState()
 void DockingManager::approachingState()
 {
     docking_state.data = "APPROACHING";
-    if (!approach_done_)
+    if (!approaching_done.data)
     {
         current_pallet_docking_state_ = SET_GOAL;  
     }
