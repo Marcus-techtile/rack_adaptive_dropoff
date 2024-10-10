@@ -108,12 +108,12 @@ void QuinticPlanner::genPath()
     curv_.clear();
 
     // Auto adjust the path derivative
-    gv_ = bilinearInterpolation(0, 0, 0.3, 0.5, 0, 0.3, 0.3, 0.3, gy_, abs(gyaw_));
+    gv_ = bilinearInterpolation(0.00, 0.00, 0.3, 0.3, 0, 0.3, 0.3, 0.3, abs(gy_), abs(gyaw_));
     sv_ = gv_;
     if(sv_ > 0.3) sv_ = 0.3;
     if(gv_ > 0.3) gv_ = 0.3;
-    
-    // ROS_INFO("Path Derivatives params: %f", gv_);
+   
+    //ROS_INFO("Path Derivatives params: %f", gv_);
 
     double vxs = sv_ * cos(syaw_);
     double vys = sv_ * sin(syaw_);
@@ -165,7 +165,7 @@ void QuinticPlanner::genPath()
 
             double yaw = atan2(vy, vx);
             if (vx < 0) yaw = atan2(-vy, abs(vx));
-
+	    if (abs(gx_) - abs(xqp.cal_point(t)) < 0.1) yaw = gyaw_;
             ryaw_.push_back(yaw);
 
             // ROS_INFO("YAW: %f", yaw);
@@ -225,13 +225,13 @@ void QuinticPlanner::genPath()
                 (*std::min_element(r_vyaw_.begin(), r_vyaw_.end()) > -1*max_yaw_rate_) &&
             (*std::max_element(ra_.begin(), ra_.end()) < max_accel_) &&
                 (*std::min_element(ra_.begin(), ra_.end()) > -1*max_accel_) &&
-                (*std::max_element(ra_.begin(), ra_.end()) > 0.01) &&
-                (*std::min_element(ra_.begin(), ra_.end()) < -0.01) &&
+               (*std::max_element(ra_.begin(), ra_.end()) > 0.01) &&
+               (*std::min_element(ra_.begin(), ra_.end()) < -0.01) &&
             (*std::max_element(rj_.begin(), rj_.end()) < max_jerk_) &&
                 (*std::min_element(rj_.begin(), rj_.end()) > -1*max_jerk_))
         {
             // ROS_INFO("Path found");
-            // ROS_INFO("Time move %f", t_to_goal);
+            //ROS_INFO("Time move %f", t_to_goal);
             // ROS_INFO(" Path: Max acc: %f", *std::max_element(ra_.begin(), ra_.end()));
             // ROS_INFO(" Path: Min acc: %f", *std::min_element(ra_.begin(), ra_.end()));
             path_feasible_ = true;
