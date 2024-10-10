@@ -26,7 +26,7 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "docking_local_planner");
     ros::NodeHandle n ("~");
-    ros::Rate loop_rate(20);
+    ros::Rate loop_rate(10);
 
     double approach_ref_x, approach_ref_y, approach_ref_angle;
     double docking_ref_x, docking_ref_y, docking_ref_angle;
@@ -65,6 +65,8 @@ int main(int argc, char** argv)
     uint32_t control_exec;
 
     bool setup_goal_pose_{false};
+    
+    double depth_dsi;
     while(ros::ok())
     {  
         // if (!rack_deviation_avai_) {
@@ -87,7 +89,8 @@ int main(int argc, char** argv)
 
             docking_pose.header.frame_id = "base_link_p";
             docking_pose.header.stamp = ros::Time::now();
-            docking_pose.pose.position.x = docking_ref_x;
+            depth_dsi = docking_ref_x + number_success%3;
+            docking_pose.pose.position.x = depth_dsi;
             docking_pose.pose.position.y = docking_ref_y;
             docking_pose.pose.orientation = rpyToQuaternion(0, 0, docking_ref_angle);
 
@@ -109,8 +112,8 @@ int main(int argc, char** argv)
         std::string msg;
 
         // ROS_INFO("Docking result: %d", docking_local_planner.getDockingResult());
-        bool approaching_reached = docking_local_planner.IsApproachingReached(0.01, 0.015, 0.02);
-        bool goal_reached = docking_local_planner.IsGoalReached(0.01, 0.006, 0.02);
+        //bool approaching_reached = docking_local_planner.IsApproachingReached(0.02, 0.015, 0.02);
+        bool goal_reached = docking_local_planner.IsGoalReached(0.01, 0.015, 0.02);
         // bool approaching_reached = docking_local_planner.IsApproachingReached(0.03, 0.015, 0.03);
         if (!goal_reached) 
             control_exec = docking_local_planner.ExecuteControlLoop(pose,
@@ -132,10 +135,11 @@ int main(int argc, char** argv)
 
             // move back to position
             geometry_msgs::Twist cmd_vel_back;
+            double move_back_sp = -0.3;
             ros::Time start = ros::Time::now();
-            while ((ros::Time::now() - start).toSec() < 3.0)
+            while ((ros::Time::now().toSec() - start.toSec()) < (depth_dsi/abs(move_back_sp) + 2.0))
             {
-                cmd_vel_back.linear.x = -(docking_ref_x/3);
+                cmd_vel_back.linear.x = move_back_sp;
                 pub_cmd.publish(cmd_vel_back);
             }
             
@@ -143,12 +147,12 @@ int main(int argc, char** argv)
             pub_cmd.publish(cmd_vel_back);
             ros::Duration(1).sleep();
 
-            if (!docking_local_planner.setPlan(plan_header, approach_pose, docking_pose))
-            {
+           if (!docking_local_planner.setPlan(plan_header, approach_pose, docking_pose))
+           {
                 ROS_WARN("Cannot setup pose");
                 return 0;
-            }
-            setup_goal_pose_ = false;
+           }
+           setup_goal_pose_ = false;
         }
 
         ros::spinOnce();
