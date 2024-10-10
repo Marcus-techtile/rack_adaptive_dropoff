@@ -47,6 +47,8 @@ bool AdaptiveDockingLocalPlanner::setPlan (const std_msgs::Header &header,
             const geometry_msgs::PoseStamped &docking_pose)
 {
     docking_manager_->initDocking();
+    docking_manager_->approaching_done.data = true;
+    docking_manager_->approach_done_ = true;
     return docking_manager_->setupPoses(approaching_pose, docking_pose);
 }
 
