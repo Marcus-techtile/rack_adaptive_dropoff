@@ -239,7 +239,7 @@ void PurePursuitController::calControl()
     p_part_ = kp_*pid_error_;
     i_part_ += ki_*pid_error_ * dt_;
     pre_pid_error_ = pid_error_;
-    double steering_angle_corrected = PP_steering_angle_ + p_part_ + i_part_;
+    double steering_angle_corrected = PP_steering_angle_;
     if (abs(distance_to_goal_) < goal_correct_yaw_) steering_angle_corrected = k_angle_*PP_steering_angle_ + k_lat_*(p_part_ + i_part_);
 
     // if (use_ref_angle_from_path_)
