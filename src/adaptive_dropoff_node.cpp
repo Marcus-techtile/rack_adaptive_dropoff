@@ -1,4 +1,4 @@
-#include "adaptive_docking_local_planner.h"
+#include "adaptive_dropoff_local_planner.h"
 #include "nav_msgs/Odometry.h"
 #include "rack_detection_msg/RackDeviation.h"
 
@@ -24,7 +24,7 @@ void rackDeviationCallback(const rack_detection_msg::RackDeviation::ConstPtr &ms
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "docking_local_planner");
+    ros::init(argc, argv, "adaptive_dropoff");
     ros::NodeHandle n ("~");
     ros::Rate loop_rate(10);
 

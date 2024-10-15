@@ -10,8 +10,8 @@
 
 #include <visualization_msgs/Marker.h>
 
-#include "fuzzy_control.h"
-#include "pure_pursuit_control.h"
+#include "controller/fuzzy_control.h"
+#include "controller/pure_pursuit_control.h"
 #include <mutex>
 
 #include <geometry_msgs/PolygonStamped.h>

@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>pallet_docking_xsquare</name>
+  <name>rack_adaptive_dropoff</name>
   <version>0.0.0</version>
-  <description>The pallet_docking_xsquare package</description>
+  <description>The adaptive dropoff package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->

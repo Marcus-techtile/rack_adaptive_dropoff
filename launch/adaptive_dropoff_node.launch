@@ -5,7 +5,7 @@
  <arg name="odom_topic" default ="/gazebo/forklift_controllers/odom"/>
  <arg name="cmd_vel_topic" default ="/cmd_vel_raw"/>
 
- <node pkg="pallet_docking_xsquare" type="adaptive_docking_node" name="adaptive_docking_node" output = "screen" >
+ <node pkg="rack_adaptive_dropoff" type="adaptive_dropoff_node" name="adaptive_dropoff_node" output = "screen" >
    <param name="global_frame" value="$(arg global_frame)"/>
    <param name="path_frame" value="$(arg path_frame)"/>
 

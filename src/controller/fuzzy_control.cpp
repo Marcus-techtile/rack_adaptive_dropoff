@@ -1,4 +1,4 @@
-#include <fuzzy_control.h>
+#include <controller/fuzzy_control.h>
 
 
 FuzzyControl::FuzzyControl(){}
