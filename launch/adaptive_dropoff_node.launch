@@ -22,26 +22,24 @@
     <param name="approach_ref_y" value="0.0"/>
     <param name="approach_ref_angle" value="0"/>
 
-    <param name="docking_ref_x" value="1.2"/>  
-    <param name="docking_ref_y" value="0.0"/>
+    <param name="docking_ref_x" value="3.0"/>  
+    <param name="docking_ref_y" value="0"/>
     <param name="docking_ref_angle" value="0"/>
 
 <!-- Planner -->
   <!-- Goal parameters -->
-   <param name="approaching_min_dis" value="1.0"/>  
-   <param name="moveback_straight_distance" value="1.0"/>
+    <param name="approaching_min_dis" value="1.0"/>  
+    <param name="moveback_straight_distance" value="1.0"/>
 
   <!-- Starting boundary -->
-   <param name="starting_vel" value="0.2"/>
-   <param name="starting_acc" value="0.0"/>
+    <param name="max_starting_vel" value="0.1"/>   
 
   <!-- Ending boundary -->
-   <param name="stopping_vel" value="0.3"/>
-   <param name="stopping_acc" value="0.0"/>
+    <param name="max_ending_vel" value="0.3"/>
+    <param name="k_ending_lat" value="0.8"/>
+    <param name="k_ending_angle" value="0.5"/>
    
   <!-- Max boundary -->
-   <param name="max_yaw_rate" value="25000"/>
-   <param name="max_path_curvature" value="1000000.0"/>
    <param name="max_ax" value="0.5"/>
    <param name="max_ay" value="0.5"/>
    <param name="max_acc" value="0.5"/>
@@ -50,7 +48,7 @@
   <!-- Time condition -->
    <param name="min_t" value="0.01"/>
    <param name="max_t" value="100.0"/>
-   <param name="dt" value="0.1"/>
+   <param name="dt" value="0.25"/>
 
   <!-- Goal tolerance -->
    <param name="distance_tolerance" value="0.1"/>  <!-- meter -->
@@ -72,7 +70,6 @@
   <param name="velocity_penalty_dis_thres" value="0.25"/> <!-- Distance threshold to penatrate the velocity (m) -->
   <param name="obstacle_thresh" value="0.05"/> <!-- Distance threshold to stop the AGV (m) -->
 
-
   <!-- Pure Pursuit parameters -->
     <!-- Calculate lookahead using heading threshold -->
   <param name="cal_lookahead_using_heading_thres" value="true"/>  
@@ -85,13 +82,13 @@
   <param name="min_steering" value="-1.57"/> 
   <param name="max_steering_speed" value="0.5"/> 
   <param name="min_steering_speed" value="-0.5"/>  
-  <param name="goal_correct_yaw" value="0.2"/>   
+  <param name="goal_correct_yaw" value="0.1"/>   
   <param name="kp" value="2.0"/>     
   <param name="ki" value="0.1"/> 
   <param name="k_lat" value="1.0"/> 
   <param name="k_angle" value="1.0"/> 
 
-  <param name="max_angular_vel" value="0.5"/>  <!-- change from the stable branch -->
+  <param name="max_angular_vel" value="0.5"/>  
   
   <param name="adaptive_ref_angle" value="false"/> 
   <param name="use_ref_angle_from_path" value="false"/> 
@@ -125,9 +122,8 @@
   <param name="min_linear_acc" value="-0.5"/>
 
   <param name="max_pocket_dock_vel" value="0.5"/> 
-  <param name="max_pocket_dock_steering" value="1.5"/> 
+  <param name="max_pocket_dock_steering" value="1.55"/> 
 
-  <param name="max_abs_vel_change" value="0.5"/>   <!-- dt = 0.02, a = max_abs_vel_change/dt-->
 
   <remap from="/cmd_vel" to = "$(arg cmd_vel_topic)"/>
   <remap from="/gazebo/forklift_controllers/odom" to = "$(arg odom_topic)"/>

@@ -57,12 +57,6 @@ double QuinticPolynominal::cal_jerk(double ti)
 QuinticPlanner::QuinticPlanner(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double sec):nh_(nh), tf_buffer(tf), tf_time_out_{1.0}
 {
     /* Get Param */
-    nh_.param<double>("starting_vel", starting_vel_, 0.01);
-    nh_.param<double>("starting_acc", starting_acc_, 0.01);
-    nh_.param<double>("stopping_vel", stopping_vel_, 0.01);
-    nh_.param<double>("stopping_acc", stopping_acc_, -0.01);
-    nh_.param<double>("max_yaw_rate", max_yaw_rate_, 0.1);
-    nh_.param<double>("max_path_curvature", max_curv_, 2.0);
     nh_.param<double>("max_acc", max_accel_, 0.5);
     nh_.param<double>("max_ax", max_ax_, 0.5);
     nh_.param<double>("max_ay", max_ay_, 0.5);
@@ -70,6 +64,11 @@ QuinticPlanner::QuinticPlanner(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
     nh_.param<double>("min_t", min_t_, 0.5);
     nh_.param<double>("max_t", max_t_, 10.0);
     nh_.param<double>("dt", dt_, 0.1);
+
+    nh_.param<double>("max_starting_vel", max_starting_vel_, 0.1);
+    nh_.param<double>("max_ending_vel", max_ending_vel_, 0.3);
+    nh_.param<double>("k_ending_lat", k_ending_lat_, 0.8);
+    nh_.param<double>("k_ending_angle", k_ending_angle_, 0.5);
 
     /* ROS Publisher */
     pub_quintic_pose_ = nh_.advertise<geometry_msgs::PoseArray>("/pallet_docking/quintic_pose", 1);
@@ -102,10 +101,9 @@ void QuinticPlanner::setFrame(std::string local_frame, std::string global_frame)
 void QuinticPlanner::genPath()
 {  
     time_.clear();
-    rx_.clear(); ry_.clear(); ryaw_.clear(), r_vyaw_.clear();
+    rx_.clear(); ry_.clear(); ryaw_.clear();
     rv_.clear(); ra_.clear(); rax_.clear(); ray_.clear();
     rj_.clear();
-    curv_.clear();
 
     // Auto adjust the path derivative
     // gv_ = bilinearInterpolation(0.00, 0.00, 0.3, 0.3, 0, 0.3, 0.3, 0.3, abs(gy_), abs(gyaw_));
@@ -113,12 +111,13 @@ void QuinticPlanner::genPath()
     // if(sv_ > 0.3) sv_ = 0.3;
     // if(gv_ > 0.3) gv_ = 0.3;
 
-    sv_ = bilinearInterpolation(0.00, 0.00, 0.3, 0.3, 0, 0.1, 0.1, 0.1, abs(gy_), abs(gyaw_));
-    if (sv_ > 0.1) sv_ = 0.1;
+    
+    sv_ = bilinearInterpolation(0.00, 0.00, 0.3, 0.3, 
+                                0, max_starting_vel_, max_starting_vel_, max_starting_vel_, 
+                                abs(gy_), abs(gyaw_));
+    if (sv_ > max_starting_vel_) sv_ = max_starting_vel_;
 
-    double v_max = 0.3;
-    double k1 = 0.8, k2 = 0.5;
-    gv_ = std::min(v_max, k1 * abs(gy_) + k2 * abs(gyaw_));
+    gv_ = std::min(max_ending_vel_, k_ending_lat_ * abs(gy_) + k_ending_angle_ * abs(gyaw_));
    
     // ROS_INFO("gv cal: %f, gv_: %f", k1 * abs(gy_) + k2 * abs(gyaw_), gv_);
 
@@ -150,10 +149,9 @@ void QuinticPlanner::genPath()
         QuinticPolynominal yqp(sy_, vys, ays, gy_, vyg, ayg, t_to_goal);
 
         time_.clear();
-        rx_.clear(); ry_.clear(); ryaw_.clear(), r_vyaw_.clear();
+        rx_.clear(); ry_.clear(); ryaw_.clear();
         rv_.clear(); ra_.clear(); rax_.clear(); ray_.clear();
         rj_.clear();
-        curv_.clear();
 
         quintic_path_.poses.clear();
         quintic_pose_.poses.clear();
@@ -172,29 +170,8 @@ void QuinticPlanner::genPath()
 
             double yaw = atan2(vy, vx);
             if (vx < 0) yaw = atan2(-vy, abs(vx));
-	    if (abs(gx_) - abs(xqp.cal_point(t)) < 0.1) yaw = gyaw_;
+	        if (abs(gx_) - abs(xqp.cal_point(t)) < 0.1) yaw = gyaw_;
             ryaw_.push_back(yaw);
-
-            // ROS_INFO("YAW: %f", yaw);
-            
-            if (t == 0) r_vyaw_.push_back(0.0);
-            else
-            {
-                double pre_yaw = atan2(yqp.cal_vel(t-dt_), abs(xqp.cal_vel(t-dt_)));
-                if (t == dt_) pre_yaw = 0;
-                r_vyaw_.push_back(yaw - pre_yaw); 
-                // if (abs(yaw - pre_yaw) > max_yaw_rate_) ROS_WARN("Yaw rate too fast: %f !!!", yaw - pre_yaw);
-            } 
-
-            double lk_dis = sqrt(xqp.cal_point(t)*xqp.cal_point(t) + yqp.cal_point(t)*yqp.cal_point(t));
-            if (lk_dis == 0) curv_.push_back(0);
-            else
-            {   
-                double cur_curv = (2*sin(yaw))/lk_dis;
-                curv_.push_back(cur_curv);
-                // ROS_INFO("Path curvature: %f", cur_curv);
-                // if (cur_curv > max_curv_) ROS_WARN("High curvature: %f !!!", cur_curv);
-            } 
             
             double ax = xqp.cal_acc(t);
             double ay = yqp.cal_acc(t);
@@ -226,11 +203,7 @@ void QuinticPlanner::genPath()
             quintic_path_.poses.push_back(pose_stamp_tmp);
         }
 
-        if ((*std::max_element(curv_.begin(), curv_.end()) < max_curv_) &&
-                (*std::min_element(curv_.begin(), curv_.end()) > -1*max_curv_) &&
-            (*std::max_element(r_vyaw_.begin(), r_vyaw_.end()) < max_yaw_rate_) &&
-                (*std::min_element(r_vyaw_.begin(), r_vyaw_.end()) > -1*max_yaw_rate_) &&
-            (*std::max_element(ra_.begin(), ra_.end()) < max_accel_) &&
+        if ((*std::max_element(ra_.begin(), ra_.end()) < max_accel_) &&
                 (*std::min_element(ra_.begin(), ra_.end()) > -1*max_accel_) &&
                (*std::max_element(ra_.begin(), ra_.end()) > 0.01) &&
                (*std::min_element(ra_.begin(), ra_.end()) < -0.01) &&
@@ -276,8 +249,6 @@ void QuinticPlanner::genPath()
         pub_quintic_pose_.publish(quintic_pose_);
         path_avai_ = true;
     } 
-    
-
 }
 
 void QuinticPlanner::resetPlanner()

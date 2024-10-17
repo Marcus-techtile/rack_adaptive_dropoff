@@ -49,8 +49,7 @@ private:
     /* Quintic parameters */
     double sx_, sy_, syaw_, sv_, sa_;
     double gx_, gy_, gyaw_, gv_, ga_;
-    double max_yaw_rate_, max_accel_, max_ax_, max_ay_, max_jerk_;
-    double max_curv_;
+    double max_accel_, max_ax_, max_ay_, max_jerk_;
     double dt_;
 
     /* odometry and pallet subscribe */
@@ -75,20 +74,22 @@ public:
     double max_t_; //max time to goal
 
     /* starting constraint */
-    double starting_vel_;
-    double starting_acc_;
+    double starting_vel_{0.0};
+    double starting_acc_{0.0};
+    double max_starting_vel_{0.1};
 
     /* ending constraint */
-    double stopping_vel_;
-    double stopping_acc_;
+    double stopping_vel_{0.0};
+    double stopping_acc_{0.0};
+    double max_ending_vel_{0.3};
+    double k_ending_lat_{0.8}, k_ending_angle_{0.5};
 
     /* path variables*/
     bool path_feasible_{false};
     bool path_avai_{false};
     std::vector<double> time_;                     // time index
-    std::vector<double> rx_, ry_, ryaw_, r_vyaw_;
+    std::vector<double> rx_, ry_, ryaw_;
     std::vector<double> rv_, ra_, rax_, ray_, rj_;        //x, y, yaw
-    std::vector<double> curv_;
 
     void setFrame(std::string local_frame, std::string global_frame);
     void setParams(double sx, double sy, double syaw, double sv, double sa,
