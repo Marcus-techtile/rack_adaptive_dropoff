@@ -108,12 +108,19 @@ void QuinticPlanner::genPath()
     curv_.clear();
 
     // Auto adjust the path derivative
-    gv_ = bilinearInterpolation(0.00, 0.00, 0.3, 0.3, 0, 0.3, 0.3, 0.3, abs(gy_), abs(gyaw_));
-    sv_ = gv_;
-    if(sv_ > 0.3) sv_ = 0.3;
-    if(gv_ > 0.3) gv_ = 0.3;
+    // gv_ = bilinearInterpolation(0.00, 0.00, 0.3, 0.3, 0, 0.3, 0.3, 0.3, abs(gy_), abs(gyaw_));
+    // sv_ = gv_;
+    // if(sv_ > 0.3) sv_ = 0.3;
+    // if(gv_ > 0.3) gv_ = 0.3;
+
+    sv_ = bilinearInterpolation(0.00, 0.00, 0.3, 0.3, 0, 0.1, 0.1, 0.1, abs(gy_), abs(gyaw_));
+    if (sv_ > 0.1) sv_ = 0.1;
+
+    double v_max = 0.3;
+    double k1 = 0.8, k2 = 0.5;
+    gv_ = std::min(v_max, k1 * abs(gy_) + k2 * abs(gyaw_));
    
-    //ROS_INFO("Path Derivatives params: %f", gv_);
+    // ROS_INFO("gv cal: %f, gv_: %f", k1 * abs(gy_) + k2 * abs(gyaw_), gv_);
 
     double vxs = sv_ * cos(syaw_);
     double vys = sv_ * sin(syaw_);
