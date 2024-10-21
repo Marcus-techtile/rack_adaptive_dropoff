@@ -57,9 +57,8 @@ double QuinticPolynominal::cal_jerk(double ti)
 QuinticPlanner::QuinticPlanner(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double sec):nh_(nh), tf_buffer(tf), tf_time_out_{1.0}
 {
     /* Get Param */
-    nh_.param<double>("max_acc", max_accel_, 0.5);
-    nh_.param<double>("max_ax", max_ax_, 0.5);
-    nh_.param<double>("max_ay", max_ay_, 0.5);
+    nh_.param<double>("max_acc", max_acc_, 0.5);
+    nh_.param<double>("min_highest_acc", min_highest_acc_, 0.1);
     nh_.param<double>("max_jerk", max_jerk_, 0.5);
     nh_.param<double>("min_t", min_t_, 0.5);
     nh_.param<double>("max_t", max_t_, 10.0);
@@ -169,8 +168,7 @@ void QuinticPlanner::genPath()
             rv_.push_back(v);
 
             double yaw = atan2(vy, vx);
-            if (vx < 0) yaw = atan2(-vy, abs(vx));
-	        if (abs(gx_) - abs(xqp.cal_point(t)) < 0.1) yaw = gyaw_;
+	        if (abs(abs(gx_) - abs(xqp.cal_point(t))) < 0.1) yaw = gyaw_;
             ryaw_.push_back(yaw);
             
             double ax = xqp.cal_acc(t);
@@ -203,10 +201,10 @@ void QuinticPlanner::genPath()
             quintic_path_.poses.push_back(pose_stamp_tmp);
         }
 
-        if ((*std::max_element(ra_.begin(), ra_.end()) < max_accel_) &&
-                (*std::min_element(ra_.begin(), ra_.end()) > -1*max_accel_) &&
-               (*std::max_element(ra_.begin(), ra_.end()) > 0.01) &&
-               (*std::min_element(ra_.begin(), ra_.end()) < -0.01) &&
+        if ((*std::max_element(ra_.begin(), ra_.end()) < max_acc_) &&
+                (*std::min_element(ra_.begin(), ra_.end()) > -1*max_acc_) &&
+               (*std::max_element(ra_.begin(), ra_.end()) > min_highest_acc_) &&
+               (*std::min_element(ra_.begin(), ra_.end()) < -min_highest_acc_) &&
             (*std::max_element(rj_.begin(), rj_.end()) < max_jerk_) &&
                 (*std::min_element(rj_.begin(), rj_.end()) > -1*max_jerk_))
         {

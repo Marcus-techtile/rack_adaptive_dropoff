@@ -49,7 +49,7 @@ private:
     /* Quintic parameters */
     double sx_, sy_, syaw_, sv_, sa_;
     double gx_, gy_, gyaw_, gv_, ga_;
-    double max_accel_, max_ax_, max_ay_, max_jerk_;
+    double max_acc_, min_highest_acc_, max_jerk_;
     double dt_;
 
     /* odometry and pallet subscribe */
