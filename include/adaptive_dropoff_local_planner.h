@@ -24,13 +24,20 @@ public:
  */
     void initialize(tf2_ros::Buffer &tf, double sec);
 
+/**
+ * @brief set goal pose and mode for the Planner.
+ * @param stage_mode mode = 0: 1 stage, mode = 1, 2 stage planning
+ * @param sec tf transform timeout (second). Default: 1s
+ */
     bool setPlan (const std_msgs::Header &header, 
 				const geometry_msgs::PoseStamped &starting_pose,
 				const geometry_msgs::PoseStamped &approaching_pose, 
-				const geometry_msgs::PoseStamped &docking_pose);
+				const geometry_msgs::PoseStamped &docking_pose, 
+                bool stage_mode);
     bool setPlan (const std_msgs::Header &header,
                 const geometry_msgs::PoseStamped &approaching_pose, 
-                const geometry_msgs::PoseStamped &docking_pose);
+                const geometry_msgs::PoseStamped &docking_pose,
+                bool stage_mode);
     uint32_t ExecuteControlLoop(const geometry_msgs::PoseStamped &pose,
                                     const geometry_msgs::TwistStamped &velocity, 
                                     geometry_msgs::Twist &cmd_vel,
