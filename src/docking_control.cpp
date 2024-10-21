@@ -276,8 +276,8 @@ void DockingControl::limitControlSignal()
         if (abs(final_ref_vel_) >= max_pocket_dock_vel_) final_ref_vel_ = max_pocket_dock_vel_ * (final_ref_vel_/abs(final_ref_vel_));
     }  
 
-    if (final_ref_vel_ > max_vel_) final_ref_vel_ = max_vel_;
-    if (final_ref_vel_ < min_vel_) final_ref_vel_ = min_vel_;
+    if (abs(final_ref_vel_) > max_vel_) final_ref_vel_ = std::copysign(final_ref_vel_, max_vel_) ;
+    if (abs(final_ref_vel_) < min_vel_) final_ref_vel_ = std::copysign(final_ref_vel_, min_vel_) ;
     ROS_DEBUG("Linear speed after limit: %f", final_ref_vel_); 
 }
 
