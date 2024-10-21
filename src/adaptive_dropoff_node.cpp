@@ -89,7 +89,8 @@ int main(int argc, char** argv)
 
             docking_pose.header.frame_id = "base_link_p";
             docking_pose.header.stamp = ros::Time::now();
-            depth_dsi = docking_ref_x + number_success%3;
+            depth_dsi = docking_ref_x + number_success%6;
+            // depth_dsi = docking_ref_x ;
             docking_pose.pose.position.x = depth_dsi;
             docking_pose.pose.position.y = docking_ref_y;
             docking_pose.pose.orientation = rpyToQuaternion(0, 0, docking_ref_angle);
@@ -137,7 +138,7 @@ int main(int argc, char** argv)
             geometry_msgs::Twist cmd_vel_back;
             double move_back_sp = -0.3;
             ros::Time start = ros::Time::now();
-            while ((ros::Time::now().toSec() - start.toSec()) < (depth_dsi/abs(move_back_sp) + 2.0))
+            while ((ros::Time::now().toSec() - start.toSec()) < (double)(depth_dsi/abs(move_back_sp) ))
             {
                 cmd_vel_back.linear.x = move_back_sp;
                 pub_cmd.publish(cmd_vel_back);
