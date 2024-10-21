@@ -86,14 +86,11 @@ private:
     geometry_msgs::PoseStamped tf_docking_goal_;
     bool norm_goal_frame_;
     
-    double moveback_straight_distance_;
-    
     geometry_msgs::PoseStamped  global_goal_pose_;         // goal pose in global_frame_ 
     geometry_msgs::PoseStamped  local_static_goal_pose_;   // goal pose in path_frame_
     geometry_msgs::PoseStamped  local_update_goal_pose_;   // goal pose in path_frame_. Updated each period
 
     double check_approaching_goal_distance_;                // distance from robot to approaching pose
-    double approaching_min_dis_; //minimum necessary distance (perpendicular distance) to start approaching. Less than it, the forklift will move backward to increase the distance
 
     /* Tolerance (in local frame) */
     double goal_range_{0.1};       // absolute distance = sqrt(x^2+y^2) is consider inside goal range

@@ -42,10 +42,6 @@ void DockingManager::config()
     nh_.param<std::string>("rack_deviation_topic", rack_deviation_topic_, "/rack_detection/fusioned_rack_deviation");
     /* Get Param */
     nh_.param<std::string>("/move_base_flex/AD/global_frame_id", global_frame_, "map");
-
-    /* Goal params */
-    nh_.param<double>("approaching_min_dis", approaching_min_dis_, 1.2);
-    nh_.param<double>("moveback_straight_distance", moveback_straight_distance_, 1.0);
 }
 
 /***** RESET PALLET DOCKING ******/
