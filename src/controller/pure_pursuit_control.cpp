@@ -186,6 +186,17 @@ geometry_msgs::PoseStamped PurePursuitController::calLookaheadPoint(int nearest_
         pose.pose.position = point;
         return pose;
     }
+
+    int output_index_tmp = output_index;
+    for (int i = output_index_tmp; i > nearest_index; i--)
+    {
+        geometry_msgs::Point pose;
+        pose.x = path.poses.at(i).pose.position.x;
+        pose.y = path.poses.at(i).pose.position.y;
+        if (abs(calLookaheadCurvature(pose)) > 0.5) output_index --;
+    }
+    *point_it = path.poses.at(output_index);
+
     return *point_it;
 }
 
@@ -203,9 +214,10 @@ void PurePursuitController::calControl()
     }
     else //if not using path
         pp_lookahead_pose_ = local_goal_;
-
     
     point_lkh = pp_lookahead_pose_.pose.position;
+    int pre_point_index = point_index_ - 1;
+    
 
     // Lookahead Curvature Computation
     look_ahead_curvature_ = calLookaheadCurvature(point_lkh);

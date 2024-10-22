@@ -97,40 +97,10 @@ void QuinticPlanner::setFrame(std::string local_frame, std::string global_frame)
     path_frame_ = local_frame;
 }
 
-void QuinticPlanner::genPath()
+void QuinticPlanner::genPath(std::vector<geometry_msgs::PoseStamped> waypoints)
 {  
-    time_.clear();
-    rx_.clear(); ry_.clear(); ryaw_.clear();
-    rv_.clear(); ra_.clear(); rax_.clear(); ray_.clear();
-    rj_.clear();
+    size_t n_segments = waypoints.size() - 1;
 
-    // Auto adjust the path derivative
-    // gv_ = bilinearInterpolation(0.00, 0.00, 0.3, 0.3, 0, 0.3, 0.3, 0.3, abs(gy_), abs(gyaw_));
-    // sv_ = gv_;
-    // if(sv_ > 0.3) sv_ = 0.3;
-    // if(gv_ > 0.3) gv_ = 0.3;
-
-    
-    sv_ = bilinearInterpolation(0.00, 0.00, 0.3, 0.3, 
-                                0, max_starting_vel_, max_starting_vel_, max_starting_vel_, 
-                                abs(gy_), abs(gyaw_));
-    if (sv_ > max_starting_vel_) sv_ = max_starting_vel_;
-
-    gv_ = std::min(max_ending_vel_, k_ending_lat_ * abs(gy_) + k_ending_angle_ * abs(gyaw_));
-   
-    // ROS_INFO("gv cal: %f, gv_: %f", k1 * abs(gy_) + k2 * abs(gyaw_), gv_);
-
-    double vxs = sv_ * cos(syaw_);
-    double vys = sv_ * sin(syaw_);
-    double vxg = gv_ * cos(gyaw_);
-    double vyg = gv_ * sin(gyaw_);
-    
-    double axs = sa_* cos(syaw_);
-    double ays = sa_* sin(syaw_);
-    double axg = ga_* cos(gyaw_);
-    double ayg = ga_* sin(gyaw_);
-
-    // reinitialize path
     quintic_path_.header.frame_id = path_frame_;
     quintic_path_.header.stamp = ros::Time::now();
     quintic_path_.poses.clear();
@@ -138,84 +108,158 @@ void QuinticPlanner::genPath()
     quintic_pose_.header.frame_id = path_frame_;
     quintic_pose_.header.stamp = ros::Time::now();
     quintic_pose_.poses.clear();
-
-    geometry_msgs::Pose pose_tmp;
-    geometry_msgs::PoseStamped pose_stamp_tmp;
-
-    for (double t_to_goal = min_t_; t_to_goal <= max_t_; t_to_goal = t_to_goal + min_t_)
+    
+    for (size_t i = 0; i < n_segments; i++)
     {
-        QuinticPolynominal xqp(sx_, vxs, axs, gx_, vxg, axg, t_to_goal);
-        QuinticPolynominal yqp(sy_, vys, ays, gy_, vyg, ayg, t_to_goal);
+        sx_ = waypoints[i].pose.position.x;
+        sy_ = waypoints[i].pose.position.y;
+        gx_ = waypoints[i + 1].pose.position.x;
+        gy_ = waypoints[i + 1].pose.position.y;
+        syaw_ = tf::getYaw(waypoints[i].pose.orientation);
+        gyaw_ = tf::getYaw(waypoints[i + 1].pose.orientation);
 
         time_.clear();
         rx_.clear(); ry_.clear(); ryaw_.clear();
         rv_.clear(); ra_.clear(); rax_.clear(); ray_.clear();
         rj_.clear();
 
-        quintic_path_.poses.clear();
-        quintic_pose_.poses.clear();
-        // ROS_INFO(" ");
-        // ROS_INFO("TIME TO GOAL: %f", t_to_goal);
-        for (double t = 0.0; t <= t_to_goal; t = t + dt_)
+        // Auto adjust the path derivative
+        // gv_ = bilinearInterpolation(0.00, 0.00, 0.3, 0.3, 0, 0.3, 0.3, 0.3, abs(gy_), abs(gyaw_));
+        // sv_ = gv_;
+        // if(sv_ > 0.3) sv_ = 0.3;
+        // if(gv_ > 0.3) gv_ = 0.3;
+
+        
+        sv_ = bilinearInterpolation(0.00, 0.00, 0.3, 0.3, 
+                                    0, max_starting_vel_, max_starting_vel_, max_starting_vel_, 
+                                    abs(gy_), abs(gyaw_));
+        if (sv_ > max_starting_vel_) sv_ = max_starting_vel_;
+
+        gv_ = std::min(max_ending_vel_, k_ending_lat_ * abs(gy_) + k_ending_angle_ * abs(gyaw_));
+    
+        // ROS_INFO("gv cal: %f, gv_: %f", k1 * abs(gy_) + k2 * abs(gyaw_), gv_);
+        if (gx_ < 0)
         {
-            time_.push_back(t);
-            rx_.push_back(xqp.cal_point(t));
-            ry_.push_back(yqp.cal_point(t));
-
-            double vx = xqp.cal_vel(t);
-            double vy = yqp.cal_vel(t);
-            double v = sqrt(vx*vx + vy*vy);
-            rv_.push_back(v);
-
-            double yaw = atan2(vy, vx);
-	        if (abs(abs(gx_) - abs(xqp.cal_point(t))) < 0.1) yaw = gyaw_;
-            ryaw_.push_back(yaw);
-            
-            double ax = xqp.cal_acc(t);
-            double ay = yqp.cal_acc(t);
-            rax_.push_back(ax);
-            ray_.push_back(ay);
-            double a = sqrt(ax*ax + ay*ay);
-            if (rv_.size() >= 2 && (rv_.at(rv_.size()-1) - rv_.at(rv_.size()-2) < 0)) a = -1*a;
-            ra_.push_back(a);
-
-            double jx = xqp.cal_jerk(t);
-            double jy = yqp.cal_jerk(t);
-            double j = sqrt(jx*jx + jy*jy);
-            if (ra_.size() >= 2 && (ra_.at(ra_.size() - 1) - ra_.at(ra_.size() - 2))) j = -1*j;
-            rj_.push_back(j);
-
-            /* Add result to path */
-            // Pose
-            pose_tmp.position.x = xqp.cal_point(t);
-            pose_tmp.position.y = yqp.cal_point(t);
-            pose_tmp.orientation = rpyToQuaternion(0, 0, yaw);
-
-            //path
-            pose_stamp_tmp.header = quintic_path_.header;
-            pose_stamp_tmp.pose.position.x = xqp.cal_point(t);
-            pose_stamp_tmp.pose.position.y = yqp.cal_point(t);
-            pose_stamp_tmp.pose.orientation = rpyToQuaternion(0, 0, yaw);
-
-            quintic_pose_.poses.push_back(pose_tmp);
-            quintic_path_.poses.push_back(pose_stamp_tmp);
+            sv_ = -sv_;
+            gv_ = -gv_;
         }
+        if (i > 0) sv_ = gv_;
 
-        if ((*std::max_element(ra_.begin(), ra_.end()) < max_acc_) &&
-                (*std::min_element(ra_.begin(), ra_.end()) > -1*max_acc_) &&
-               (*std::max_element(ra_.begin(), ra_.end()) > min_highest_acc_) &&
-               (*std::min_element(ra_.begin(), ra_.end()) < -min_highest_acc_) &&
-            (*std::max_element(rj_.begin(), rj_.end()) < max_jerk_) &&
-                (*std::min_element(rj_.begin(), rj_.end()) > -1*max_jerk_))
+        double vxs = sv_ * cos(syaw_);
+        double vys = sv_ * sin(syaw_);
+        double vxg = gv_ * cos(gyaw_);
+        double vyg = gv_ * sin(gyaw_);
+        
+        double axs = sa_* cos(syaw_);
+        double ays = sa_* sin(syaw_);
+        double axg = ga_* cos(gyaw_);
+        double ayg = ga_* sin(gyaw_);
+
+        segment_quintic_path_.header.frame_id = path_frame_;
+        segment_quintic_path_.header.stamp = ros::Time::now();
+        segment_quintic_path_.poses.clear();
+        segment_quintic_pose_.header.frame_id = path_frame_;
+        segment_quintic_pose_.header.stamp = ros::Time::now();
+        segment_quintic_pose_.poses.clear();
+
+        geometry_msgs::Pose pose_tmp;
+        geometry_msgs::PoseStamped pose_stamp_tmp;
+
+        for (double t_to_goal = min_t_; t_to_goal <= max_t_; t_to_goal = t_to_goal + min_t_)
         {
-            // ROS_INFO("Path found");
-            //ROS_INFO("Time move %f", t_to_goal);
-            // ROS_INFO(" Path: Max acc: %f", *std::max_element(ra_.begin(), ra_.end()));
-            // ROS_INFO(" Path: Min acc: %f", *std::min_element(ra_.begin(), ra_.end()));
-            path_feasible_ = true;
+            QuinticPolynominal xqp(sx_, vxs, axs, gx_, vxg, axg, t_to_goal);
+            QuinticPolynominal yqp(sy_, vys, ays, gy_, vyg, ayg, t_to_goal);
+
+            time_.clear();
+            rx_.clear(); ry_.clear(); ryaw_.clear();
+            rv_.clear(); ra_.clear(); rax_.clear(); ray_.clear();
+            rj_.clear();
+
+            segment_quintic_path_.poses.clear();
+            segment_quintic_pose_.poses.clear();
+            // ROS_INFO(" ");
+            // ROS_INFO("TIME TO GOAL: %f", t_to_goal);
+            for (double t = 0.0; t <= t_to_goal; t = t + dt_)
+            {
+                time_.push_back(t);
+                rx_.push_back(xqp.cal_point(t));
+                ry_.push_back(yqp.cal_point(t));
+
+                double vx = xqp.cal_vel(t);
+                double vy = yqp.cal_vel(t);
+                double v = sqrt(vx*vx + vy*vy);
+                rv_.push_back(v);
+
+                double yaw = atan2(vy, vx);
+                if (vx < 0) yaw = atan2(-vy,abs(vx));
+                if ((i == n_segments - 1) && 
+                    abs(abs(gx_) - abs(xqp.cal_point(t))) < 0.1) yaw = gyaw_;
+                ryaw_.push_back(yaw);
+                
+                double ax = xqp.cal_acc(t);
+                double ay = yqp.cal_acc(t);
+                rax_.push_back(ax);
+                ray_.push_back(ay);
+                double a = sqrt(ax*ax + ay*ay);
+                if (rv_.size() >= 2 && (rv_.at(rv_.size()-1) - rv_.at(rv_.size()-2) < 0)) a = -1*a;
+                ra_.push_back(a);
+
+                double jx = xqp.cal_jerk(t);
+                double jy = yqp.cal_jerk(t);
+                double j = sqrt(jx*jx + jy*jy);
+                if (ra_.size() >= 2 && (ra_.at(ra_.size() - 1) - ra_.at(ra_.size() - 2))) j = -1*j;
+                rj_.push_back(j);
+
+                /* Add result to path */
+                // Pose
+                pose_tmp.position.x = xqp.cal_point(t);
+                pose_tmp.position.y = yqp.cal_point(t);
+                pose_tmp.orientation = rpyToQuaternion(0, 0, yaw);
+
+                //path
+                pose_stamp_tmp.header = quintic_path_.header;
+                pose_stamp_tmp.pose.position.x = xqp.cal_point(t);
+                pose_stamp_tmp.pose.position.y = yqp.cal_point(t);
+                pose_stamp_tmp.pose.orientation = rpyToQuaternion(0, 0, yaw);
+
+                segment_quintic_pose_.poses.push_back(pose_tmp);
+                segment_quintic_path_.poses.push_back(pose_stamp_tmp);
+            }
+
+            if ((*std::max_element(ra_.begin(), ra_.end()) < max_acc_) &&
+                    (*std::min_element(ra_.begin(), ra_.end()) > -1*max_acc_) &&
+                (*std::max_element(ra_.begin(), ra_.end()) > min_highest_acc_) &&
+                (*std::min_element(ra_.begin(), ra_.end()) < -min_highest_acc_) &&
+                (*std::max_element(rj_.begin(), rj_.end()) < max_jerk_) &&
+                    (*std::min_element(rj_.begin(), rj_.end()) > -1*max_jerk_))
+            {
+                // ROS_INFO("Path found");
+                //ROS_INFO("Time move %f", t_to_goal);
+                // ROS_INFO(" Path: Max acc: %f", *std::max_element(ra_.begin(), ra_.end()));
+                // ROS_INFO(" Path: Min acc: %f", *std::min_element(ra_.begin(), ra_.end()));
+                segment_path_feasible_ = true;
+                break;
+            } 
+        }
+        if (segment_path_feasible_)
+        {
+            quintic_path_.poses.insert(quintic_path_.poses.end(), segment_quintic_path_.poses.begin(), segment_quintic_path_.poses.end());
+            quintic_pose_.poses.insert(quintic_pose_.poses.end(), segment_quintic_pose_.poses.begin(), segment_quintic_pose_.poses.end());    
+            segment_path_feasible_ = false;
+            if (i == n_segments - 1)
+            {
+                path_feasible_ = true;
+                break;
+            }
+            else continue;
+        }
+        if (!segment_path_feasible_)
+        {
+            path_feasible_ = false;
             break;
-        } 
+        }
     }
+    
     // ROS_INFO("PATH FEASIBLE: %d", path_feasible_);
     if (!path_feasible_) 
     {

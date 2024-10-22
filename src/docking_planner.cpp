@@ -81,6 +81,8 @@ void DockingManager::initDocking()
     goal_avai_ = false;         // transition from UPDATE_GOAL to GEN_PATH
     goal_reach_ = false;         // transition from GEN_PATH to STOP
     goal_failed_ = false;        // transition from GEN_PATH to RECOVER
+
+    waypoint_setup_ = false;
 }
 
 /***** RESET PLANNING AND CONTROL ******/
@@ -90,6 +92,7 @@ void DockingManager::resetPlanAndControl()
     quintic_planner_->resetPlanner();
     goal_setup_ = false;
     count_outside_goal_range_ = 0;
+    waypoint_setup_ = false;
 }
 
 /**** Params Setup ******/
@@ -386,6 +389,11 @@ void DockingManager::setRobotSpeed(geometry_msgs::Twist robot_speed)
     docking_control_->setVel(robot_speed);
 }
 
+bool DockingManager::waypointSetup()
+{
+    
+}
+
 void DockingManager::quinticPlannerSetup()
 {
     if (returning_mode_.data)
@@ -402,7 +410,40 @@ void DockingManager::quinticPlannerSetup()
             local_update_goal_pose_.pose.position.x, local_update_goal_pose_.pose.position.y, tf::getYaw(local_update_goal_pose_.pose.orientation),
             quintic_planner_->stopping_vel_, quintic_planner_->stopping_acc_);
     // if (!quintic_planner_->path_avai_)
-        quintic_planner_->genPath();
+
+    if (!waypoint_setup_)
+    {
+        geometry_msgs::PoseStamped current_pose;
+        current_pose = approaching_goal_;
+        current_pose.pose.position.x = 0;
+        current_pose.pose.position.y = 0;
+        current_pose.pose.orientation = rpyToQuaternion(0, 0, 0);
+
+        local_goal_array_.clear();
+        local_goal_array_.push_back(current_pose);
+        local_goal_array_.push_back(approaching_goal_);
+        local_goal_array_.push_back(local_update_goal_pose_);
+
+        waypoints_transform_ = waypointsRelativeTransformsToGoal(local_goal_array_);
+        waypoint_setup_ = true;
+    }
+
+    local_goal_array_ = updateWaypointsWithGoal(local_goal_array_, local_update_goal_pose_, waypoints_transform_);
+    
+    // ROS_INFO("Update waypoint");
+    if (local_goal_array_.size() > 2)
+    {
+        for (int i = 1; i < local_goal_array_.size() - 1; i++)
+        {
+            if (abs(local_goal_array_.at(i).pose.position.x) < 0.1)
+            {
+                auto pos = local_goal_array_.begin() + i;
+                local_goal_array_.erase(pos);
+            }
+        }
+    }
+    
+    quintic_planner_->genPath(local_goal_array_);
     quintic_planner_->visualize(global_goal_pose_);
 }
 

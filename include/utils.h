@@ -15,3 +15,9 @@ double bilinearInterpolation(double x1, double y1, double x2, double y2,
                              double fQ11, double fQ21, double fQ12, double fQ22, 
                              double x, double y);
 
+std::vector<tf2::Transform> waypointsRelativeTransformsToGoal(std::vector<geometry_msgs::PoseStamped> poses);
+geometry_msgs::Pose transformToPose(const tf2::Transform& transform);
+std::vector<geometry_msgs::PoseStamped> updateWaypointsWithGoal(
+                                        std::vector<geometry_msgs::PoseStamped> poses,
+                                        const geometry_msgs::PoseStamped& goal,
+                                        std::vector<tf2::Transform> relative_transforms);

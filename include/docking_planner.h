@@ -90,6 +90,8 @@ private:
     geometry_msgs::PoseStamped  local_static_goal_pose_;   // goal pose in path_frame_
     geometry_msgs::PoseStamped  local_update_goal_pose_;   // goal pose in path_frame_. Updated each period
 
+    std::vector<geometry_msgs::PoseStamped> local_goal_array_;
+
     double check_approaching_goal_distance_;                // distance from robot to approaching pose
 
     /* Tolerance (in local frame) */
@@ -139,6 +141,10 @@ private:
 
     /* Mutex */
     std::mutex mutex_;
+
+    bool waypoint_setup_{false};
+    std::vector<tf2::Transform> waypoints_transform_;
+    bool waypointSetup();
 
     void goalSetup();
     void updateGoal();

@@ -89,15 +89,15 @@ int main(int argc, char** argv)
 
             docking_pose.header.frame_id = "base_link_p";
             docking_pose.header.stamp = ros::Time::now();
-            depth_dsi = docking_ref_x + number_success%6;
-            // depth_dsi = docking_ref_x ;
+            // depth_dsi = docking_ref_x + number_success%6;
+            depth_dsi = docking_ref_x ;
             docking_pose.pose.position.x = depth_dsi;
             docking_pose.pose.position.y = docking_ref_y;
             docking_pose.pose.orientation = rpyToQuaternion(0, 0, docking_ref_angle);
 
             
             plan_header.frame_id = "map";
-            if (!docking_local_planner.setPlan(plan_header, approach_pose, docking_pose))
+            if (!docking_local_planner.setPlan(plan_header, approach_pose, docking_pose, 0))
             {
                 ROS_WARN("Cannot setup pose");
                 return 0;
@@ -148,7 +148,7 @@ int main(int argc, char** argv)
             pub_cmd.publish(cmd_vel_back);
             ros::Duration(1).sleep();
 
-           if (!docking_local_planner.setPlan(plan_header, approach_pose, docking_pose))
+           if (!docking_local_planner.setPlan(plan_header, approach_pose, docking_pose, 0))
            {
                 ROS_WARN("Cannot setup pose");
                 return 0;

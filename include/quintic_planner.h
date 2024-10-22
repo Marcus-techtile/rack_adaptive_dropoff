@@ -58,7 +58,6 @@ private:
     /* tf conversion */
     tf2_ros::Buffer &tf_buffer;
     double tf_time_out_{1.0};
-
 public:
     /* function */
     QuinticPlanner(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double sec);
@@ -67,8 +66,8 @@ public:
     bool set_param_{false};
     std::string path_frame_{"base_link_p"};
     std::string global_frame_{"map"};
-    geometry_msgs::PoseArray quintic_pose_;
-    nav_msgs::Path quintic_path_, global_quintic_path_; 
+    geometry_msgs::PoseArray quintic_pose_, segment_quintic_pose_;
+    nav_msgs::Path quintic_path_, global_quintic_path_, segment_quintic_path_; 
 
     double min_t_; //min time to goal
     double max_t_; //max time to goal
@@ -86,6 +85,7 @@ public:
 
     /* path variables*/
     bool path_feasible_{false};
+    bool segment_path_feasible_{false};
     bool path_avai_{false};
     std::vector<double> time_;                     // time index
     std::vector<double> rx_, ry_, ryaw_;
@@ -94,7 +94,10 @@ public:
     void setFrame(std::string local_frame, std::string global_frame);
     void setParams(double sx, double sy, double syaw, double sv, double sa,
                     double gx, double gy, double gyaw, double gv, double ga);
-    void genPath();
+    
+    std::vector<geometry_msgs::PoseStamped> waypointUpdate(std::vector<geometry_msgs::PoseStamped> waypoints);
+    
+    void genPath(std::vector<geometry_msgs::PoseStamped> waypoints);
     void resetPlanner();
     void visualize(geometry_msgs::PoseStamped pallet_pose);
 };

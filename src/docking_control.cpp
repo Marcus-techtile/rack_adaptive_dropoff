@@ -24,6 +24,7 @@ DockingControl::DockingControl(ros::NodeHandle &nh, tf2_ros::Buffer &tf, double 
     nh_.param<double>("min_vel", min_vel_, 0.15);
     nh_.param<double>("goal_correct_yaw", goal_correct_yaw_, 0.3);
     nh_.param<double>("max_angular_vel", max_angular_vel_, 0.2);
+    nh_.param<double>("tau", tau_, 1.0);
     nh_.param<bool>("adaptive_ref_angle", adaptive_ref_angle_, true);
 
     nh_.param<double>("fuzzy_lookahead_dis", fuzzy_lookahead_dis_, 0.3);
@@ -79,6 +80,7 @@ void DockingControl::resetController()
     ref_path_.poses.clear();
     ref_path_avai_ = false;
     steering_ = 0;
+    steering_actual_ = 0;
     abs_ref_vel_ = 0;
     final_ref_vel_ = 0;
 }
@@ -185,6 +187,10 @@ void DockingControl::steeringControl()
     if (steering_speed > max_steering_speed_) steering_speed = max_steering_speed_;
     if (steering_speed < min_steering_speed_) steering_speed = min_steering_speed_;
     steering_ = steering_ + steering_speed;
+
+    steering_actual_ += (1.0 / tau_) * (steering_ - steering_actual_)*dt_;
+
+    steering_ = steering_actual_;
     
     // Visualize and debugging topic
     std_msgs::Float32 pp_steer;
@@ -209,10 +215,16 @@ void DockingControl::steeringControl()
 
 void DockingControl::linearSpeedControl()
 {
-    double fuzzy_lk_dis = fuzzy_lookahead_dis_;
-    double max_dist = sqrt(local_ref_path_.poses.at(local_ref_path_.poses.size()-1).pose.position.x*local_ref_path_.poses.at(local_ref_path_.poses.size()-1).pose.position.x
-                        + local_ref_path_.poses.at(local_ref_path_.poses.size()-1).pose.position.y*local_ref_path_.poses.at(local_ref_path_.poses.size()-1).pose.position.y);
-    
+    // double fuzzy_lk_dis = fuzzy_lookahead_dis_;
+    double fuzzy_lk_dis = pure_pursuit_control.look_ahead_distance_;
+
+    double max_dist = 0;
+   
+    for (int i = 0; i < local_ref_path_.poses.size(); i++)
+    {
+        max_dist += hypot(local_ref_path_.poses.at(i).pose.position.x, local_ref_path_.poses.at(i).pose.position.y);
+    }
+
     if (fuzzy_lk_dis > max_dist) fuzzy_lk_dis = max_dist;
     for (lk_index_vel_ = nearest_index_; lk_index_vel_ < local_ref_path_.poses.size(); lk_index_vel_++)
     {
@@ -220,12 +232,11 @@ void DockingControl::linearSpeedControl()
                                     + local_ref_path_.poses.at(lk_index_vel_).pose.position.y*local_ref_path_.poses.at(lk_index_vel_).pose.position.y)) break;  
     }
     
-    if (abs(local_ref_path_.poses.at(local_ref_path_.poses.size()-1).pose.position.x) < fuzzy_lk_dis)
+    if (max_dist < fuzzy_lk_dis)
         lk_index_vel_ = local_ref_path_.poses.size()-1;
-    
     ROS_DEBUG("Fuzzy lk_index_vel_: %d", lk_index_vel_);
 
-    // fuzzy_lk_dis = pure_pursuit_control.look_ahead_distance_;
+    
     fuzzy_controller.inputSolveGoal(abs(fuzzy_lk_dis));
     if (limit_sp_curve_)
         fuzzy_controller.inputsolveSteering(pure_pursuit_control.look_ahead_curvature_);
@@ -333,7 +344,7 @@ void DockingControl::controllerCal()
         geometry_msgs::Twist cmd_out = scaleControlSignal(cmd_vel_);
         if (publish_cmd_) pub_cmd_vel_.publish(cmd_out);
     }
-
+    visualize();
 
 }
 

@@ -80,9 +80,10 @@ private:
 
     /* PP varibales */
     PurePursuitController pure_pursuit_control;
-    double steering_angle_, steering_;     // steering wheel
+    double steering_angle_, steering_, steering_actual_;     // steering wheel
     double pp_look_ahead_time_;
     geometry_msgs::PoseStamped pp_lkh_pose_;
+    double tau_;
 
     /* Fuzzy control */
     FuzzyControl fuzzy_controller;
