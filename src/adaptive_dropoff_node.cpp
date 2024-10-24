@@ -97,7 +97,7 @@ int main(int argc, char** argv)
 
             
             plan_header.frame_id = "map";
-            if (!docking_local_planner.setPlan(plan_header, approach_pose, docking_pose))
+            if (!docking_local_planner.setPlan(plan_header, approach_pose, docking_pose, 0))
             {
                 ROS_WARN("Cannot setup pose");
                 return 0;
@@ -148,7 +148,7 @@ int main(int argc, char** argv)
             pub_cmd.publish(cmd_vel_back);
             ros::Duration(1).sleep();
 
-           if (!docking_local_planner.setPlan(plan_header, approach_pose, docking_pose))
+           if (!docking_local_planner.setPlan(plan_header, approach_pose, docking_pose, 0))
            {
                 ROS_WARN("Cannot setup pose");
                 return 0;
