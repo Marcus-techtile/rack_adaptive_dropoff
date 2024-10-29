@@ -93,25 +93,6 @@ void DockingManager::resetPlanAndControl()
 }
 
 /**** Params Setup ******/
-bool DockingManager::setupPoses(geometry_msgs::PoseStamped approaching_pose,
-                    geometry_msgs::PoseStamped docking_pose)
-{
-    if (approaching_pose.header.frame_id == "" || docking_pose.header.frame_id == "" )
-        
-    {
-        ROS_WARN("Pose frame is empty");
-        pose_setup_ = false;
-        return false;
-    }
-    else
-    {
-        approaching_goal_ = approaching_pose;
-        docking_goal_ = docking_pose;
-        pose_setup_ = true;
-        return true;
-    }  
-}
-
 void DockingManager::setGoalRange(double dd)
 {
     goal_range_ = dd;
@@ -166,6 +147,80 @@ void DockingManager::getAndPubDockingErrors(double error_x, double error_y, doub
         final_error_.x = error_x; final_error_.y = error_y; final_error_.z = error_yaw;
         pub_final_docking_error_.publish(final_error_);
     }
+}
+
+/***** GOAL POSE HANDLING *****/
+bool DockingManager::setupPoses(const std::vector<geometry_msgs::PoseStamped> poses)
+{
+    if (poses.size() < 1 || poses.size() > 2)
+    {
+        ROS_WARN("Invalid Goal Received!");
+        pose_setup_ = false;
+        return false;
+    }
+    else
+    {
+        for (int i = 0; i < poses.size(); i++)
+        {
+            if (poses.at(i).header.frame_id == "") {
+                ROS_WARN("Empty goal frame id ! Invalid Goal Received");
+                goal_setup_ = false;
+                return false;
+            }
+        }
+        if (poses.size() == 1)
+        {
+            approaching_done.data = true;
+            approach_done_ = true;
+        }
+        goal_poses_.clear();
+        goal_poses_ = poses;
+        pose_setup_ = true;
+        
+        return true;
+    }
+}
+
+void DockingManager::goalSetup()
+{   
+    // Normalize the frame into a consistent one
+    ROS_INFO("CONTROLLER: SETUP GOAL");
+    if (!norm_goal_frame_)
+    {
+        tf_goal_poses_.clear();
+        goal_array_.poses.clear();
+        goal_array_.header.frame_id = global_frame_;
+        goal_array_.header.stamp = ros::Time::now();
+
+        for (int i = 0; i < goal_poses_.size(); i++)
+        {
+            geometry_msgs::PoseStamped tf_goal_tmp;
+            tf_goal_tmp.header.stamp = ros::Time(0);
+            try
+            {
+                tf_.transform(goal_poses_.at(i), tf_goal_tmp, global_frame_, ros::Duration(tf_time_out_));
+            }
+            catch (tf2::TransformException ex)
+            {
+                ROS_ERROR("%s",ex.what());
+            }
+            tf_goal_poses_.push_back(tf_goal_tmp);
+            goal_array_.poses.push_back(tf_goal_tmp.pose);
+        }
+        norm_goal_frame_ = true;
+    }
+    pub_goal_pose_array_.publish(goal_array_);
+       
+    // Setup goal pose for each stage
+    if (tf_goal_poses_.size() == 1 ) global_goal_pose_ = tf_goal_poses_.at(0);  //1 pose
+    else    // 2 poses
+    {
+        if (!approach_done_) global_goal_pose_ = tf_goal_poses_.at(0);
+        else   global_goal_pose_ = tf_goal_poses_.at(1);
+    }
+    
+    pub_global_goal_pose_.publish(global_goal_pose_);
+    goal_setup_ = true;  
 }
 
 void DockingManager::updateGoal()
@@ -329,40 +384,6 @@ void DockingManager::dockingState()
 
 ////// Set goal State /////
 /***** SETUP GOAL FOR DOCKING *****/
-
-void DockingManager::goalSetup()
-{   
-    // Normalize the frame into a consistent one
-    if (!norm_goal_frame_)
-    {
-        approaching_goal_.header.stamp = ros::Time(0);
-        docking_goal_.header.stamp = ros::Time(0);
-        try
-        {
-            tf_.transform(approaching_goal_, tf_approaching_goal_, global_frame_, ros::Duration(tf_time_out_));
-            tf_.transform(docking_goal_, tf_docking_goal_, global_frame_, ros::Duration(tf_time_out_));
-        }
-        catch (tf2::TransformException ex)
-        {
-            ROS_ERROR("%s",ex.what());
-        }
-        norm_goal_frame_ = true;
-    }
-    geometry_msgs::PoseArray goal_array;
-    goal_array.header.frame_id = tf_approaching_goal_.header.frame_id;
-    goal_array.header.stamp = ros::Time::now();
-    goal_array.poses.push_back(tf_approaching_goal_.pose);
-    goal_array.poses.push_back(tf_docking_goal_.pose);
-    pub_goal_pose_array_.publish(goal_array);
-       
-    // Setup goal pose for each stage
-    if (!approach_done_) global_goal_pose_ = tf_approaching_goal_;
-    else   global_goal_pose_ = tf_docking_goal_;
-    
-    pub_global_goal_pose_.publish(global_goal_pose_);
-    goal_setup_ = true;  
-}
-
 void DockingManager::setGoalState()
 {
     docking_state.data = "SET_GOAL";

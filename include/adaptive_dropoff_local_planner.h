@@ -31,13 +31,9 @@ public:
  */
     bool setPlan (const std_msgs::Header &header, 
 				const geometry_msgs::PoseStamped &starting_pose,
-				const geometry_msgs::PoseStamped &approaching_pose, 
-				const geometry_msgs::PoseStamped &docking_pose, 
-                bool stage_mode);
+                const std::vector<geometry_msgs::PoseStamped> &goal_poses);
     bool setPlan (const std_msgs::Header &header,
-                const geometry_msgs::PoseStamped &approaching_pose, 
-                const geometry_msgs::PoseStamped &docking_pose,
-                bool stage_mode);
+                const std::vector<geometry_msgs::PoseStamped> &goal_poses);
     uint32_t ExecuteControlLoop(const geometry_msgs::PoseStamped &pose,
                                     const geometry_msgs::TwistStamped &velocity, 
                                     geometry_msgs::Twist &cmd_vel,

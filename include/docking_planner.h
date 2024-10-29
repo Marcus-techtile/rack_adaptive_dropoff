@@ -67,6 +67,9 @@ private:
 
     geometry_msgs::PoseStamped approaching_goal_;
     geometry_msgs::PoseStamped docking_goal_;
+    std::vector<geometry_msgs::PoseStamped> goal_poses_;
+    std::vector<geometry_msgs::PoseStamped> tf_goal_poses_;
+    geometry_msgs::PoseArray goal_array_;
 
         // Docking Mode
     bool docking_mode_{0};
@@ -152,8 +155,7 @@ public:
     void initDocking();
     void resetPlanAndControl();
 
-    bool setupPoses(geometry_msgs::PoseStamped approaching_pose,
-                geometry_msgs::PoseStamped docking_pose);
+    bool setupPoses(const std::vector<geometry_msgs::PoseStamped> poses);
     void setGoalRange(double dd);
     void setApproachingTolerance(double dx, double dy, double dyaw);
     void setDockingTolerance(double &dx, double &dy, double &dyaw);

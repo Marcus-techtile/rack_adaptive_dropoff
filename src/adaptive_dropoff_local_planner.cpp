@@ -35,31 +35,17 @@ void AdaptiveDockingLocalPlanner::setGlobalFrame(std::string global_frame)
 // currently not use "starting_pose" and "header". Path frame is global/local frame
 bool AdaptiveDockingLocalPlanner::setPlan (const std_msgs::Header &header, 
                 const geometry_msgs::PoseStamped &starting_pose,
-                const geometry_msgs::PoseStamped &approaching_pose, 
-                const geometry_msgs::PoseStamped &docking_pose,
-                bool stage_mode)
+                const std::vector<geometry_msgs::PoseStamped> &goal_poses)
 {
     docking_manager_->initDocking();
-    if (stage_mode == 0)
-    {
-        docking_manager_->approaching_done.data = true;
-        docking_manager_->approach_done_ = true;
-    }
-    return docking_manager_->setupPoses(approaching_pose, docking_pose);
+    return docking_manager_->setupPoses(goal_poses);
 }
 
 bool AdaptiveDockingLocalPlanner::setPlan (const std_msgs::Header &header,
-            const geometry_msgs::PoseStamped &approaching_pose, 
-            const geometry_msgs::PoseStamped &docking_pose,
-            bool stage_mode)
+            const std::vector<geometry_msgs::PoseStamped> &goal_poses)
 {
     docking_manager_->initDocking();
-    if (stage_mode == 0)
-    {
-        docking_manager_->approaching_done.data = true;
-        docking_manager_->approach_done_ = true;
-    }
-    return docking_manager_->setupPoses(approaching_pose, docking_pose);
+    return docking_manager_->setupPoses(goal_poses);
 }
 
 /************* Execute Control ************/

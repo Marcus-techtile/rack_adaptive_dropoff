@@ -67,6 +67,8 @@ int main(int argc, char** argv)
     bool setup_goal_pose_{false};
     
     double depth_dsi;
+
+    std::vector<geometry_msgs::PoseStamped> goal_poses;
     while(ros::ok())
     {  
         // if (!rack_deviation_avai_) {
@@ -95,9 +97,12 @@ int main(int argc, char** argv)
             docking_pose.pose.position.y = docking_ref_y;
             docking_pose.pose.orientation = rpyToQuaternion(0, 0, docking_ref_angle);
 
-            
             plan_header.frame_id = "map";
-            if (!docking_local_planner.setPlan(plan_header, approach_pose, docking_pose, 0))
+
+            goal_poses.clear();
+            goal_poses.push_back(docking_pose);
+
+            if (!docking_local_planner.setPlan(plan_header, goal_poses))
             {
                 ROS_WARN("Cannot setup pose");
                 return 0;
@@ -148,7 +153,7 @@ int main(int argc, char** argv)
             pub_cmd.publish(cmd_vel_back);
             ros::Duration(1).sleep();
 
-           if (!docking_local_planner.setPlan(plan_header, approach_pose, docking_pose, 0))
+           if (!docking_local_planner.setPlan(plan_header, goal_poses))
            {
                 ROS_WARN("Cannot setup pose");
                 return 0;
