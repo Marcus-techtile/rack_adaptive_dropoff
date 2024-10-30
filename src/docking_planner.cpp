@@ -184,7 +184,6 @@ bool DockingManager::setupPoses(const std::vector<geometry_msgs::PoseStamped> po
 void DockingManager::goalSetup()
 {   
     // Normalize the frame into a consistent one
-    ROS_INFO("CONTROLLER: SETUP GOAL");
     if (!norm_goal_frame_)
     {
         tf_goal_poses_.clear();
